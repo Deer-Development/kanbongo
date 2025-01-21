@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Services\{{namespace}};
+
+use App\Models\{{name}};
+use App\Services\BaseService;
+
+class {{name}}Service extends BaseService
+{
+    protected string $modelClass = {{name}}::class;
+
+    // Define valid columns for sorting
+    protected function getValidSortColumns(): array
+    {
+        return ['id', 'name', 'created_at'];
+    }
+}

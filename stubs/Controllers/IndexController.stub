@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Http\Controllers\{{namespace}};
+
+use App\Http\Controllers\BaseController;
+use App\Services\{{namespace}}\{{name}}Service;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use App\Http\Resources\{{namespace}}\{{name}}Resource;
+
+class Index extends BaseController
+{
+    protected {{name}}Service $service;
+
+    public function __construct({{name}}Service $service)
+    {
+        $this->service = $service;
+    }
+
+    public function __invoke(Request $request): JsonResponse
+    {
+        $items = $this->service->getAll($request);
+
+        return $this->successResponse([
+            'items' => {{name}}Resource::collection($items->items()),
+            'totalPages' => $items->lastPage(),
+            'totalItems' => $items->total(),
+            'page' => $items->currentPage(),
+        ], '{{name}} list retrieved successfully.');
+    }
+}

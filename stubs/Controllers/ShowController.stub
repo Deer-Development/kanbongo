@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Http\Controllers\{{namespace}};
+
+use App\Http\Controllers\BaseController;
+use App\Services\{{namespace}}\{{name}}Service;
+use App\Http\Resources\{{namespace}}\{{name}}Resource;
+use Illuminate\Http\JsonResponse;
+
+class Show extends BaseController
+{
+    protected $service;
+
+    public function __construct({{name}}Service $service)
+    {
+        $this->service = $service;
+    }
+
+    public function __invoke(int $id): JsonResponse
+    {
+        $model = $this->service->getById($id);
+
+        return $this->successResponse(new {{name}}Resource($model), '{{name}} details fetched successfully.');
+    }
+}

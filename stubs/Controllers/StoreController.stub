@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Http\Controllers\{{namespace}};
+
+use App\Http\Controllers\BaseController;
+use App\Http\Requests\{{namespace}}\Validate{{name}}Store;
+use App\Services\{{namespace}}\{{name}}Service;
+use App\Http\Resources\{{namespace}}\{{name}}Resource;
+use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\JsonResponse;
+
+class Store extends BaseController
+{
+    protected $service;
+
+    public function __construct({{name}}Service $service)
+    {
+        $this->service = $service;
+    }
+
+    public function __invoke(Validate{{name}}Store $request): JsonResponse
+    {
+        $model = $this->service->create($request->validated());
+
+        return $this->successResponse(new {{name}}Resource($model), '{{name}} created successfully.', Response::HTTP_CREATED);
+    }
+}

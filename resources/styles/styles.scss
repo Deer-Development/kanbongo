@@ -1,0 +1,35 @@
+$primary-color: #7b76fb;
+$secondary-color: #f8f9fa;
+$border-color: #e8e8e8;
+$highlight-color: #cce4ff;
+$focus-color: #7b76fb;
+
+.ck.ck-editor__editable_inline {
+  resize: vertical !important;
+  overflow: auto !important;
+  max-height: 20vh !important;
+  min-height: 20vh !important;
+}
+.ck.ck-button.ck-switchbutton .ck-button__toggle .ck-button__toggle__inner {
+  background: var(--ck-color-switch-button-inner-background) !important;
+}
+.ck.ck-button.ck-switchbutton .ck-button__toggle {
+  background: var(--ck-color-switch-button-off-background) !important;
+}
+
+.priority-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  max-height: 120px;
+}
+
+.priority-badge {
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
