@@ -23,11 +23,11 @@ class Store extends BaseController
     {
         $data = $request->validated();
 
-        if (!empty($data['first_name']) || !empty($data['last_name'])) {
-            $data['first_login'] = false;
-            $data['invited_at'] = now();
-        }
+//        if (!empty($data['first_name']) || !empty($data['last_name'])) {
+//            $data['first_login'] = false;
+//        }
 
+        $data['invited_at'] = now();
         $model = $this->service->create($data);
 
         $model->notify(new WelcomeEmail());

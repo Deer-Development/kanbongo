@@ -8,6 +8,7 @@ use App\Models\UserToken;
 use App\Notifications\LoginTokenNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
@@ -62,11 +63,12 @@ class LoginController extends Controller
             'first_name' => 'required|string',
             'last_name' => 'required|string',
             'first_login' => 'required|boolean',
+            'timezone' => 'required|string',
         ]);
 
         $user = Auth::user();
-        $user->update($request->only(['first_name', 'last_name', 'first_login']));
-
+        $user->update($request->only(['first_name', 'last_name', 'first_login', 'timezone']));
+        $user->isSuperAdmin = $user->hasRole('Super-Admin');
         return response()->json(['user' => $user]);
     }
 }

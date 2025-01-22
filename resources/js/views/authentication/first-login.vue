@@ -13,6 +13,13 @@ const authThemeImg = useGenerateImageVariant(authV2ForgotPasswordIllustrationLig
 const authThemeMask = useGenerateImageVariant(authV2MaskLight, authV2MaskDark)
 
 const router = useRouter()
+const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+const selected_timezone = ref(userTimezone)
+
+const timezones = Intl.supportedValuesOf('timeZone').map(zone => ({
+  name: zone.replace(/_/g, ' '),
+  value: zone,
+}))
 
 definePage({
   meta: {
@@ -27,6 +34,7 @@ const submitForm = async () => {
       body: {
         first_name: first_name.value,
         last_name: last_name.value,
+        timezone: selected_timezone.value,
         first_login: false,
       },
       onResponseError({ response }) {
@@ -95,10 +103,10 @@ const submitForm = async () => {
       >
         <VCardText>
           <h4 class="text-h4 mb-1">
-            Forgot Password? 🔒
+            Hello!
           </h4>
           <p class="mb-0">
-            Enter your email and we'll send you instructions to reset your password
+            Please enter your account details to continue.
           </p>
         </VCardText>
 
@@ -124,26 +132,24 @@ const submitForm = async () => {
                 />
               </VCol>
               <VCol cols="12">
+                <AppAutocomplete
+                  v-model="selected_timezone"
+                  :items="timezones"
+                  item-title="name"
+                  item-value="value"
+                  label="Select Timezone"
+                  placeholder="Choose your timezone"
+                  dense
+                  outlined
+                />
+              </VCol>
+              <VCol cols="12">
                 <VBtn
                   block
                   type="submit"
                 >
                   Continue to Dashboard
                 </VBtn>
-              </VCol>
-
-              <VCol cols="12">
-                <RouterLink
-                  class="d-flex align-center justify-center"
-                  :to="{ name: 'login' }"
-                >
-                  <VIcon
-                    icon="tabler-chevron-left"
-                    size="20"
-                    class="me-1 flip-in-rtl"
-                  />
-                  <span>Back to login</span>
-                </RouterLink>
               </VCol>
             </VRow>
           </VForm>

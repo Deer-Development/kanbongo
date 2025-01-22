@@ -31,10 +31,6 @@ const headers = [
     key: 'status',
   },
   {
-    title: 'Invited At',
-    key: 'invited_at',
-  },
-  {
     title: 'Actions',
     key: 'actions',
     sortable: false,
@@ -160,7 +156,7 @@ const confirmDelete = async id => {
             class="d-flex justify-end"
           >
             <VBtn @click="isAddNewUserDrawerVisible = true">
-              Invite User
+              Invite
             </VBtn>
           </VCol>
         </VRow>

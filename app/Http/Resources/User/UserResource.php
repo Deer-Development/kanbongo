@@ -15,8 +15,8 @@ class UserResource extends JsonResource
             'is_active' => $this->is_active,
             'avatar' => $this->avatar ?? null,
             'avatarOrInitials' => $this->avatar_or_initials,
+            'invited_at' => $this->invited_at,
             'created_at' => $this->created_at->diffForHumans(),
-            'invited_at' => $this->invited_at?->diffForHumans(),
         ];
     }
 }

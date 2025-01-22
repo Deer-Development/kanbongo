@@ -16,6 +16,7 @@ class ValidateUserUpdate extends FormRequest
         return [
             'first_name' => 'sometimes|required|string|max:255',
             'last_name' => 'sometimes|nullable|string|max:255',
+            'timezone' => 'sometimes|nullable|string|max:255',
             'email' => 'sometimes|nullable|string|email|max:255|unique:users,email,' . $this->user->id,
         ];
     }
@@ -37,6 +38,8 @@ class ValidateUserUpdate extends FormRequest
             'first_name.max' => 'The first name field must have a maximum of 255 characters.',
             'last_name.string' => 'The last name field must be a string.',
             'last_name.max' => 'The last name field must have a maximum of 255 characters.',
+            'timezone.string' => 'The timezone field must be a string.',
+            'timezone.max' => 'The timezone field must have a maximum of 255 characters.',
         ];
     }
 }
