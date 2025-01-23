@@ -1,22 +1,33 @@
 <script setup>
-import { ref, onUnmounted, onMounted, defineEmits } from 'vue';
-import MemberCard from "@/views/kanban/components/MemberCard.vue";
+import { ref, onUnmounted, onMounted, defineEmits } from 'vue'
+import MemberCard from "@/views/kanban/components/MemberCard.vue"
 
 const props = defineProps({
-  item: { type: Object, required: true },
+  item: {
+    type: null,
+    required: true,
+  },
+  boardId: {
+    type: Number,
+    required: true,
+  },
+  boardName: {
+    type: String,
+    required: true,
+  },
   isSuperAdmin: { type: Boolean, required: false, default: false },
   hasActiveTimer: { type: Boolean, required: false, default: false },
   isOwner: { type: Boolean, required: false, default: false },
   isMember: { type: Boolean, required: false, default: false },
   authId: { type: Number, required: false },
-});
+})
 
 const emit = defineEmits([
   "editKanbanItem",
   "toggleTimer",
   "editTimer",
   'refreshKanbanData',
-]);
+])
 
 const Priority = {
   URGENT: 1,
@@ -30,98 +41,98 @@ const Priority = {
     4: "Low",
   },
   getName(value) {
-    return this.data[value] || null;
+    return this.data[value] || null
   },
-};
+}
 
 const getPriorityColor = priority => {
   switch (priority) {
-    case Priority.URGENT: return 'error';
-    case Priority.HIGH: return 'warning';
-    case Priority.NORMAL: return 'info';
-    case Priority.LOW: return 'success';
-    default: return 'primary';
+  case Priority.URGENT: return 'error'
+  case Priority.HIGH: return 'warning'
+  case Priority.NORMAL: return 'info'
+  case Priority.LOW: return 'success'
+  default: return 'primary'
   }
-};
+}
 
-const membersExpanded = ref(null);
+const membersExpanded = ref(null)
 
 const formatTime = (seconds = 0) => {
-  const roundedSeconds = Math.floor(seconds);
-  const hours = Math.floor(roundedSeconds / 3600);
-  const minutes = Math.floor((roundedSeconds % 3600) / 60);
-  const secs = roundedSeconds % 60;
+  const roundedSeconds = Math.floor(seconds)
+  const hours = Math.floor(roundedSeconds / 3600)
+  const minutes = Math.floor((roundedSeconds % 3600) / 60)
+  const secs = roundedSeconds % 60
 
   return `${hours.toString().padStart(2, '0')}:${minutes
     .toString()
-    .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
+    .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
 
 const initializeMemberTimers = () => {
   props.item?.members?.forEach(member => {
-    const latestEntry = member.timeEntries[member.timeEntries.length - 1];
+    const latestEntry = member.timeEntries[member.timeEntries.length - 1]
     if (latestEntry && !latestEntry.end) {
-      member.isTiming = true;
+      member.isTiming = true
       member.timerInterval = setInterval(() => {
-        latestEntry.trackedTime += 1;
-        latestEntry.trackedTimeDisplay = formatTime(latestEntry.trackedTime);
-      }, 1000);
+        latestEntry.trackedTime += 1
+        latestEntry.trackedTimeDisplay = formatTime(latestEntry.trackedTime)
+      }, 1000)
 
-      membersExpanded.value = 0;
+      membersExpanded.value = 0
     } else {
-      member.isTiming = false;
+      member.isTiming = false
     }
-  });
-};
+  })
+}
 
 const toggleTimer = member => {
-  const latestEntry = member.timeEntries[member.timeEntries.length - 1];
+  const latestEntry = member.timeEntries[member.timeEntries.length - 1]
 
   if (member.isTiming) {
-    clearInterval(member.timerInterval);
-    latestEntry.end = new Date().toISOString();
-    member.isTiming = false;
+    clearInterval(member.timerInterval)
+    latestEntry.end = new Date().toISOString()
+    member.isTiming = false
   } else {
     const newTimeEntry = reactive({
       start: new Date().toISOString(),
       end: null,
       trackedTime: 0,
       trackedTimeDisplay: formatTime(0),
-    });
+    })
 
-    member.timeEntries.push(newTimeEntry);
+    member.timeEntries.push(newTimeEntry)
 
-    member.isTiming = true;
+    member.isTiming = true
     member.timerInterval = setInterval(() => {
-      newTimeEntry.trackedTime += 1;
-      newTimeEntry.trackedTimeDisplay = formatTime(newTimeEntry.trackedTime);
-    }, 1000);
+      newTimeEntry.trackedTime += 1
+      newTimeEntry.trackedTimeDisplay = formatTime(newTimeEntry.trackedTime)
+    }, 1000)
   }
 
-  emit('toggleTimer', member, props.item.id);
+  emit('toggleTimer', member, props.item.id)
 
   nextTick(() => {
     if (!member.isTiming) {
-      emit('refreshKanbanData');
+      emit('refreshKanbanData')
     }
-  });
-};
+  })
+}
 
 const editTimer = (member, id) => {
-  emit('editTimer', member, id);
-};
+  emit('editTimer', member, id)
+}
 
 onMounted(() => {
-  initializeMemberTimers();
-});
+  initializeMemberTimers()
+})
 
 onUnmounted(() => {
   props.item?.members?.forEach(member => {
-    if (member.timerInterval) clearInterval(member.timerInterval);
-  });
-});
+    if (member.timerInterval) clearInterval(member.timerInterval)
+  })
+})
 
-const truncate = (text, length) => (text.length > length ? `${text.slice(0, length)}...` : text);
+const truncate = (text, length) => (text.length > length ? `${text.slice(0, length)}...` : text)
 </script>
 
 <template>
@@ -129,7 +140,7 @@ const truncate = (text, length) => (text.length > length ? `${text.slice(0, leng
     v-if="item"
     :ripple="false"
     :link="false"
-    class="kanban-card hover-scale position-relative"
+    class="kanban-card position-relative"
   >
     <div class="card-header">
       <h3
@@ -152,7 +163,10 @@ const truncate = (text, length) => (text.length > length ? `${text.slice(0, leng
     </div>
 
     <VCardText class="card-body">
-      <div class="kanban-row" v-if="item.priority">
+      <div
+        v-if="item.priority"
+        class="kanban-row"
+      >
         <VChip
           :color="getPriorityColor(item.priority) || 'info'"
           size="small"

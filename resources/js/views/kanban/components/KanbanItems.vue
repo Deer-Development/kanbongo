@@ -2,7 +2,7 @@
 import {
   animations,
   handleEnd,
-  performTransfer, remapNodes,
+  performTransfer,
 } from '@formkit/drag-and-drop'
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
@@ -113,6 +113,7 @@ dragAndDrop({
   plugins: [animations()],
   performTransfer: (state, data) => {
     performTransfer(state, data)
+
     emit('updateItemsState', {
       boardId: props.boardId,
       ids: localIds.value,
@@ -120,6 +121,7 @@ dragAndDrop({
   },
   handleEnd: data => {
     handleEnd(data)
+    console.log(props.boardId, localIds.value)
     emit('updateItemsState', {
       boardId: props.boardId,
       ids: localIds.value,
@@ -173,7 +175,7 @@ const refreshData = () => {
 </script>
 
 <template>
-  <div class="kanban-board bg-grey-100">
+  <div class="kanban-board">
     <div class="kanban-board-header pb-4">
       <VForm
         v-if="isBoardNameEditing"
@@ -317,7 +319,7 @@ const refreshData = () => {
       :class="localIds.length ? 'mb-4' : ''"
     >
       <template
-        v-for="id in localIds"
+        v-for="id in localIds.filter(id => resolveItemUsingId(id))"
         :key="id"
       >
         <KanbanCard
