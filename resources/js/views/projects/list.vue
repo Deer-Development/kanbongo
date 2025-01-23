@@ -197,7 +197,7 @@ const deleteItem = async () => {
         <template #item.actions="{ item }">
           <div class="d-flex gap-2">
             <VBtn
-              v-tooltip:top="'View Containers'"
+              v-tooltip:top="'View Boards'"
               icon="tabler-layout-kanban"
               variant="tonal"
               size="x-small"
