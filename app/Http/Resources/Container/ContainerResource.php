@@ -43,7 +43,7 @@ class ContainerResource extends JsonResource
                     'updated_at' => $board->updated_at,
                     'deleted_at' => $board->deleted_at,
                     'members' => $board->members,
-                    'tasks' => TaskResource::collection($board->tasks),
+                    'tasks' => TaskResource::collection($board->tasks()->orderBy('order')->get()),
                 ];
             }),
             'auth' => [
