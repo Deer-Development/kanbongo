@@ -54,7 +54,7 @@ const verifyToken = async () => {
   try {
     const data = {
       email: credentials.value.email,
-      token: credentials.value.token,
+      token: credentials.value.token.toUpperCase(),
     }
 
     await authStore.verifyLoginToken(data)
