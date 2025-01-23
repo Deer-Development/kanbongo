@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue"
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
 import { themeConfig } from '@themeConfig'
 import { useAuthStore } from "@core/stores/authStore"
@@ -9,101 +9,110 @@ definePage({
     layout: 'blank',
     unauthenticatedOnly: true,
   },
-});
+})
 
-const step = ref('email');
-const refVForm = ref();
-const authStore = useAuthStore();
+const step = ref('email')
+const refVForm = ref()
+const authStore = useAuthStore()
 
 const credentials = ref({
   email: '',
   token: '',
-});
+})
 
 const errors = ref({
   email: undefined,
   token: undefined,
-});
+})
 
-const route = useRoute();
-const router = useRouter();
+const route = useRoute()
+const router = useRouter()
 
 const sendToken = async () => {
   errors.value = {
     email: undefined,
     token: undefined,
-  };
+  }
   try {
     const data = {
       email: credentials.value.email,
-    };
+    }
 
-    await authStore.requestLoginToken(data);
-    step.value = 'token';
-    startCountdown();
+    await authStore.requestLoginToken(data)
+    step.value = 'token'
+    startCountdown()
   } catch (error) {
-    errors.value = error;
+    errors.value = error
   }
-};
+}
 
 const verifyToken = async () => {
   errors.value = {
     email: undefined,
     token: undefined,
-  };
+  }
   try {
     const data = {
       email: credentials.value.email,
       token: credentials.value.token,
-    };
+    }
 
-    await authStore.verifyLoginToken(data);
+    await authStore.verifyLoginToken(data)
 
     await nextTick(() => {
-      router.replace(route.query.to ? String(route.query.to) : '/');
-    });
+      router.replace(route.query.to ? String(route.query.to) : '/')
+    })
   } catch (error) {
-    errors.value = error;
+    errors.value = error
   }
-};
+}
 
 const onSubmit = () => {
   refVForm.value?.validate().then(({ valid: isValid }) => {
     if (isValid) {
-      step.value === 'email' ? sendToken() : verifyToken();
+      step.value === 'email' ? sendToken() : verifyToken()
     }
-  });
-};
+  })
+}
 
 const onTokenInput = () => {
   if (credentials.value.token.length === 6) {
-    verifyToken();
+    verifyToken()
   }
-};
+}
 
-const countdown = ref(120);
-const showResendButton = ref(false);
-let countdownInterval;
+const countdown = ref(120)
+const showResendButton = ref(false)
+let countdownInterval
 
 const startCountdown = () => {
-  countdown.value = 120;
-  showResendButton.value = false;
+  countdown.value = 120
+  showResendButton.value = false
 
-  if (countdownInterval) clearInterval(countdownInterval);
+  if (countdownInterval) clearInterval(countdownInterval)
 
   countdownInterval = setInterval(() => {
     if (countdown.value > 0) {
-      countdown.value--;
+      countdown.value--
     } else {
-      clearInterval(countdownInterval);
-      showResendButton.value = true;
+      clearInterval(countdownInterval)
+      showResendButton.value = true
     }
-  }, 1000);
-};
+  }, 1000)
+}
 
 onBeforeUnmount(() => {
-  if (countdownInterval) clearInterval(countdownInterval);
-});
+  if (countdownInterval) clearInterval(countdownInterval)
+})
+
+watch(
+  () => credentials.value.token,
+  newVal => {
+    if (newVal) {
+      credentials.value.token = newVal.toUpperCase()
+    }
+  }
+)
 </script>
 
 <template>
@@ -203,7 +212,10 @@ onBeforeUnmount(() => {
                   </template>
                 </VAlert>
 
-                <div v-if="!showResendButton" class="text-center">
+                <div
+                  v-if="!showResendButton"
+                  class="text-center"
+                >
                   <p class="text-sm text-gray-500">
                     Resend available in <span class="font-bold">{{ countdown }} seconds</span>.
                   </p>
