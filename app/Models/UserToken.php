@@ -19,7 +19,7 @@ class UserToken extends Model
      */
     public static function generateForUser($userId): self
     {
-        $token = Str::random(6);
+        $token = strtoupper(Str::random(6));
 
         return self::create([
             'user_id' => $userId,

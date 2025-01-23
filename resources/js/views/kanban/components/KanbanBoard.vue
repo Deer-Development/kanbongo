@@ -65,6 +65,7 @@ const boardTitle = ref('')
 const editKanbanItem = ref()
 const isEditTimerDialogVisible = ref(false)
 const memberDetails = ref(null)
+const localBoardState = ref([])
 const taskId = ref(null)
 
 const addNewBoard = () => {
@@ -139,6 +140,9 @@ dragAndDrop({
 // assign the new kanban data to the local kanban data
 watch(() => props, () => {
   localKanbanData.value = props.kanbanData.boards
+  localBoardState.value = props.kanbanData.boards.map(board => board.id)
+
+  console.log('localBoardState', localBoardState.value)
 
   // 👉 remap the nodes when we rename the board: https://github.com/formkit/drag-and-drop/discussions/52#discussioncomment-8995203
   remapNodes(kanbanWrapper.value)
@@ -152,11 +156,18 @@ const deleteKanbanItemFn = item => {
   emit('deleteItem', item)
 }
 
-// watch(localKanbanData, () => {
-//   const getIds = localKanbanData.value.map(board => board.id)
-//
-//   emit('updateBoardState', getIds)
-// }, { deep: true })
+let initialBoardOrder = props.kanbanData.boards.map(board => board.id);
+
+watch(localKanbanData, () => {
+  const getIds = localKanbanData.value.map(board => board.id);
+
+  const isOrderChanged = !getIds.every((id, index) => id === initialBoardOrder[index]);
+
+  if (isOrderChanged) {
+    emit('updateBoardState', getIds);
+    initialBoardOrder = [...getIds];
+  }
+}, { deep: true });
 
 const validateBoardTitle = () => {
   return props.kanbanData.boards.some(board => boardTitle.value && board.name.toLowerCase() === boardTitle.value.toLowerCase()) ? 'Board title already exists' : true

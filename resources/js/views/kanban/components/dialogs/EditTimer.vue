@@ -274,7 +274,6 @@ const displayLogsForEntry = entry => {
 watch(
   () => props.memberDetails,
   newDetails => {
-    console.log(newDetails)
     if (newDetails) {
       localMemberDetails.value = {
         ...newDetails,

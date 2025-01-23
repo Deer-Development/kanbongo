@@ -30,7 +30,7 @@ class ContainerResource extends JsonResource
             'owner_id' => $this->owner_id,
             'owner' => $this->owner,
             'members' => $this->members,
-            'boards' => $this->boards->map(function ($board) {
+            'boards' => $this->boards()->orderBy('order')->get()->map(function ($board) {
                 return [
                     'id' => $board->id,
                     'container_id' => $board->container_id,
