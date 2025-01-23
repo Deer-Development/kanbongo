@@ -23,14 +23,14 @@ class TaskService extends BaseService
     {
         DB::beginTransaction();
 
-        $board = Board::with('tasks')->find($data['boardId']);
-
         try {
-            $maxOrder = $board->tasks()->max('order') ?? 0;
+            $board = Board::with('tasks')->findOrFail($data['boardId']);
+
+            $board->tasks()->increment('order');
 
             $task = $board->tasks()->create([
                 'name' => $data['name'],
-                'order' => $maxOrder + 1,
+                'order' => 0,
             ]);
 
             DB::commit();
