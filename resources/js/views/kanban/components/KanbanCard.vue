@@ -143,24 +143,13 @@ const truncate = (text, length) => (text.length > length ? `${text.slice(0, leng
     :link="false"
     class="kanban-card position-relative"
   >
-    <div class="card-header">
+    <div class="card-header" @click="$emit('editKanbanItem', item.id)">
       <h3
         v-tooltip="item.name"
         class="card-title truncate"
       >
         {{ item.name }}
       </h3>
-      <VChip
-        icon
-        size="small"
-        class="edit-button"
-        @click="$emit('editKanbanItem', item.id)"
-      >
-        <VIcon
-          icon="tabler-edit"
-          size="16"
-        />
-      </VChip>
     </div>
 
     <VCardText class="card-body">
@@ -340,25 +329,11 @@ const truncate = (text, length) => (text.length > length ? `${text.slice(0, leng
   position: relative;
   display: flex;
   align-items: center;
+  cursor: pointer;
   justify-content: space-between;
   padding: 12px 16px;
   background-color: #f3f4f6;
   border-bottom: 1px solid #e5e7eb;
-}
-
-.edit-button {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  background-color: transparent;
-  box-shadow: none;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.edit-button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .card-title {
@@ -367,7 +342,7 @@ const truncate = (text, length) => (text.length > length ? `${text.slice(0, leng
   color: #1f2937;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 80%;
+  max-width: 100%;
 }
 
 .card-body {
