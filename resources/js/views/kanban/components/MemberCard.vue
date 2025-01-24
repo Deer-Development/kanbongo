@@ -90,33 +90,19 @@ const hasInactiveTimeEntries = member => {
       <span>Active Timer:</span>
       <span class="tracked-time elegant">{{ getActiveTimeEntry(member).trackedTimeDisplay }}</span>
     </div>
-
-    <VExpansionPanels
+    <div
       v-if="hasInactiveTimeEntries(member)"
-      variant="accordion"
-      class="expansion-panels-width-border mt-2 border-0 rounded-0"
+      class="inactive-time-entries-card"
     >
-      <VExpansionPanel>
-        <VExpansionPanelTitle>
-          <span class="text-success">{{ member.totalTrackedTimeDisplay }}</span>
-        </VExpansionPanelTitle>
-        <VExpansionPanelText>
-          <div
-            v-for="entry in getInactiveTimeEntries(member)"
-            :key="entry.start"
-            class="time-entry px-2 py-2"
-          >
-            <VChip
-              v-tooltip="entry.start + ' - ' + (entry.end ? entry.end : 'Ongoing')"
-              color="primary"
-              class="details-chip"
-            >
-              <span class="tracked-time-text">{{ entry.trackedTimeDisplay }}</span>
-            </VChip>
-          </div>
-        </VExpansionPanelText>
-      </VExpansionPanel>
-    </VExpansionPanels>
+      <div class="inactive-header">
+        <VIcon icon="tabler-clock mr-2" size="16" />
+        <span class="inactive-title">Inactive Time Entries</span>
+      </div>
+      <div class="inactive-details">
+        <span>Total Time Tracked:</span>
+        <span class="tracked-time elegant">{{ member.totalTrackedTimeDisplay }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -168,35 +154,46 @@ const hasInactiveTimeEntries = member => {
   font-size: 13px;
 }
 
-.details-chip {
+.inactive-time-entries-card {
+  background: linear-gradient(135deg, #f9fafb, #e5e7eb);
+  border: 1px solid #d1d5db;
+  padding: 12px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.inactive-time-entries-card:hover {
+  background: linear-gradient(135deg, #ffffff, #f3f4f6);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.inactive-header {
   display: flex;
-  justify-content: center;
-  width: 100%;
-  text-align: center;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.inactive-header VIcon {
+  margin-right: 6px;
+  color: #6b7280;
+}
+
+.inactive-title {
   font-size: 14px;
   font-weight: 600;
-  background-color: #e0e7ff;
-  color: #1e3a8a;
-  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  color: #374151;
 }
 
-.details-chip:hover {
-  background-color: #c7d2fe;
-  transform: scale(1.02);
+.inactive-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #1f2937;
 }
 
-.tracked-time.elegant {
-  text-align: center;
-  border-radius: 8px;
-  font-size: 14px;
+.inactive-details span:last-child {
   font-weight: 700;
   color: #4f46e5;
-}
-
-.tracked-time-text {
-  font-weight: bold;
-  color: #4f46e5;
-  margin-bottom: 4px;
 }
 </style>

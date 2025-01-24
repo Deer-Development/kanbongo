@@ -28,7 +28,7 @@ import { VerticalNavLayout } from '@layouts'
           />
         </IconBtn>
 
-        <NavbarThemeSwitcher />
+        <!--                <NavbarThemeSwitcher /> -->
 
         <VSpacer />
 

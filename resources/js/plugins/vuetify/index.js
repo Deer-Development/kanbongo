@@ -13,7 +13,8 @@ import 'vuetify/styles'
 
 export default function (app) {
   const cookieThemeValues = {
-    defaultTheme: resolveVuetifyTheme(themeConfig.app.theme),
+    // defaultTheme: resolveVuetifyTheme(themeConfig.app.theme),
+    defaultTheme: resolveVuetifyTheme('light'),
     themes: {
       light: {
         colors: {
