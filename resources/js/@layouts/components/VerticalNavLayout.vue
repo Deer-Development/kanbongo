@@ -92,11 +92,11 @@ const verticalNavAttrs = computed(() => {
           <slot />
         </div>
       </main>
-      <footer class="layout-footer">
-        <div class="footer-content-container">
-          <slot name="footer" />
-        </div>
-      </footer>
+      <!--      <footer class="layout-footer"> -->
+      <!--        <div class="footer-content-container"> -->
+      <!--          <slot name="footer" /> -->
+      <!--        </div> -->
+      <!--      </footer> -->
     </div>
     <div
       class="layout-overlay"
