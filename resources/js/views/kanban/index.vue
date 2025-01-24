@@ -2,6 +2,9 @@
 import KanbanBoardComp from './components/KanbanBoard.vue'
 
 const route = useRoute()
+const isDeleteModalVisible = ref(false)
+const deleteItem = ref(null)
+const kanbanBoard = ref(null)
 
 const {
   data: kanban,
@@ -49,6 +52,7 @@ const addNewItem = async newItem => {
 
 const editItemFn = async editItem => {
   console.log(editItem)
+
   // await $api('/apps/kanban/item/update', {
   //   method: 'PUT',
   //   body: editItem,
@@ -56,13 +60,23 @@ const editItemFn = async editItem => {
   // refetchKanban()
 }
 
-const deleteItemFn = async deleteItem => {
-  if (deleteItem.item && deleteItem.item.id) {
-    await $api(`/apps/kanban/item/${ deleteItem.item.id }`, {
+const persistDelete = item => {
+  deleteItem.value = item
+
+  console.log(deleteItem.value)
+  isDeleteModalVisible.value = true
+}
+
+const deleteItemFn = async () => {
+  if (deleteItem.value.item && deleteItem.value.item.id) {
+    await $api(`/task/${ deleteItem.value.item.id }`, {
       method: 'DELETE',
-      body: deleteItem,
     })
+
     refetchKanban()
+    isDeleteModalVisible.value = false
+    deleteItem.value = null
+    kanbanBoard.value.isKanbanBoardEditVisible = false
   }
 }
 
@@ -84,18 +98,30 @@ const updateBoardState = async kanbanBoardIds => {
 </script>
 
 <template>
-  <KanbanBoardComp
-    v-if="kanban"
-    :kanban-data="kanban"
-    @add-new-board="addNewBoard"
-    @delete-board="deleteBoard"
-    @rename-board="renameTheBoard"
-    @add-new-item="addNewItem"
-    @edit-item="editItemFn"
-    @delete-item="deleteItemFn"
-    @toggle-timer="toggleTimerFn"
-    @refresh-data="refetchKanban"
-    @update-items-state="updateItemState"
-    @update-board-state="updateBoardState"
-  />
+  <section>
+    <KanbanBoardComp
+      v-if="kanban"
+      ref="kanbanBoard"
+      :kanban-data="kanban"
+      @add-new-board="addNewBoard"
+      @delete-board="deleteBoard"
+      @rename-board="renameTheBoard"
+      @add-new-item="addNewItem"
+      @edit-item="editItemFn"
+      @delete-item="persistDelete"
+      @toggle-timer="toggleTimerFn"
+      @refresh-data="refetchKanban"
+      @update-items-state="updateItemState"
+      @update-board-state="updateBoardState"
+    />
+    <ConfirmDialog
+      v-model:isDialogVisible="isDeleteModalVisible"
+      cancel-title="Cancel"
+      confirm-title="Delete!"
+      confirm-msg="Task deleted permanently."
+      confirmation-question="Are you sure to delete this Task?"
+      cancel-msg="Delete action cancelled."
+      @confirm="confirmed => confirmed && deleteItemFn()"
+    />
+  </section>
 </template>

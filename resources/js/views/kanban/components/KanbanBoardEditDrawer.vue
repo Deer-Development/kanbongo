@@ -2,6 +2,7 @@
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { VForm } from 'vuetify/components/VForm'
 import CKEditor from "@/@core/components/CKEditor.vue"
+import { useToast } from "vue-toastification"
 import { ref } from "vue"
 
 const props = defineProps({
@@ -52,6 +53,7 @@ const message = ref('')
 const description = ref('')
 
 const refEditTaskForm = ref()
+const toast = useToast()
 
 const Priority = {
   URGENT: 1,
@@ -114,10 +116,7 @@ const updateKanbanItem = () => {
 const deleteKanbanItem = () => {
   emit('deleteKanbanItem', {
     item: localKanbanItem.value,
-    boardId: props.kanbanItem.boardId,
-    boardName: props.kanbanItem.boardName,
   })
-  emit('update:isDrawerOpen', false)
 }
 
 const getPriorityColor = priority => {
@@ -169,6 +168,10 @@ const closeDrawer = () => {
   messages.value = []
   message.value = ''
 }
+
+const isDeleteDisabled = computed(() => {
+  return localKanbanItem.value.members.some(member => member.timeEntries && member.timeEntries.length > 0);
+})
 </script>
 
 <template>
@@ -218,7 +221,7 @@ const closeDrawer = () => {
                     Update
                   </VBtn>
                   <VBtn
-                    v-if="isSuperAdmin"
+                    v-if="isSuperAdmin && !isDeleteDisabled"
                     color="error"
                     variant="tonal"
                     @click="deleteKanbanItem"
