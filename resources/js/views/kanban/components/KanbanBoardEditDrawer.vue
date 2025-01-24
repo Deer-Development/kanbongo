@@ -51,6 +51,7 @@ const emit = defineEmits([
 const messages = ref([])
 const message = ref('')
 const description = ref('')
+const currentMessageId = ref(null)
 
 const refEditTaskForm = ref()
 const toast = useToast()
@@ -85,6 +86,7 @@ watch(() => props.kanbanItem, () => {
 
   if(localKanbanItem.value.comments) {
     messages.value = localKanbanItem.value.comments
+    resizeImages()
     scrollToBottom()
   }
 }, { deep: true })
@@ -136,6 +138,21 @@ const priorityMenu = ref(false)
 
 const messageListRef = ref(null)
 
+const showEditor = ref(false)
+
+const toggleEditor = () => {
+  showEditor.value = true
+}
+
+const cancelEditor = () => {
+  showEditor.value = false
+  message.value = ''
+  currentMessageId.value = null
+
+  resizeImages()
+  scrollToBottom()
+}
+
 const scrollToBottom = async () => {
   await nextTick()
   if (messageListRef.value) {
@@ -143,7 +160,7 @@ const scrollToBottom = async () => {
   }
 }
 
-const addMessage = async () => {
+const handleAddMessage = async () => {
   const res = await $api('/comment', {
     method: 'POST',
     body: {
@@ -157,7 +174,9 @@ const addMessage = async () => {
     messages.value = res.data
   }
 
+  showEditor.value = false
   message.value = ''
+  resizeImages()
 
   scrollToBottom()
 }
@@ -170,8 +189,72 @@ const closeDrawer = () => {
 }
 
 const isDeleteDisabled = computed(() => {
-  return localKanbanItem.value.members.some(member => member.timeEntries && member.timeEntries.length > 0);
+  return localKanbanItem.value.members.some(member => member.timeEntries && member.timeEntries.length > 0)
 })
+
+const resizeImages = () => {
+  nextTick(() => {
+    const messageContainers = document.querySelectorAll(".message-content")
+
+    messageContainers.forEach(container => {
+      const images = container.querySelectorAll("img")
+
+      images.forEach(img => {
+        img.onload = () => {
+          img.style.maxWidth = "100%"
+          img.style.maxHeight = "300px"
+          img.style.objectFit = "contain"
+          img.style.borderRadius = "8px"
+          img.style.margin = "8px auto"
+          img.style.display = "block"
+        }
+      })
+    })
+  })
+}
+
+const editMessage = async messageId => {
+  const messageToEdit = messages.value.find(msg => msg.id === messageId)
+  if (messageToEdit) {
+    message.value = messageToEdit.content
+    currentMessageId.value = messageId
+    showEditor.value = true
+  }
+}
+
+const submitEditMessage = async messageId => {
+  const res = await $api(`/comment/${messageId}`, {
+    method: 'PUT',
+    body: {
+      content: message.value,
+      commentable_id: localKanbanItem.value.id,
+      commentable_type: 'App\\Models\\Task',
+    },
+  })
+
+  if (res) {
+    messages.value = res.data
+
+    showEditor.value = false
+    currentMessageId.value = null
+    message.value = ''
+
+    resizeImages()
+
+    scrollToBottom()
+  }
+}
+
+const deleteMessage = async messageId => {
+  const res = await $api(`/comment/${messageId}`, {
+    method: 'DELETE',
+  })
+
+  if (res) {
+    messages.value = messages.value.filter(msg => msg.id !== messageId)
+    toast.success('Comment deleted successfully')
+  }
+}
 </script>
 
 <template>
@@ -184,6 +267,7 @@ const isDeleteDisabled = computed(() => {
     @update:model-value="handleDrawerModelValueUpdate"
   >
     <VCard class="rounded-lg shadow-lg h-full flex flex-col">
+      <!-- Header Section -->
       <VToolbar class="pa-2">
         <VChip
           color="primary"
@@ -195,201 +279,328 @@ const isDeleteDisabled = computed(() => {
             icon="tabler-x"
           />
         </VChip>
-        <VToolbarTitle>{{ localKanbanItem.name }}</VToolbarTitle>
+        <VToolbarTitle>
+          <span class="text-wrap">{{ localKanbanItem.name }}</span>
+        </VToolbarTitle>
       </VToolbar>
 
-      <VCardText class="flex-grow flex flex-col">
-        <VRow>
-          <VCol cols="6">
-            <h4 class="text-h5 font-semibold mb-4 text-center">
-              Task Details
-            </h4>
-            <VForm
-              ref="refEditTaskForm"
-              @submit.prevent="updateKanbanItem"
-            >
-              <VRow>
-                <VCol
-                  cols="12"
-                  class="d-flex justify-end"
-                >
-                  <VBtn
-                    color="primary"
-                    class="me-3"
-                    type="submit"
-                  >
-                    Update
-                  </VBtn>
-                  <VBtn
-                    v-if="isSuperAdmin && !isDeleteDisabled"
-                    color="error"
-                    variant="tonal"
-                    @click="deleteKanbanItem"
-                  >
-                    Delete
-                  </VBtn>
-                </VCol>
-              </VRow>
-              <VRow>
-                <VCol cols="12">
-                  <AppTextField
-                    v-model="localKanbanItem.name"
-                    :rules="[requiredValidator, maxLengthValidator(localKanbanItem.name, 255)]"
-                    label="Title"
-                    dense
-                    outlined
-                  />
-                </VCol>
-                <VCol cols="2">
-                  <VLabel
-                    for="priority"
-                    class="mb-1 text-body-2"
-                    style="line-height: 15px;"
-                    text="Priority"
-                  />
-                  <div class="kanban-row">
-                    <VMenu
-                      id="priority"
-                      v-model="priorityMenu"
-                      close-on-content-click
-                      offset-y
-                      class="box"
-                    >
-                      <template #activator="{ props }">
-                        <VBtn
-                          v-bind="props"
-                          :color="getPriorityColor(localKanbanItem.priority) || 'info'"
-                          size="small"
-                          variant="flat"
-                          prepend-icon="tabler-flag"
-                        >
-                          {{ Priority.getName(localKanbanItem.priority) || 'Set Priority' }}
-                        </VBtn>
-                      </template>
-                      <div class="priority-options">
-                        <VChip
-                          v-for="(label, key) in Priority.data"
-                          :key="key"
-                          :color="getPriorityColor(key)"
-                          variant="flat"
-                          class="priority-badge"
-                          @click.stop="localKanbanItem.priority = key"
-                        >
-                          {{ label }}
-                        </VChip>
-                      </div>
-                    </VMenu>
-                  </div>
-                </VCol>
-                <VCol cols="6">
-                  <DynamicMemberSelector
-                    v-model="localKanbanItem.members"
-                    :items="localAvailableMembers"
-                    :is-super-admin="props.isSuperAdmin"
-                    label="Assign Members"
-                    item-title="user.full_name"
-                    item-value="user.id"
-                    dense
-                    outlined
-                  />
-                </VCol>
-                <VCol cols="12" class="mt-5">
-                  <CKEditor v-model="description" />
-                </VCol>
-              </VRow>
-            </VForm>
-          </VCol>
-
-          <VDivider vertical />
-
-          <VCol
-            cols="6"
-            class="flex flex-col h-full w-full"
+      <!-- Form and Comments Section -->
+      <VCardText class="flex-grow flex flex-col p-4 gap-6">
+        <!-- Form Section -->
+        <VForm
+          ref="refEditTaskForm"
+          @submit.prevent="updateKanbanItem"
+        >
+          <VRow
+            align="center"
+            justify="space-between"
           >
-            <h4 class="text-h5 font-semibold mb-4 text-center">
-              Comments
-            </h4>
-            <div class="messages-container flex-grow overflow-y-auto" ref="messageListRef">
-              <div
-                v-if="messages.length === 0"
-                class="empty-state"
+            <!-- Priority Selector -->
+            <VCol cols="3">
+              <VMenu
+                v-model="priorityMenu"
+                offset-y
               >
-                <p class="text-center text-gray-500 font-weight-bold">
-                  Be the first to share your thoughts
-                </p>
-              </div>
-              <PerfectScrollbar>
-                <div
-                  v-for="msg in messages"
-                  :key="msg.id"
-                  class="message-item"
-                >
-                  <div class="message-header">
-                    <span class="font-weight-bold text-sm text-gray-900">{{ msg.createdBy.full_name }}</span>
-                    <span class="text-caption text-xs text-gray-500">{{ msg.created_at }}</span>
-                  </div>
-                  <div class="message-content">
-                    <p
-                      class="text-body-2 text-gray-700"
-                      v-html="msg.content"
-                    />
-                  </div>
+                <template #activator="{ props }">
+                  <VBtn
+                    v-bind="props"
+                    :color="getPriorityColor(localKanbanItem.priority) || 'info'"
+                    size="small"
+                    variant="flat"
+                    prepend-icon="tabler-flag"
+                  >
+                    {{ Priority.getName(localKanbanItem.priority) || "Set Priority" }}
+                  </VBtn>
+                </template>
+                <div class="priority-options">
+                  <VChip
+                    v-for="(label, key) in Priority.data"
+                    :key="key"
+                    :color="getPriorityColor(key)"
+                    variant="flat"
+                    class="priority-badge"
+                    @click.stop="localKanbanItem.priority = key"
+                  >
+                    {{ label }}
+                  </VChip>
                 </div>
-              </PerfectScrollbar>
-            </div>
-            <div class="message-editor">
-              <CKEditor
-                v-model="message"
-                :rules="[requiredValidator]"
-                class="editor-input"
+              </VMenu>
+            </VCol>
+
+            <VCol cols="5">
+              <DynamicMemberSelector
+                v-model="localKanbanItem.members"
+                :items="localAvailableMembers"
+                :is-super-admin="props.isSuperAdmin"
+                label="Assign Members"
+                item-title="user.full_name"
+                item-value="user.id"
+                dense
+                outlined
               />
+            </VCol>
+
+            <VCol
+              cols="4"
+              class="d-flex justify-end gap-2"
+            >
               <VBtn
                 color="primary"
-                prepend-icon="tabler-send"
-                class="mt-2"
-                @click="addMessage"
+                class="me-3"
+                type="submit"
               >
-                Add Comment
+                Update
+              </VBtn>
+              <VBtn
+                v-if="isSuperAdmin && !isDeleteDisabled"
+                color="error"
+                variant="tonal"
+                @click="deleteKanbanItem"
+              >
+                Delete
+              </VBtn>
+            </VCol>
+          </VRow>
+
+          <VRow>
+            <VCol cols="12">
+              <VTextarea
+                v-model="localKanbanItem.name"
+                :rules="[requiredValidator, maxLengthValidator(localKanbanItem.name, 255)]"
+                rows="3"
+                label="Title"
+                dense
+                outlined
+              />
+            </VCol>
+          </VRow>
+        </VForm>
+
+        <div class="comments-section">
+          <div class="comments-header flex justify-between items-center mb-4">
+            <h4 class="text-h5 font-semibold">
+              Comments
+            </h4>
+            <VBtn
+              v-if="!showEditor"
+              color="primary"
+              prepend-icon="tabler-edit"
+              @click="toggleEditor"
+            >
+              Write Comment
+            </VBtn>
+          </div>
+
+          <div
+            v-if="!showEditor"
+            ref="messageListRef"
+            class="messages-container"
+          >
+            <PerfectScrollbar>
+              <div
+                v-for="msg in messages"
+                :key="msg.id"
+                class="message-item"
+              >
+                <div class="message-header">
+                  <span class="font-weight-bold text-sm d-flex gap-2">
+                    <VAvatar
+                      size="40"
+                      :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+                    >
+                      <template v-if=" msg.createdBy.avatar">
+                        <img
+                          :src=" msg.createdBy.avatar"
+                          alt="Avatar"
+                        >
+                      </template>
+                      <template v-else>
+                        <span>{{ msg.createdBy.avatar_or_initials }}</span>
+                      </template>
+                    </VAvatar>
+                    <div class="d-flex flex-column gap-1">
+                      {{ msg.createdBy.full_name }}
+                      <span class="text-caption text-xs">
+                        {{ msg.created_at }}
+                      </span>
+                    </div>
+                  </span>
+
+                  <div
+                    v-if="msg.createdBy.id === props.authId"
+                    class="d-flex gap-2"
+                  >
+                    <button
+                      class="edit-button"
+                      @click="editMessage(msg.id)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      class="delete-button"
+                      @click="deleteMessage(msg.id)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                <div class="message-content">
+                  <p v-html="msg.content" />
+                </div>
+              </div>
+            </PerfectScrollbar>
+          </div>
+
+          <div
+            v-if="showEditor"
+            class="message-editor"
+          >
+            <div class="d-flex gap-2 mb-2 justify-end">
+              <VBtn
+                v-if="currentMessageId"
+                color="primary"
+                prepend-icon="tabler-send"
+                @click="submitEditMessage(currentMessageId)"
+              >
+                Submit
+              </VBtn>
+              <VBtn
+                v-else
+                color="primary"
+                prepend-icon="tabler-send"
+                @click="handleAddMessage"
+              >
+                Submit
+              </VBtn>
+              <VBtn
+                color="secondary"
+                variant="tonal"
+                @click="cancelEditor"
+              >
+                Cancel
               </VBtn>
             </div>
-          </VCol>
-        </VRow>
+            <CKEditor
+              v-model="message"
+              class="editor-input"
+            />
+          </div>
+        </div>
       </VCardText>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.messages-container {
-  flex-grow: 1;
-  min-height: 45vh;
-  max-height: 45vh;
-  overflow-y: auto;
-  padding: 16px;
-  margin-bottom: 16px;
+.comments-section {
+  margin-top: 20px;
 }
 
-.message-editor {
-  background-color: #fff;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+.comments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.messages-container {
+  min-height: 60vh;
+  max-height: 60vh;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  padding: 16px;
 }
 
 .message-item {
-  margin-bottom: 16px;
-  padding: 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f9f9f9;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e6e6e6;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.message-item:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.message-content img {
+  max-width: 100%;
+  max-height: 300px; /* Limita înălțimii */
+  object-fit: contain; /* Pentru a păstra proporțiile */
+  border: 2px solid #007bff; /* Highlight pentru imagine */
+  border-radius: 8px; /* Colțuri rotunjite */
+  margin: 8px 0; /* Spațiu între text și imagine */
+  transition: transform 0.2s ease; /* Animație la hover */
+}
+
+.message-content img:hover {
+  transform: scale(1.05); /* Efect vizual pe hover */
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4px;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 12px;
+}
+
+.message-header .font-weight-bold {
+  color: #2c3e50;
+}
+
+.message-header .text-caption {
+  color: #7f8c8d;
 }
 
 .message-content {
-  white-space: pre-wrap;
+  color: #34495e;
+  line-height: 1.6;
   word-wrap: break-word;
 }
+
+.edit-button {
+  background: #f5f5f5;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  color: #007bff;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.edit-button:hover {
+  background: #007bff;
+  color: #ffffff;
+}
+
+.delete-button {
+  background: #ffdddd;
+  border: 1px solid #ff4444;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  color: #ff4444;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.delete-button:hover {
+  background: #ff4444;
+  color: #ffffff;
+}
+
+.message-editor {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+}
 </style>
+
+
 

@@ -22,6 +22,26 @@ class Update extends BaseController
     {
         $model = $this->service->update($id, $request->validated());
 
-        return $this->successResponse(new CommentResource($model), 'Comment updated successfully.', Response::HTTP_OK);
+        $commentableType = $request->get('commentable_type');
+        if (!class_exists($commentableType)) {
+            return $this->errorResponse('Invalid commentable type.', Response::HTTP_BAD_REQUEST);
+        }
+
+        $commentable = $commentableType::with('comments.createdBy')->find($request->get('commentable_id'));
+
+        if (!$commentable) {
+            return $this->errorResponse('Commentable entity not found.', Response::HTTP_NOT_FOUND);
+        }
+
+        $comments = $commentable->comments()->orderBy('created_at', 'ASC')->get()->map(function ($comment) {
+            return [
+                'id' => $comment->id,
+                'createdBy' => $comment->createdBy->only(['id', 'full_name', 'email', 'avatar_or_initials', 'avatar']),
+                'content' => $comment->content,
+                'created_at' => $comment->created_at->diffForHumans(),
+            ];
+        });
+
+        return $this->successResponse($comments, 'Comment updated successfully.', Response::HTTP_OK);
     }
 }

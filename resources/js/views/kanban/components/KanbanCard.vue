@@ -46,13 +46,14 @@ const Priority = {
 }
 
 const getPriorityColor = priority => {
-  switch (priority) {
-  case Priority.URGENT: return 'error'
-  case Priority.HIGH: return 'warning'
-  case Priority.NORMAL: return 'info'
-  case Priority.LOW: return 'success'
-  default: return 'primary'
-  }
+  if (priority == Priority.URGENT)
+    return 'success'
+  if (priority == Priority.HIGH)
+    return 'error'
+  if (priority == Priority.NORMAL)
+    return 'info'
+  if (priority == Priority.LOW)
+    return 'warning'
 }
 
 const membersExpanded = ref(null)
@@ -174,6 +175,14 @@ const truncate = (text, length) => (text.length > length ? `${text.slice(0, leng
           prepend-icon="tabler-flag"
         >
           {{ Priority.getName(item.priority) || 'Set Priority' }}
+        </VChip>
+        <VChip
+          v-if="item.comments.length"
+          size="x-small"
+          variant="text"
+          color="warning"
+        >
+          <VIcon>tabler-message-2</VIcon>
         </VChip>
       </div>
       <VExpansionPanels

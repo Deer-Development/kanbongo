@@ -7,8 +7,8 @@ $focus-color: #7b76fb;
 .ck.ck-editor__editable_inline {
   resize: vertical !important;
   overflow: auto !important;
-  max-height: 20vh !important;
-  min-height: 20vh !important;
+  max-height: 40vh !important;
+  min-height: 40vh !important;
 }
 .ck.ck-button.ck-switchbutton .ck-button__toggle .ck-button__toggle__inner {
   background: var(--ck-color-switch-button-inner-background) !important;

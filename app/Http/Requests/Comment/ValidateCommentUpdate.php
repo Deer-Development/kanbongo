@@ -25,9 +25,7 @@ class ValidateCommentUpdate extends FormRequest
     public function rules()
     {
         return [
-            // Define validation rules for updating Comment resource
-            // Example:
-            // 'name' => 'sometimes|required|string|max:255',
+            'content' => 'required|string',
         ];
     }
 
