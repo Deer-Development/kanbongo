@@ -12,6 +12,10 @@ const props = defineProps({
     required: false,
     default: false,
   },
+  userData: {
+    type: null,
+    required: true,
+  },
 })
 
 const emit = defineEmits([
@@ -23,8 +27,6 @@ const projectDataLocal = ref(JSON.parse(JSON.stringify(props.projectData)))
 watch(() => props.projectData, value => {
   projectDataLocal.value = JSON.parse(JSON.stringify(value))
 })
-
-
 
 const handleFormSubmitted = () => {
   emit('formSubmitted')
@@ -63,6 +65,11 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
         lg="4"
       >
         <VCard>
+          <VCardTitle>
+            <VChip color="info">
+              Owner: {{ item.owner.full_name }}
+            </VChip>
+          </VCardTitle>
           <VCardText class="d-flex align-center pb-4">
             <div class="text-body-1">
               Total {{ item.members.length }} members
@@ -138,7 +145,7 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
               </div>
               <div class="d-flex gap-4">
                 <VBtn
-                  v-if="props.isSuperAdmin"
+                  v-if="props.isSuperAdmin || projectDataLocal.owner.id === props.userData.id"
                   icon
                   color="info"
                   @click="paymentBoard(item)"
@@ -146,7 +153,7 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
                   <VIcon icon="tabler-credit-card" />
                 </VBtn>
                 <VBtn
-                  v-if="props.isSuperAdmin"
+                  v-if="props.isSuperAdmin || projectDataLocal.owner.id === props.userData.id"
                   icon
                   @click="editBoard(item)"
                 >

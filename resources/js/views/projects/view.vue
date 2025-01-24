@@ -14,8 +14,9 @@ const fetchContainer = async () => {
   isSuperAdmin.value = data.isSuperAdmin
 }
 
+const userData = computed(() => useCookie('userData', { default: null }).value)
+
 const isAddBoardDialogVisible = ref(false)
-const isPaymentDetailsDialogVisible = ref(false)
 
 onMounted(() => {
   fetchContainer()
@@ -48,7 +49,6 @@ onMounted(() => {
         </h4>
 
         <VBtn
-          v-if="isSuperAdmin"
           @click="isAddBoardDialogVisible = true"
         >
           Add New Board
@@ -69,6 +69,7 @@ onMounted(() => {
         <ContainersCards
           :project-data="projectData"
           :is-super-admin="isSuperAdmin"
+          :user-data="userData"
           @form-submitted="fetchContainer"
         />
       </VCol>

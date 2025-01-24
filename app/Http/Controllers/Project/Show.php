@@ -35,6 +35,7 @@ class Show extends BaseController
                         $q->with('user');
                     }]);
             }
+            $q->with('owner');
         }])->findOrFail($id);
 
         $response = [

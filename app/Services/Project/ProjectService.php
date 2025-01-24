@@ -28,11 +28,14 @@ class ProjectService extends BaseService
         $query = $this->getModelInstance()->query();
 
         if (!$user->hasRole('Super-Admin')) {
-            $query->whereHas('containers', function ($q) use ($user) {
+            $query->where(function ($q) use ($user) {
                 $q->where('owner_id', $user->id)
+                ->orWhereHas('containers', function ($q) use ($user) {
+                    $q->where('owner_id', $user->id)
                     ->orWhereHas('members', function ($q) use ($user) {
                         $q->where('user_id', $user->id);
                     });
+                });
             });
         }
 
@@ -52,6 +55,7 @@ class ProjectService extends BaseService
                         }]);
                 }
             },
+
         ]);
 
         $query = $query->applyFilters($request);

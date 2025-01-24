@@ -29,6 +29,10 @@ const headers = [
     key: 'is_active',
   },
   {
+    title: 'Owner',
+    key: 'owner.full_name',
+  },
+  {
     title: 'Created At',
     key: 'created_at',
   },
@@ -57,6 +61,7 @@ const {
 const items = computed(() => data.value.items)
 const totalItems = computed(() => data.value.totalItems)
 const isSuperAdmin = computed(() => data.value.isSuperAdmin)
+const userData = computed(() => useCookie('userData', { default: null }).value)
 
 const status = [
   {
@@ -90,7 +95,7 @@ const itemToDelete = item => {
 
 const deleteItem = async () => {
   try {
-    await $api(`/container/${selectedItem.value.id}`, {
+    await $api(`/project/${selectedItem.value.id}`, {
       method: 'DELETE',
     })
 
@@ -146,7 +151,6 @@ const deleteItem = async () => {
             />
           </VCol>
           <VCol
-            v-if="isSuperAdmin"
             cols="6"
             sm="1"
             class="d-flex justify-end"
@@ -206,7 +210,7 @@ const deleteItem = async () => {
               :to="{ name: 'project-view', params: { id: item.id } }"
             />
             <VBtn
-              v-if="isSuperAdmin"
+              v-if="isSuperAdmin || item.owner.id === userData.id"
               v-tooltip:top="'Edit'"
               icon="tabler-edit"
               variant="tonal"
@@ -216,7 +220,7 @@ const deleteItem = async () => {
               @click="editItem(item)"
             />
             <VBtn
-              v-if="isSuperAdmin"
+              v-if="isSuperAdmin || item.owner.id === userData.id"
               v-tooltip:top="'Delete'"
               icon="tabler-trash"
               variant="tonal"
@@ -250,8 +254,8 @@ const deleteItem = async () => {
       v-model:isDialogVisible="isDeleteModalVisible"
       cancel-title="Cancel"
       confirm-title="Delete!"
-      confirm-msg="Container deleted permanently."
-      confirmation-question="Are you sure to delete this Container?"
+      confirm-msg="Project deleted permanently."
+      confirmation-question="Are you sure to delete this Project?"
       cancel-msg="Delete action cancelled."
       @confirm="confirmed => confirmed && deleteItem()"
     />
