@@ -132,8 +132,6 @@ onUnmounted(() => {
     if (member.timerInterval) clearInterval(member.timerInterval)
   })
 })
-
-const truncate = (text, length) => (text.length > length ? `${text.slice(0, length)}...` : text)
 </script>
 
 <template>
@@ -143,7 +141,10 @@ const truncate = (text, length) => (text.length > length ? `${text.slice(0, leng
     :link="false"
     class="kanban-card position-relative"
   >
-    <div class="card-header" @click="$emit('editKanbanItem', item.id)">
+    <div
+      class="card-header"
+      @click="$emit('editKanbanItem', item.id)"
+    >
       <h3
         v-tooltip="item.name"
         class="card-title truncate"

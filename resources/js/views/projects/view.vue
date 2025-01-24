@@ -31,7 +31,7 @@ onMounted(() => {
       >
         <h4 class="text-h4 mb-1">
           <VChip color="primary">
-            {{ projectData?.name }}
+            Project: {{ projectData?.name }}
           </VChip>
           <VChip
             color="secondary"
