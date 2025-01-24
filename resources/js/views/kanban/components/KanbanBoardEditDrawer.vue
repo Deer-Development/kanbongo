@@ -267,7 +267,6 @@ const deleteMessage = async messageId => {
     @update:model-value="handleDrawerModelValueUpdate"
   >
     <VCard class="rounded-lg shadow-lg h-full flex flex-col">
-      <!-- Header Section -->
       <VToolbar class="pa-2">
         <VChip
           color="primary"
@@ -284,9 +283,7 @@ const deleteMessage = async messageId => {
         </VToolbarTitle>
       </VToolbar>
 
-      <!-- Form and Comments Section -->
       <VCardText class="flex-grow flex flex-col p-4 gap-6">
-        <!-- Form Section -->
         <VForm
           ref="refEditTaskForm"
           @submit.prevent="updateKanbanItem"
@@ -295,7 +292,6 @@ const deleteMessage = async messageId => {
             align="center"
             justify="space-between"
           >
-            <!-- Priority Selector -->
             <VCol cols="3">
               <VMenu
                 v-model="priorityMenu"
@@ -377,114 +373,99 @@ const deleteMessage = async messageId => {
         </VForm>
 
         <div class="comments-section">
-          <div class="comments-header flex justify-between items-center mb-4">
-            <h4 class="text-h5 font-semibold">
-              Comments
-            </h4>
-            <VBtn
-              v-if="!showEditor"
-              color="primary"
-              prepend-icon="tabler-edit"
-              @click="toggleEditor"
+          <VRow>
+            <VCol
+              cols="12"
+              md="4"
             >
-              Write Comment
-            </VBtn>
-          </div>
-
-          <div
-            v-if="!showEditor"
-            ref="messageListRef"
-            class="messages-container"
-          >
-            <PerfectScrollbar>
-              <div
-                v-for="msg in messages"
-                :key="msg.id"
-                class="message-item"
-              >
-                <div class="message-header">
-                  <span class="font-weight-bold text-sm d-flex gap-2">
-                    <VAvatar
-                      size="40"
-                      :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-                    >
-                      <template v-if=" msg.createdBy.avatar">
-                        <img
-                          :src=" msg.createdBy.avatar"
-                          alt="Avatar"
-                        >
-                      </template>
-                      <template v-else>
-                        <span>{{ msg.createdBy.avatar_or_initials }}</span>
-                      </template>
-                    </VAvatar>
-                    <div class="d-flex flex-column gap-1">
-                      {{ msg.createdBy.full_name }}
-                      <span class="text-caption text-xs">
-                        {{ msg.created_at }}
-                      </span>
-                    </div>
-                  </span>
-
-                  <div
-                    v-if="msg.createdBy.id === props.authId"
-                    class="d-flex gap-2"
+              <div class="message-editor">
+                <CKEditor
+                  v-model="message"
+                  class="editor-input"
+                />
+                <div class="d-flex gap-2 mt-2 justify-end">
+                  <VBtn
+                    v-if="currentMessageId"
+                    color="primary"
+                    prepend-icon="tabler-send"
+                    @click="submitEditMessage(currentMessageId)"
                   >
-                    <button
-                      class="edit-button"
-                      @click="editMessage(msg.id)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      class="delete-button"
-                      @click="deleteMessage(msg.id)"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                <div class="message-content">
-                  <p v-html="msg.content" />
+                    Submit
+                  </VBtn>
+                  <VBtn
+                    v-else
+                    color="primary"
+                    prepend-icon="tabler-send"
+                    @click="handleAddMessage"
+                  >
+                    Submit
+                  </VBtn>
                 </div>
               </div>
-            </PerfectScrollbar>
-          </div>
-
-          <div
-            v-if="showEditor"
-            class="message-editor"
-          >
-            <div class="d-flex gap-2 mb-2 justify-end">
-              <VBtn
-                v-if="currentMessageId"
-                color="primary"
-                prepend-icon="tabler-send"
-                @click="submitEditMessage(currentMessageId)"
+            </VCol>
+            <VCol
+              cols="12"
+              md="8"
+            >
+              <div
+                ref="messageListRef"
+                class="messages-container"
               >
-                Submit
-              </VBtn>
-              <VBtn
-                v-else
-                color="primary"
-                prepend-icon="tabler-send"
-                @click="handleAddMessage"
-              >
-                Submit
-              </VBtn>
-              <VBtn
-                color="secondary"
-                variant="tonal"
-                @click="cancelEditor"
-              >
-                Cancel
-              </VBtn>
-            </div>
-            <CKEditor
-              v-model="message"
-              class="editor-input"
-            />
-          </div>
+                <PerfectScrollbar>
+                  <div
+                    v-for="msg in messages"
+                    :key="msg.id"
+                    class="message-item"
+                  >
+                    <div class="message-header">
+                      <span class="font-weight-bold text-sm d-flex gap-2">
+                        <VAvatar
+                          size="40"
+                          :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+                        >
+                          <template v-if=" msg.createdBy.avatar">
+                            <img
+                              :src=" msg.createdBy.avatar"
+                              alt="Avatar"
+                            >
+                          </template>
+                          <template v-else>
+                            <span>{{ msg.createdBy.avatar_or_initials }}</span>
+                          </template>
+                        </VAvatar>
+                        <span class="d-flex flex-column gap-1">
+                          {{ msg.createdBy.full_name }}
+                          <span class="text-caption text-xs">
+                            {{ msg.created_at }}
+                          </span>
+                        </span>
+                      </span>
+                      <div
+                        v-if="msg.createdBy.id === props.authId"
+                        class="d-flex gap-2"
+                      >
+                        <button
+                          class="edit-button"
+                          @click="editMessage(msg.id)"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          class="delete-button"
+                          @click="deleteMessage(msg.id)"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <div class="message-content">
+                      <p v-html="msg.content" />
+                    </div>
+                  </div>
+                </PerfectScrollbar>
+              </div>
+            </VCol>
+          </VRow>
         </div>
       </VCardText>
     </VCard>
@@ -593,12 +574,6 @@ const deleteMessage = async messageId => {
 .delete-button:hover {
   background: #ff4444;
   color: #ffffff;
-}
-
-.message-editor {
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
 }
 </style>
 
