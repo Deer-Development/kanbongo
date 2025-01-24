@@ -416,6 +416,7 @@ const deleteMessage = async messageId => {
                     v-for="msg in messages"
                     :key="msg.id"
                     class="message-item"
+                    :class="[{ editing: msg.id === currentMessageId }]"
                   >
                     <div class="message-header">
                       <span class="font-weight-bold text-sm d-flex gap-2">
@@ -574,6 +575,11 @@ const deleteMessage = async messageId => {
 .delete-button:hover {
   background: #ff4444;
   color: #ffffff;
+}
+.message-item.editing {
+  background-color: #e3f2fd;
+  border-color: #90caf9;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 </style>
 
