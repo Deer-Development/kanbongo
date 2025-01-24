@@ -27,9 +27,7 @@ import { VerticalNavLayout } from '@layouts'
             icon="tabler-menu-2"
           />
         </IconBtn>
-
         <!--                <NavbarThemeSwitcher /> -->
-
         <VSpacer />
 
         <NavBarI18n
@@ -40,15 +38,6 @@ import { VerticalNavLayout } from '@layouts'
       </div>
     </template>
 
-    <!-- 👉 Pages -->
     <slot />
-
-    <!-- 👉 Footer -->
-    <template #footer>
-      <Footer />
-    </template>
-
-    <!-- 👉 Customizer -->
-    <!-- <TheCustomizer /> -->
   </VerticalNavLayout>
 </template>

@@ -349,8 +349,8 @@ defineExpose({
 .kanban-main-wrapper {
   overflow: auto hidden;
   margin-inline-start: -0.6rem;
-  min-block-size: calc(100vh - 10.5rem);
-  max-height: 81vh;
+  min-block-size: calc(100vh - 15.5rem);
+  max-height: 77vh;
   padding-inline-start: 0.6rem;
 
   .kanban-board {
