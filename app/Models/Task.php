@@ -27,7 +27,7 @@ class Task extends Model
                 'user_id' => Auth::user()->id,
                 'action' => 'delete',
                 'task_id' => $task->id,
-                'container_id' => $task->container_id,
+                'container_id' => $task->board->container_id,
                 'old_data' => $task->toArray(),
                 'new_data' => null,
             ]);
