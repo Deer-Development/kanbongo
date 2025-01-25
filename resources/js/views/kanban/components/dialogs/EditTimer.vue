@@ -5,7 +5,10 @@
     :model-value="props.isDialogVisible"
     class="github-dialog"
   >
-    <DialogCloseBtn class="close-btn" @click="closeDialog" />
+    <DialogCloseBtn
+      class="close-btn"
+      @click="closeDialog"
+    />
     <VCard class="p-4 github-card">
       <VCardTitle class="d-flex justify-content-between align-items-center">
         <span class="fs-6 fw-bold text-dark">Manage Time Entries</span>
@@ -26,29 +29,44 @@
           v-for="(entry, index) in localMemberDetails.timeEntries"
           :key="index"
           class="entry-card-github"
+          :class="[{ 'entry-card-deleted': entry.deleted }]"
         >
           <VRow class="gx-3 align-items-center">
-            <VCol cols="12" md="5">
+            <VCol
+              cols="12"
+              md="5"
+            >
               <label class="form-label">Start Time</label>
               <AppDateTimePicker
                 v-model="entry.startFormatted"
                 placeholder="Select start time"
                 :config="datetimeConfig"
+                :readonly="entry.deleted"
                 class="input-github"
               />
             </VCol>
-            <VCol cols="12" md="5">
+            <VCol
+              cols="12"
+              md="5"
+            >
               <label class="form-label">End Time</label>
               <AppDateTimePicker
                 v-model="entry.endFormatted"
                 placeholder="Select end time"
                 :config="datetimeConfig"
+                :readonly="entry.deleted"
                 class="input-github"
               />
             </VCol>
-            <VCol cols="12" md="2" class="text-end">
+            <VCol
+              cols="12"
+              md="2"
+              class="text-end"
+            >
               <VBtn
                 prepend-icon="tabler-trash"
+                color="error"
+                variant="outlined"
                 class="btn-delete-github"
                 @click="deleteEntry(index)"
               >
@@ -81,7 +99,10 @@
                 </VChip>
               </div>
             </VCol>
-            <VCol cols="4" class="text-end">
+            <VCol
+              cols="4"
+              class="text-end"
+            >
               <VChip
                 v-if="entry.oldTrackedTimeDisplay && entry.trackedTimeDisplay !== entry.oldTrackedTimeDisplay"
                 label
@@ -169,23 +190,23 @@ const calculateTrackedTime = (start, end) => {
 const watchTimeEntries = () => {
   watch(
     () => localMemberDetails.value.timeEntries,
-    (timeEntries) => {
-      timeEntries.forEach((entry) => {
+    timeEntries => {
+      timeEntries.forEach(entry => {
         if (!entry._isWatching) {
           watch(
             () => [entry.startFormatted, entry.endFormatted],
             ([newStart, newEnd]) => {
-              entry.trackedTimeDisplay = calculateTrackedTime(newStart, newEnd);
+              entry.trackedTimeDisplay = calculateTrackedTime(newStart, newEnd)
             },
-            { immediate: true, deep: true }
-          );
-          entry._isWatching = true; // Flag to prevent duplicate watchers
+            { immediate: true, deep: true },
+          )
+          entry._isWatching = true // Flag to prevent duplicate watchers
         }
-      });
+      })
     },
-    { immediate: true, deep: true }
-  );
-};
+    { immediate: true, deep: true },
+  )
+}
 
 const convertToDatetimeLocal = dateString => {
   if (!dateString) return ''
@@ -211,6 +232,8 @@ const sendData = async () => {
       ...entry,
       start: convertToOriginalFormat(entry.startFormatted),
       end: convertToOriginalFormat(entry.endFormatted),
+      deleted: entry.deleted,
+      member_id: localMemberDetails.value.id,
     }))
 
     const res = await $api(`/task/update-timer/${props.taskId}`, {
@@ -254,6 +277,7 @@ watch(
           ...entry,
           startFormatted: convertToDatetimeLocal(entry.start),
           endFormatted: convertToDatetimeLocal(entry.end),
+          deleted: false,
           trackedTimeDisplay: calculateTrackedTime(
             convertToDatetimeLocal(entry.start),
             convertToDatetimeLocal(entry.end),
@@ -275,13 +299,18 @@ const addNewEntry = () => {
     id: null,
     startFormatted: '',
     endFormatted: '',
+    taskId: props.taskId,
     trackedTimeDisplay: 'N/A',
+    deleted: false,
     _isWatching: false,
   })
 }
 
 const deleteEntry = index => {
-  localMemberDetails.value.timeEntries.splice(index, 1)
+  const entry = localMemberDetails.value.timeEntries[index]
+  if (entry) {
+    entry.deleted = true
+  }
 }
 </script>
 
@@ -313,6 +342,17 @@ const deleteEntry = index => {
   }
 }
 
+.entry-card-deleted {
+  background-color: #ffe6e6;
+  border-color: #e63946;
+  opacity: 0.8;
+  transition: all 0.3s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
 .input-github {
   .v-input {
     background-color: #ffffff;
@@ -337,19 +377,6 @@ const deleteEntry = index => {
 
   &:hover {
     background-color: #055dba;
-  }
-}
-
-.btn-delete-github {
-  background-color: #cf222e;
-  color: #ffffff;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: #a40f1b;
   }
 }
 
