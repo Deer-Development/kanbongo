@@ -349,33 +349,34 @@ defineExpose({
 .kanban-main-wrapper {
   overflow: auto hidden;
   margin-inline-start: -0.6rem;
-  min-block-size: calc(100vh - 15.5rem);
-  max-height: 81vh;
+  min-block-size: calc(100vh - 10rem);
+  max-height: calc(100vh - 10rem);
   padding-inline-start: 0.6rem;
 
   .kanban-board {
     overflow: auto;
-    inline-size: 16.875rem;
-    min-inline-size: 16.875rem;
-    padding: 0 0.3rem;
+    inline-size: 17.875rem;
+    min-inline-size: 17.875rem;
+    padding: 0 0.1rem;
     border-radius: vuetify.$border-radius-root;
 
     .kanban-board-header {
       position: sticky;
       top: 0;
+      margin-bottom: 0.2rem;
       z-index: 10;
-      background-color: rgb(var(--v-theme-surface));
-      padding: 1rem;
+      background-color: #f1f1f3;
+      padding: 0.5rem;
       border-top-left-radius: 8px;
       border-top-right-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .kanban-board-drop-zone {
       overflow: auto;
-      padding: 1rem;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
+      padding: 0.1rem;
+      min-block-size: 100%;
+      background-color: #fbf8f8;
+      height: 100%;
       scroll-behavior: smooth;
     }
   }

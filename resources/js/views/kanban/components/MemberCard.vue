@@ -155,10 +155,8 @@ const hasInactiveTimeEntries = member => {
 }
 
 .inactive-time-entries-card {
-  background: linear-gradient(135deg, #f9fafb, #e5e7eb);
-  border: 1px solid #d1d5db;
+  background: linear-gradient(180deg, #f9fafb, #e5e7eb);
   padding: 12px;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
 

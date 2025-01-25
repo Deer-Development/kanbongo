@@ -315,7 +315,7 @@ const refreshData = () => {
     <div
       v-if="localIds"
       ref="refKanbanBoard"
-      class="kanban-board-drop-zone rounded d-flex flex-column gap-4"
+      class="kanban-board-drop-zone d-flex flex-column gap-2"
       :class="localIds.length ? 'mb-4' : ''"
     >
       <template

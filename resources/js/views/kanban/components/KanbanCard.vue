@@ -306,9 +306,9 @@ onUnmounted(() => {
 
 <style scoped>
 .kanban-card {
-  border-radius: 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d0d0;
   background: linear-gradient(135deg, #f9fafb, #ffffff);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -323,7 +323,6 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 6px 0;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .card-header {
@@ -347,7 +346,7 @@ onUnmounted(() => {
 }
 
 .card-body {
-  padding: 10px;
+  padding: 8px;
 }
 
 .member-section.compact {
