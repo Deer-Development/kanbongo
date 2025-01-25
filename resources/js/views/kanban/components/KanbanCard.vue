@@ -145,6 +145,15 @@ onUnmounted(() => {
       class="card-header"
       @click="$emit('editKanbanItem', item.id)"
     >
+      <VChip
+        v-if="item.comments.length"
+        size="x-small"
+        variant="text"
+        color="warning"
+        class="chip-messages-exists"
+      >
+        <VIcon>tabler-message-2</VIcon>
+      </VChip>
       <h3
         v-tooltip="item.name"
         class="card-title truncate"
@@ -165,14 +174,6 @@ onUnmounted(() => {
           prepend-icon="tabler-flag"
         >
           {{ Priority.getName(item.priority) || 'Set Priority' }}
-        </VChip>
-        <VChip
-          v-if="item.comments.length"
-          size="x-small"
-          variant="text"
-          color="warning"
-        >
-          <VIcon>tabler-message-2</VIcon>
         </VChip>
       </div>
       <VExpansionPanels
@@ -304,7 +305,7 @@ onUnmounted(() => {
   </VCard>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .kanban-card {
   border-radius: 6px;
   border: 1px solid #d1d0d0;
@@ -335,6 +336,21 @@ onUnmounted(() => {
   padding: 12px 16px;
   background-color: #f3f4f6;
   border-bottom: 1px solid #e5e7eb;
+
+  .chip-messages-exists {
+    position: absolute;
+    top: 0;
+    left: -0.6rem;
+    z-index: 1;
+
+    .v-chip {
+      background-color: #ffeeba;
+      border-color: #ffc107;
+      color: #856404;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+  }
 }
 
 .card-title {
