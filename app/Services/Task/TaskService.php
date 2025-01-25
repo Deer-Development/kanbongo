@@ -90,6 +90,7 @@ class TaskService extends BaseService
                 'name' => $data['name'],
                 'description' => $data['description'],
                 'priority' => $data['priority'],
+                'due_date' => $data['due_date'] ? Carbon::parse($data['due_date']) : null,
             ]);
 
             $existingMemberIds = $task->members()->pluck('user_id')->toArray();
@@ -150,8 +151,7 @@ class TaskService extends BaseService
                         'start' => $start,
                         'end' => $end,
                     ]);
-                }
-                else {
+                } else {
                     if (!empty($timer['start'])) {
                         $start = Carbon::createFromFormat('m/d/Y h:i:s A', $timer['start'])->format('Y-m-d H:i:s');
 

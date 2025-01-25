@@ -27,6 +27,7 @@ class ValidateTaskUpdate extends FormRequest
             'name' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
             'priority' => 'nullable',
+            'due_date' => 'nullable',
             'members' => 'array',
             'members.*' => 'integer|exists:users,id',
         ];

@@ -100,6 +100,7 @@ const updateKanbanItem = () => {
           name: localKanbanItem.value.name,
           description: description.value,
           priority: localKanbanItem.value.priority,
+          due_date: localKanbanItem.value.due_date,
           members: localKanbanItem.value.members.map(member => member.user.id),
         },
       })
@@ -139,19 +140,6 @@ const priorityMenu = ref(false)
 const messageListRef = ref(null)
 
 const showEditor = ref(false)
-
-const toggleEditor = () => {
-  showEditor.value = true
-}
-
-const cancelEditor = () => {
-  showEditor.value = false
-  message.value = ''
-  currentMessageId.value = null
-
-  resizeImages()
-  scrollToBottom()
-}
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -313,11 +301,27 @@ const deleteMessage = async messageId => {
           ref="refEditTaskForm"
           class="form-github"
         >
-          <VRow
-            align="center"
-            justify="space-between"
-          >
-            <VCol cols="3">
+          <VRow>
+            <VCol cols="12">
+              <VTextarea
+                v-model="localKanbanItem.name"
+                :rules="[requiredValidator, maxLengthValidator(localKanbanItem.name, 255)]"
+                rows="3"
+                label="Title"
+                dense
+                outlined
+                class="input-github"
+              />
+            </VCol>
+          </VRow>
+          <VRow align="center">
+            <VCol cols="2" class="d-flex flex-column">
+              <VLabel
+                class="mb-1 text-body-2"
+                style="line-height: 15px;"
+              >
+                Priority
+              </VLabel>
               <VMenu
                 v-model="priorityMenu"
                 offset-y
@@ -348,7 +352,7 @@ const deleteMessage = async messageId => {
               </VMenu>
             </VCol>
 
-            <VCol cols="5">
+            <VCol cols="2">
               <DynamicMemberSelector
                 v-model="localKanbanItem.members"
                 :items="localAvailableMembers"
@@ -360,25 +364,24 @@ const deleteMessage = async messageId => {
                 outlined
               />
             </VCol>
-          </VRow>
 
-          <VRow>
-            <VCol cols="12">
-              <VTextarea
-                v-model="localKanbanItem.name"
-                :rules="[requiredValidator, maxLengthValidator(localKanbanItem.name, 255)]"
-                rows="3"
-                label="Title"
+            <VCol cols="2">
+              <AppDateTimePicker
+                v-model="localKanbanItem.due_date"
+                label="Due Date"
                 dense
                 outlined
-                class="input-github"
               />
             </VCol>
           </VRow>
         </VForm>
 
-        <!-- Comments Section -->
         <div class="comments-section">
+          <VDivider/>
+          <VCardTitle class="text-center text-dark fs-6 fw-bold mb-2">
+            Comments
+          </VCardTitle>
+
           <VRow>
             <VCol
               cols="12"
