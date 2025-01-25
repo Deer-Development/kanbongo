@@ -264,29 +264,54 @@ const deleteMessage = async messageId => {
     max-height="100%"
     persistent
     :model-value="isDrawerOpen"
+    class="github-dialog"
     @update:model-value="handleDrawerModelValueUpdate"
   >
-    <VCard class="rounded-lg shadow-lg h-full flex flex-col">
-      <VToolbar class="pa-2">
-        <VChip
-          color="primary"
-          variant="tonal"
-          @click="closeDrawer"
+    <VCard class="github-edit-card h-full flex flex-col">
+      <VRow class="github-header">
+        <VCol
+          cols="8"
+          class="d-flex justify-start gap-2"
         >
-          <VIcon
-            size="20"
-            icon="tabler-x"
-          />
-        </VChip>
-        <VToolbarTitle>
-          <span class="text-wrap">{{ localKanbanItem.name }}</span>
-        </VToolbarTitle>
-      </VToolbar>
+          <VBtn
+            color="secondary"
+            variant="outlined"
+            @click="closeDrawer"
+          >
+            <VIcon icon="tabler-x" />
+          </VBtn>
+        </VCol>
+        <VCol
+          cols="4"
+          class="d-flex justify-end gap-2"
+        >
+          <VBtn
+            color="primary"
+            class="btn-github"
+            type="submit"
+            @click="updateKanbanItem"
+          >
+            Update
+          </VBtn>
+          <VBtn
+            v-if="isSuperAdmin && !isDeleteDisabled"
+            color="error"
+            class="btn-github"
+            variant="outlined"
+            @click="deleteKanbanItem"
+          >
+            Delete
+          </VBtn>
+        </VCol>
+        <!--        <VCol cols="12" class="header-name-container"> -->
+        <!--          <span class="header-name">{{ localKanbanItem.name }}</span> -->
+        <!--        </VCol> -->
+      </VRow>
 
       <VCardText class="flex-grow flex flex-col p-4 gap-6">
         <VForm
           ref="refEditTaskForm"
-          @submit.prevent="updateKanbanItem"
+          class="form-github"
         >
           <VRow
             align="center"
@@ -300,9 +325,9 @@ const deleteMessage = async messageId => {
                 <template #activator="{ props }">
                   <VBtn
                     v-bind="props"
-                    :color="getPriorityColor(localKanbanItem.priority) || 'info'"
+                    :color="getPriorityColor(localKanbanItem.priority)"
                     size="small"
-                    variant="flat"
+                    class="btn-github"
                     prepend-icon="tabler-flag"
                   >
                     {{ Priority.getName(localKanbanItem.priority) || "Set Priority" }}
@@ -314,7 +339,7 @@ const deleteMessage = async messageId => {
                     :key="key"
                     :color="getPriorityColor(key)"
                     variant="flat"
-                    class="priority-badge"
+                    class="chip-priority-github"
                     @click.stop="localKanbanItem.priority = key"
                   >
                     {{ label }}
@@ -335,27 +360,6 @@ const deleteMessage = async messageId => {
                 outlined
               />
             </VCol>
-
-            <VCol
-              cols="4"
-              class="d-flex justify-end gap-2"
-            >
-              <VBtn
-                color="primary"
-                class="me-3"
-                type="submit"
-              >
-                Update
-              </VBtn>
-              <VBtn
-                v-if="isSuperAdmin && !isDeleteDisabled"
-                color="error"
-                variant="tonal"
-                @click="deleteKanbanItem"
-              >
-                Delete
-              </VBtn>
-            </VCol>
           </VRow>
 
           <VRow>
@@ -367,40 +371,43 @@ const deleteMessage = async messageId => {
                 label="Title"
                 dense
                 outlined
+                class="input-github"
               />
             </VCol>
           </VRow>
         </VForm>
 
+        <!-- Comments Section -->
         <div class="comments-section">
           <VRow>
             <VCol
               cols="12"
               md="4"
+              class="message-editor"
             >
-              <div class="message-editor">
-                <CKEditor
-                  v-model="message"
-                  class="editor-input"
-                />
-                <div class="d-flex gap-2 mt-2 justify-end">
-                  <VBtn
-                    v-if="currentMessageId"
-                    color="primary"
-                    prepend-icon="tabler-send"
-                    @click="submitEditMessage(currentMessageId)"
-                  >
-                    Submit
-                  </VBtn>
-                  <VBtn
-                    v-else
-                    color="primary"
-                    prepend-icon="tabler-send"
-                    @click="handleAddMessage"
-                  >
-                    Submit
-                  </VBtn>
-                </div>
+              <CKEditor
+                v-model="message"
+                class="input-github"
+              />
+              <div class="d-flex gap-2 mt-2 justify-end">
+                <VBtn
+                  v-if="currentMessageId"
+                  color="primary"
+                  class="btn-github"
+                  prepend-icon="tabler-send"
+                  @click="submitEditMessage(currentMessageId)"
+                >
+                  Submit
+                </VBtn>
+                <VBtn
+                  v-else
+                  color="primary"
+                  class="btn-github"
+                  prepend-icon="tabler-send"
+                  @click="handleAddMessage"
+                >
+                  Submit
+                </VBtn>
               </div>
             </VCol>
             <VCol
@@ -415,18 +422,14 @@ const deleteMessage = async messageId => {
                   <div
                     v-for="msg in messages"
                     :key="msg.id"
-                    class="message-item"
-                    :class="[{ editing: msg.id === currentMessageId }]"
+                    class="message-item-github"
                   >
                     <div class="message-header">
-                      <span class="font-weight-bold text-sm d-flex gap-2">
-                        <VAvatar
-                          size="40"
-                          :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-                        >
-                          <template v-if=" msg.createdBy.avatar">
+                      <div class="d-flex align-items-center gap-2">
+                        <VAvatar size="40">
+                          <template v-if="msg.createdBy.avatar">
                             <img
-                              :src=" msg.createdBy.avatar"
+                              :src="msg.createdBy.avatar"
                               alt="Avatar"
                             >
                           </template>
@@ -434,13 +437,13 @@ const deleteMessage = async messageId => {
                             <span>{{ msg.createdBy.avatar_or_initials }}</span>
                           </template>
                         </VAvatar>
-                        <span class="d-flex flex-column gap-1">
-                          {{ msg.createdBy.full_name }}
-                          <span class="text-caption text-xs">
+                        <div>
+                          <strong>{{ msg.createdBy.full_name }}</strong>
+                          <div class="text-muted text-xs">
                             {{ msg.created_at }}
-                          </span>
-                        </span>
-                      </span>
+                          </div>
+                        </div>
+                      </div>
                       <div
                         v-if="msg.createdBy.id === props.authId"
                         class="d-flex gap-2"
@@ -478,10 +481,92 @@ const deleteMessage = async messageId => {
   margin-top: 20px;
 }
 
-.comments-header {
+.github-header {
+  border-bottom: 1px solid #d8dee4;
+  padding: 1rem 2rem;
+  background-color: #f6f8fa;
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
+}
+
+.header-name-container {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.header-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #24292f;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+  padding: 2px 4px;
+  border-bottom: 2px solid #d0d7de;
+  display: inline-block;
+  transition: border-color 0.2s;
+}
+
+.header-name:hover {
+  border-color: #0366d6;
+}
+
+.btn-github {
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.message-item-github {
+  background-color: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #f6f8fa;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .message-content {
+    color: #333;
+  }
+
+  .edit-button,
+  .delete-button {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+
+    &.edit-button {
+      background-color: #e7f3ff;
+      color: #0969da;
+
+      &:hover {
+        background-color: #c7e0f9;
+      }
+    }
+
+    &.delete-button {
+      background-color: #f8d7da;
+      color: #e63946;
+
+      &:hover {
+        background-color: #f5c2c7;
+      }
+    }
+  }
 }
 
 .messages-container {
@@ -491,35 +576,6 @@ const deleteMessage = async messageId => {
   border-radius: 8px;
   border: 1px solid #ddd;
   padding: 16px;
-}
-
-.message-item {
-  margin-bottom: 12px;
-  padding: 16px;
-  border-radius: 12px;
-  background: #f9f9f9;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e6e6e6;
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
-}
-
-.message-item:hover {
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.message-content img {
-  max-width: 100%;
-  max-height: 300px; /* Limita înălțimii */
-  object-fit: contain; /* Pentru a păstra proporțiile */
-  border: 2px solid #007bff; /* Highlight pentru imagine */
-  border-radius: 8px; /* Colțuri rotunjite */
-  margin: 8px 0; /* Spațiu între text și imagine */
-  transition: transform 0.2s ease; /* Animație la hover */
-}
-
-.message-content img:hover {
-  transform: scale(1.05); /* Efect vizual pe hover */
 }
 
 .message-header {
@@ -575,11 +631,6 @@ const deleteMessage = async messageId => {
 .delete-button:hover {
   background: #ff4444;
   color: #ffffff;
-}
-.message-item.editing {
-  background-color: #e3f2fd;
-  border-color: #90caf9;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 </style>
 

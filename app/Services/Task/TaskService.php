@@ -131,19 +131,49 @@ class TaskService extends BaseService
 
         try {
             foreach ($data as $timer) {
-                $timeEntry = TimeEntry::find($timer['id']);
+                if (isset($timer['id']) && $timer['id']) {
+                    $timeEntry = TimeEntry::find($timer['id']);
 
-                if (!$timeEntry) {
-                    throw new \Exception('Time entry not found.');
+                    if (!$timeEntry) {
+                        throw new \Exception('Time entry not found.');
+                    }
+
+                    $start = isset($timer['start'])
+                        ? Carbon::createFromFormat('m/d/Y h:i:s A', $timer['start'])->format('Y-m-d H:i:s')
+                        : null;
+
+                    $end = isset($timer['end'])
+                        ? Carbon::createFromFormat('m/d/Y h:i:s A', $timer['end'])->format('Y-m-d H:i:s')
+                        : null;
+
+                    $timeEntry->update([
+                        'start' => $start,
+                        'end' => $end,
+                    ]);
                 }
+                else {
+                    if (!empty($timer['start'])) {
+                        $start = Carbon::createFromFormat('m/d/Y h:i:s A', $timer['start'])->format('Y-m-d H:i:s');
 
-                $start = Carbon::createFromFormat('m/d/Y h:i:s A', $timer['start'])->format('Y-m-d H:i:s');
-                $end = Carbon::createFromFormat('m/d/Y h:i:s A', $timer['end'])->format('Y-m-d H:i:s');
+                        $end = !empty($timer['end'])
+                            ? Carbon::createFromFormat('m/d/Y h:i:s A', $timer['end'])->format('Y-m-d H:i:s')
+                            : null;
 
-                $timeEntry->update([
-                    'start' => $start,
-                    'end' => $end,
-                ]);
+                        if ($start || $end) {
+                            TimeEntry::create([
+                                'task_id' => $taskId,
+                                'member_id' => $timer['member_id'] ?? null,
+                                'added_manually' => true,
+                                'user_id' => $timer['user_id'],
+                                'container_id' => $task->board->container_id,
+                                'billable' => $task->board->container->members()->where('user_id', $timer['user_id'])->first()->billable,
+                                'billable_rate' => $task->board->container->members()->where('user_id', $timer['user_id'])->first()->billable_rate,
+                                'start' => $start,
+                                'end' => $end,
+                            ]);
+                        }
+                    }
+                }
             }
 
             DB::commit();

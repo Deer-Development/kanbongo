@@ -44,6 +44,7 @@ class TaskResource extends JsonResource
                             'end' => $timeEntry->end ? Carbon::parse($timeEntry->end)->format('m/d/Y h:i:s A') : null,
                             'trackedTime' => $trackedTime,
                             'trackedTimeDisplay' => $this->formatTime($trackedTime),
+                            'added_manually' => $timeEntry->added_manually,
                             'logs' => $timeEntry->logs()->orderBy('created_at', 'ASC')->get()->map(function ($log) {
                                 return [
                                     'id' => $log->id,

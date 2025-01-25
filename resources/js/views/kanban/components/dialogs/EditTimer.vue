@@ -31,6 +31,16 @@
           class="entry-card-github"
           :class="[{ 'entry-card-deleted': entry.deleted }]"
         >
+          <div v-if="entry.added_manually" class="chip-manually-added">
+            <VChip
+              label
+              color="warning"
+              size="small"
+              outlined
+            >
+              Manually Added
+            </VChip>
+          </div>
           <VRow class="gx-3 align-items-center">
             <VCol
               cols="12"
@@ -153,12 +163,9 @@ const props = defineProps({
 const emit = defineEmits(['update:isDialogVisible', 'formSubmitted'])
 
 const toast = useToast()
-const isFormValid = ref(false)
 const refForm = ref()
 const localMemberDetails = ref(props.memberDetails)
 const errors = ref({})
-const logsToDisplay = ref([])
-const displayLogs = ref(false)
 
 const datetimeConfig = {
   enableTime: true,
@@ -221,9 +228,7 @@ const convertToOriginalFormat = datetimeLocal => {
 }
 
 const submitForm = () => {
-  refForm.value?.validate().then(({ valid }) => {
-    if (valid) sendData()
-  })
+  sendData()
 }
 
 const sendData = async () => {
@@ -233,7 +238,7 @@ const sendData = async () => {
       start: convertToOriginalFormat(entry.startFormatted),
       end: convertToOriginalFormat(entry.endFormatted),
       deleted: entry.deleted,
-      member_id: localMemberDetails.value.id,
+      user_id: localMemberDetails.value.user_id,
     }))
 
     const res = await $api(`/task/update-timer/${props.taskId}`, {
@@ -261,12 +266,6 @@ const closeDialog = () => {
   emit('update:isDialogVisible', false)
 }
 
-const displayLogsForEntry = entry => {
-  logsToDisplay.value = entry.logs
-
-  displayLogs.value = true
-}
-
 watch(
   () => props.memberDetails,
   newDetails => {
@@ -277,6 +276,7 @@ watch(
           ...entry,
           startFormatted: convertToDatetimeLocal(entry.start),
           endFormatted: convertToDatetimeLocal(entry.end),
+          added_manually: entry.added_manually || false,
           deleted: false,
           trackedTimeDisplay: calculateTrackedTime(
             convertToDatetimeLocal(entry.start),
@@ -295,12 +295,20 @@ watch(
 )
 
 const addNewEntry = () => {
+  const lastEntry = localMemberDetails.value.timeEntries.at(-1)
+  if (lastEntry && (!lastEntry.startFormatted || !lastEntry.endFormatted)) {
+    toast.warning('Please complete the last entry before adding a new one.')
+
+    return
+  }
+
   localMemberDetails.value.timeEntries.push({
     id: null,
     startFormatted: '',
     endFormatted: '',
     taskId: props.taskId,
     trackedTimeDisplay: 'N/A',
+    added_manually: true,
     deleted: false,
     _isWatching: false,
   })
@@ -329,6 +337,7 @@ const deleteEntry = index => {
 }
 
 .entry-card-github {
+  position: relative;
   background-color: #ffffff;
   border: 1px solid #d0d7de;
   border-radius: 6px;
@@ -339,6 +348,21 @@ const deleteEntry = index => {
   &:hover {
     background-color: #f6f8fa;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .chip-manually-added {
+    position: absolute;
+    top: -0.5rem;
+    left: -0.5rem;
+    z-index: 1;
+
+    .v-chip {
+      background-color: #ffeeba;
+      border-color: #ffc107;
+      color: #856404;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
   }
 }
 

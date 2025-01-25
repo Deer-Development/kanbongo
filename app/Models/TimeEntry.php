@@ -21,6 +21,7 @@ class TimeEntry extends Model
     protected $casts = [
         'start' => 'datetime',
         'end' => 'datetime',
+        'added_manually' => 'boolean',
     ];
 
     protected static function boot()

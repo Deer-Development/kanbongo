@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::table('time_entries', function (Blueprint $table) {
             $table->boolean('added_manually')->default(false)->after('billable');
+            $table->boolean('is_paid')->default(false)->after('task_id');
+            $table->decimal('amount_paid', 10, 2)->nullable()->after('is_paid');
+            $table->decimal('paid_rate', 10, 2)->nullable()->after('amount_paid');
         });
     }
 

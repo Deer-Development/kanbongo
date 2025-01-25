@@ -1,27 +1,35 @@
 <template>
   <VDialog
-    :width="$vuetify.display.smAndDown ? 'auto' : 900"
+    persistent
+    max-width="80%"
     :model-value="props.isDialogVisible"
-    @update:model-value="onReset"
+    class="github-dialog"
   >
-    <DialogCloseBtn @click="onReset" />
-    <VCard class="pa-4 dialog-card">
+    <DialogCloseBtn
+      class="close-btn"
+      @click="onReset"
+    />
+    <VCard class="p-4 github-card">
+      <VCardTitle class="text-center text-dark fs-6 fw-bold">
+        Board Payment Details
+      </VCardTitle>
+
       <VCardText>
-        <h2 class="dialog-title text-center">
-          Board Payment Details
-        </h2>
-        <div class="date-picker-container">
+        <div class="mb-4">
           <label
             for="date-picker"
-            class="picker-label"
-          >Select Date Range:</label>
+            class="form-label"
+          >
+            Select Date Range:
+          </label>
           <AppDateTimePicker
             v-model="selectedDateRange"
             :config="{ mode: 'range' }"
-            class="mt-3"
-            placeholder="Select date"
+            placeholder="Select date range"
+            class="input-github"
           />
         </div>
+
         <div
           v-if="members.length"
           class="members-container"
@@ -29,12 +37,28 @@
           <div
             v-for="member in members"
             :key="member.member_id"
-            class="payment-member-card"
-            :class="{'highlight-error': member.total_hours_worked === 0}"
+            class="entry-card-github"
+            :class="{ 'entry-card-deleted': member.total_hours_worked === 0 }"
           >
-            <div class="payment-member-header">
+            <!-- Performance Badge -->
+            <VChip
+              class="performance-badge"
+              :color="member.total_hours_worked > 40 ? 'success' : member.total_hours_worked > 5 ? 'warning' : 'error'"
+              size="small"
+              label
+              outlined
+            >
+              {{
+                member.total_hours_worked > 40
+                  ? 'High Performer'
+                  : member.total_hours_worked > 5
+                    ? 'Moderate'
+                    : 'Needs Improvement'
+              }}
+            </VChip>
+
+            <div class="d-flex align-items-center gap-3 mb-3">
               <VAvatar
-                v-tooltip="member.user.full_name"
                 size="50"
                 class="avatar"
                 :color="$vuetify.theme.current.dark ? '#373B50' : '#F5F7FA'"
@@ -49,81 +73,80 @@
                   <span>{{ member.user.avatar_or_initials }}</span>
                 </template>
               </VAvatar>
-              <div class="member-info mx-2">
-                <h3>{{ member.member_name }}</h3>
-                <p class="email">
+              <div class="member-info">
+                <h3 class="fs-6 text-dark fw-bold">
+                  {{ member.member_name }}
+                </h3>
+                <p class="text-muted">
                   {{ member.user.email }}
                 </p>
               </div>
             </div>
+
             <div class="payment-details">
               <div class="detail">
-                <span>Total Hours Worked:</span>
+                <span class="label">Total Hours Worked:</span>
                 <span
                   :class="{
-                    'text-error': member.total_hours_worked === 0,
+                    'text-danger': member.total_hours_worked === 0,
                   }"
                 >
-                  <span
-                    v-if="member.total_hours_worked === 0"
-                    class="icon-error"
-                  >
-                    <VIcon
-                      color="red"
-                      icon="tabler-alert-circle"
-                    />
-                  </span>
                   {{ member.total_hours_worked.toFixed(2) }} hrs
                 </span>
               </div>
-              <!--              <div class="progress-container"> -->
-              <!--                <span>Total Hours Progress</span> -->
-              <!--                <VProgressLinear -->
-              <!--                  :value="(member.total_hours_worked / 40) * 100" -->
-              <!--                  color="blue" -->
-              <!--                  height="10" -->
-              <!--                /> -->
-              <!--              </div> -->
               <div class="detail">
-                <span>Billable Rate:</span>
-                <span class="text-highlight">
+                <span class="label">Billable Rate:</span>
+                <span class="value text-primary">
                   ${{ member.billable_rate }}/hr
                 </span>
               </div>
               <div class="detail">
-                <span>Total Payment:</span>
-                <span class="text-highlight">
+                <span class="label">Total Payment:</span>
+                <span class="value text-primary">
                   ${{ member.total_payment.toFixed(2) }}
                 </span>
               </div>
             </div>
-            <div
-              class="performance-badge"
-              :class="{
-                'badge-green': member.total_hours_worked > 40,
-                'badge-yellow': member.total_hours_worked > 5 && member.total_hours_worked <= 40,
-                'badge-red': member.total_hours_worked <= 5
-              }"
-            >
-              <span>{{ member.total_hours_worked > 40 ? 'High Performer' : member.total_hours_worked > 5 ? 'Moderate' : 'Needs Improvement' }}</span>
+
+            <div class="card-actions">
+              <VBtn
+                color="primary"
+                variant="tonal"
+                class="btn-github"
+                @click="handlePayment(member)"
+              >
+                Payment
+              </VBtn>
+              <VBtn
+                color="secondary"
+                variant="tonal"
+                class="btn-github"
+                @click="handleDetails(member)"
+              >
+                Details
+              </VBtn>
             </div>
           </div>
         </div>
+
         <div
           v-else
           class="no-data"
         >
           No payment details available.
         </div>
-        <div class="global-stats">
-          <h4>Summary</h4>
-          <div>
-            <span>Total Hours Worked:</span>
-            <span class="highlight">{{ totalHours }} hrs</span>
+
+        <div class="global-stats mt-4">
+          <h4 class="fs-6 fw-bold">
+            Summary
+          </h4>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Total Hours Worked:</span>
+            <span class="text-primary fw-bold">{{ totalHours }} hrs</span>
           </div>
-          <div>
-            <span>Total Payments:</span>
-            <span class="highlight">${{ totalPayments.toFixed(2) }}</span>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Total Payments:</span>
+            <span class="text-primary fw-bold">${{ totalPayments.toFixed(2) }}</span>
           </div>
         </div>
       </VCardText>
@@ -195,145 +218,159 @@ const totalHours = computed(() =>
 const totalPayments = computed(() =>
   members.value.reduce((sum, member) => sum + member.total_payment, 0),
 )
+
+const handlePayment = () => {
+
+}
+
+const handleDetails = () => {
+
+}
 </script>
 
-<style lang="scss">
-.dialog-card {
-  background: linear-gradient(145deg, #f3f6fa, #ffffff);
-  border-radius: 16px;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.dialog-title {
-  font-size: 1.8rem;
-  font-weight: bold;
-  margin-bottom: 1.5rem;
-  color: #333;
-}
-
-.date-picker-container {
-  margin-bottom: 1.5rem;
-
-  .picker-label {
-    font-size: 1rem;
-    font-weight: 500;
-    color: #555;
+<style lang="scss" scoped>
+.github-dialog {
+  .v-card {
+    background-color: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
+}
+
+.github-card {
+  padding: 1.5rem;
 }
 
 .members-container {
   display: grid;
-  gap: 1.5rem;
-  grid-template-columns: 1fr;
-
-  @media (min-width: 768px) {
-    grid-template-columns: 1fr 1fr;
-  }
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); // Two cards per row
 }
 
-.payment-member-card {
-  border: 2px solid #f0f0f0;
-  border-radius: 12px;
-  padding: 1.5rem;
+.entry-card-github {
+  position: relative;
   background-color: #ffffff;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s, box-shadow 0.3s;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 1rem;
+  transition: all 0.2s;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    background-color: #f6f8fa;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   }
 
-  &.highlight-error {
-    border-color: #ff6666;
-    background-color: #fff5f5;
+  &.entry-card-deleted {
+    background-color: #ffe6e6;
+    border-color: #e63946;
+    opacity: 0.8;
+
+    &:hover {
+      opacity: 1;
+    }
   }
 
-  .payment-member-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1.5rem;
-
-    .avatar {
-      width: 50px;
-      height: 50px;
-      font-size: 1.2rem;
-      background: #007bff;
-      color: white;
-      font-weight: bold;
-    }
-
-    .member-info {
-      h3 {
-        font-size: 1.2rem;
-        margin: 0;
-      }
-
-      .email {
-        font-size: 0.9rem;
-        color: #555;
-      }
-    }
+  .performance-badge {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    z-index: 1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
   }
 
   .payment-details {
+    margin-bottom: 1rem;
+
     .detail {
       display: flex;
       justify-content: space-between;
       margin-bottom: 0.5rem;
 
-      span:last-child {
+      .label {
+        font-size: 0.875rem;
+        color: #6c757d;
+      }
+
+      .value {
         font-weight: bold;
+        font-size: 0.875rem;
       }
+    }
+  }
 
-      .text-error {
-        color: #ff4d4d;
-      }
+  .card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
 
-      .text-highlight {
-        color: #007bff;
-      }
+    .btn-github {
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      transition: background-color 0.2s;
     }
   }
 }
 
-.progress-container {
-  margin: 0.5rem 0;
-}
+.input-github {
+  .v-input {
+    border-radius: 6px;
+    padding: 0.5rem;
+    transition: border-color 0.2s;
 
-.performance-badge {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: bold;
-
-  &.badge-green {
-    background-color: #d4edda;
-    color: #155724;
-  }
-
-  &.badge-yellow {
-    background-color: #fff3cd;
-    color: #856404;
-  }
-
-  &.badge-red {
-    background-color: #f8d7da;
-    color: #721c24;
+    &:focus {
+      border-color: #0969da;
+    }
   }
 }
 
-.no-data {
-  text-align: center;
-  font-size: 1rem;
-  color: #999;
+.members-container {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.entry-card-github {
+  position: relative;
+  background-color: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #f6f8fa;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  &.entry-card-deleted {
+    background-color: #ffe6e6;
+    border-color: #e63946;
+    opacity: 0.8;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .performance-badge {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    z-index: 1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+  }
 }
 
 .global-stats {
-  margin-top: 2rem;
-  text-align: center;
-
   h4 {
     font-size: 1.2rem;
     font-weight: bold;
@@ -341,14 +378,27 @@ const totalPayments = computed(() =>
   }
 
   div {
-    display: flex;
-    justify-content: space-between;
     margin-bottom: 0.5rem;
 
-    .highlight {
+    span:last-child {
       font-weight: bold;
-      color: #007bff;
+      color: #0969da;
     }
   }
+}
+
+.no-data {
+  text-align: center;
+  font-size: 1rem;
+  color: #6c757d;
+  margin-top: 2rem;
+}
+
+.text-danger {
+  color: #cf222e;
+}
+
+.text-primary {
+  color: #0969da;
 }
 </style>
