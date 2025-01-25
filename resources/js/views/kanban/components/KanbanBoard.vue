@@ -349,7 +349,7 @@ defineExpose({
 .kanban-main-wrapper {
   overflow: auto hidden;
   margin-inline-start: -0.6rem;
-  min-block-size: calc(100vh - 10rem);
+  min-block-size: calc(100vh - 17rem);
   max-height: calc(100vh - 10rem);
   padding-inline-start: 0.6rem;
 
@@ -376,7 +376,6 @@ defineExpose({
       padding: 0.1rem;
       min-block-size: 100%;
       background-color: #fbf8f8;
-      height: 100%;
       scroll-behavior: smooth;
     }
   }

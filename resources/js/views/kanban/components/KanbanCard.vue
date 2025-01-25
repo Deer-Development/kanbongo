@@ -308,9 +308,10 @@ onUnmounted(() => {
 .kanban-card {
   border-radius: 6px;
   border: 1px solid #d1d0d0;
+  height: auto;
+  max-height: none;
   background: linear-gradient(135deg, #f9fafb, #ffffff);
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: height 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .kanban-card.hover-scale:hover {
