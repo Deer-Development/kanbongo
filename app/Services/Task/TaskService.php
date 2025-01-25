@@ -140,24 +140,6 @@ class TaskService extends BaseService
                 $start = Carbon::createFromFormat('m/d/Y h:i:s A', $timer['start'])->format('Y-m-d H:i:s');
                 $end = Carbon::createFromFormat('m/d/Y h:i:s A', $timer['end'])->format('Y-m-d H:i:s');
 
-                if ($start !== $timeEntry->start->format('Y-m-d H:i:s')) {
-                    $timeEntry->logs()->create([
-                        'entry' => $start,
-                        'old_entry' => $timeEntry->start->format('Y-m-d H:i:s'),
-                        'field' => 'start',
-                        'user_id' => auth()->id(),
-                    ]);
-                }
-
-                if ($end !== $timeEntry->end->format('Y-m-d H:i:s')) {
-                    $timeEntry->logs()->create([
-                        'entry' => $end,
-                        'old_entry' => $timeEntry->end->format('Y-m-d H:i:s'),
-                        'field' => 'end',
-                        'user_id' => auth()->id(),
-                    ]);
-                }
-
                 $timeEntry->update([
                     'start' => $start,
                     'end' => $end,

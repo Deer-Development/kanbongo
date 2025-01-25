@@ -8,12 +8,31 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Task extends Model
 {
     use SoftDeletes, Filterable;
 
     protected $guarded = ['id'];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($task) {
+            Log::create([
+                'loggable_type' => self::class,
+                'loggable_id' => $task->id,
+                'user_id' => Auth::user()->id,
+                'action' => 'delete',
+                'task_id' => $task->id,
+                'container_id' => $task->container_id,
+                'old_data' => $task->toArray(),
+                'new_data' => null,
+            ]);
+        });
+    }
 
     public function board(): BelongsTo
     {
@@ -28,6 +47,11 @@ class Task extends Model
     public function comments(): MorphMany
     {
         return $this->morphMany(Comment::class, 'commentable');
+    }
+
+    public function logs(): MorphMany
+    {
+        return $this->morphMany(Log::class, 'loggable');
     }
 
     public function timeEntries(): HasMany

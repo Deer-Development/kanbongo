@@ -1,140 +1,110 @@
 <template>
   <VDialog
-    :model-value="props.isDialogVisible"
-    max-width="800"
     persistent
+    max-width="80%"
+    :model-value="props.isDialogVisible"
+    class="github-dialog"
   >
-    <DialogCloseBtn @click="closeDialog" />
+    <DialogCloseBtn class="close-btn" @click="closeDialog" />
+    <VCard class="p-4 github-card">
+      <VCardTitle class="d-flex justify-content-between align-items-center">
+        <span class="fs-6 fw-bold text-dark">Manage Time Entries</span>
+      </VCardTitle>
 
-    <VCard title="Edit Time Entries">
       <VCardText>
-        <VForm
-          ref="refForm"
-          v-model="isFormValid"
-          @submit.prevent="submitForm"
+        <VBtn
+          class="mb-3"
+          color="primary"
+          variant="outlined"
+          prepend-icon="tabler-plus"
+          @click="addNewEntry"
         >
-          <VRow>
-            <VCol cols="12">
-              <VAlert
-                v-if="errors.value"
-                type="error"
-                outlined
-                dense
-                transition="slide-x-transition"
-                class="mb-3"
-              >
-                {{ errors.value }}
-              </VAlert>
+          Add New Entry
+        </VBtn>
+
+        <div
+          v-for="(entry, index) in localMemberDetails.timeEntries"
+          :key="index"
+          class="entry-card-github"
+        >
+          <VRow class="gx-3 align-items-center">
+            <VCol cols="12" md="5">
+              <label class="form-label">Start Time</label>
+              <AppDateTimePicker
+                v-model="entry.startFormatted"
+                placeholder="Select start time"
+                :config="datetimeConfig"
+                class="input-github"
+              />
             </VCol>
-
-            <VCol
-              v-if="displayLogs"
-              cols="12"
-            >
-              <div class="d-flex align-items-center mb-4">
-                <VIcon
-                  icon="tabler-arrow-back"
-                  size="24"
-                  class="me-2 cursor-pointer text-primary"
-                  @click="displayLogs = false; logsToDisplay = []"
-                />
-                <h3 class="h5 mb-0">
-                  Log Details
-                </h3>
-              </div>
-
-              <div class="card shadow-sm">
-                <div class="card-body p-0">
-                  <div
-                    v-for="(log, index) in logsToDisplay"
-                    :key="log.id || index"
-                    class="d-flex flex-wrap border-bottom gap-4 py-3 px-4"
-                  >
-                    <div class="col-12 col-md-3 mb-2 mb-md-0">
-                      <strong class="d-block text-muted">Field</strong>
-                      <span class="text-dark">{{ log.field }}</span>
-                    </div>
-                    <div class="col-12 col-md-3 mb-2 mb-md-0">
-                      <strong class="d-block text-muted">Old Value</strong>
-                      <span class="text-dark">{{ log.old_entry || 'N/A' }}</span>
-                    </div>
-                    <div class="col-12 col-md-3 mb-2 mb-md-0">
-                      <strong class="d-block text-muted">New Value</strong>
-                      <span class="text-dark">{{ log.entry }}</span>
-                    </div>
-                    <div class="col-12 col-md-3">
-                      <strong class="d-block text-muted">Updated By</strong>
-                      <span class="text-dark">{{ log.created_by }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <VCol cols="12" md="5">
+              <label class="form-label">End Time</label>
+              <AppDateTimePicker
+                v-model="entry.endFormatted"
+                placeholder="Select end time"
+                :config="datetimeConfig"
+                class="input-github"
+              />
             </VCol>
-
-            <VCol
-              v-if="localMemberDetails && !displayLogs"
-              cols="12"
-            >
-              <div class="grid grid-cols-3 items-center bg-gray-200 py-2 px-4 rounded-t-md font-semibold">
-                <span>Start Time</span>
-                <span>End Time</span>
-                <span>Tracked Time</span>
-              </div>
-
-              <div
-                v-for="(entry, index) in localMemberDetails.timeEntries"
-                :key="index"
-                class="grid grid-cols-3 gap-4 items-center border-b py-2 px-4"
-              >
-                <div>
-                  <AppDateTimePicker
-                    v-model="entry.startFormatted"
-                    label="Start Time"
-                    placeholder="Select start time"
-                    :config="{ enableTime: true, enableSeconds: true, dateFormat: 'Y-m-d\\TH:i:s', altInput: true, altFormat: 'Y-m-d h:i:s K' }"
-                  />
-                </div>
-
-                <div>
-                  <AppDateTimePicker
-                    v-model="entry.endFormatted"
-                    label="End Time"
-                    placeholder="Select end time"
-                    :config="{ enableTime: true, enableSeconds: true, dateFormat: 'Y-m-d\\TH:i:s', altInput: true, altFormat: 'Y-m-d h:i:s K' }"
-                  />
-                </div>
-
-                <div class="d-flex gap-4 justify-space-between">
-                  <span>{{ entry.trackedTimeDisplay }}</span>
-                  <div v-if="entry.logs.length">
-                    <VIcon
-                      v-tooltip="'View Logs'"
-                      color="primary"
-                      size="18"
-                      icon="tabler-logs"
-                      class="me-2 cursor-pointer"
-                      @click="displayLogsForEntry(entry)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </VCol>
-
-            <VCol
-              cols="12"
-              class="d-flex justify-end flex-wrap gap-3 mt-5"
-            >
+            <VCol cols="12" md="2" class="text-end">
               <VBtn
-                type="submit"
-                color="primary"
-                class="me-3"
+                prepend-icon="tabler-trash"
+                class="btn-delete-github"
+                @click="deleteEntry(index)"
               >
-                Save Changes
+                Delete
               </VBtn>
             </VCol>
           </VRow>
-        </VForm>
+
+          <VRow class="mt-3">
+            <VCol cols="8">
+              <div class="d-flex flex-column flex-md-row align-items-center gap-2">
+                <span class="text-muted">Tracked Time:</span>
+                <VChip
+                  label
+                  class="chip-time-new"
+                  color="success"
+                  size="small"
+                  outlined
+                >
+                  {{ entry.trackedTimeDisplay }}
+                </VChip>
+                <VChip
+                  v-if="entry.oldTrackedTimeDisplay && entry.trackedTimeDisplay !== entry.oldTrackedTimeDisplay"
+                  label
+                  class="chip-time-old"
+                  size="small"
+                  outlined
+                >
+                  <s>{{ entry.oldTrackedTimeDisplay }}</s>
+                </VChip>
+              </div>
+            </VCol>
+            <VCol cols="4" class="text-end">
+              <VChip
+                v-if="entry.oldTrackedTimeDisplay && entry.trackedTimeDisplay !== entry.oldTrackedTimeDisplay"
+                label
+                class="chip-github"
+                size="small"
+                outlined
+              >
+                Modified
+              </VChip>
+            </VCol>
+          </VRow>
+        </div>
       </VCardText>
+
+      <VCardActions class="d-flex justify-content-end">
+        <VBtn
+          color="primary"
+          variant="tonal"
+          @click="submitForm"
+        >
+          Save Changes
+        </VBtn>
+      </VCardActions>
     </VCard>
   </VDialog>
 </template>
@@ -169,15 +139,15 @@ const errors = ref({})
 const logsToDisplay = ref([])
 const displayLogs = ref(false)
 
-const headers = ref([
-  { title: 'Start Time', key: 'start', sortable: false },
-  { title: 'End Time', key: 'end', sortable: false },
-  { title: 'Tracked Time', key: 'trackedTimeDisplay', sortable: false },
-])
+const datetimeConfig = {
+  enableTime: true,
+  enableSeconds: true,
+  dateFormat: 'Y-m-d\\TH:i:s',
+  altInput: true,
+  altFormat: 'Y-m-d h:i:s K',
+}
 
 const calculateTrackedTime = (start, end) => {
-  console.log(start, end)
-
   if (!start || !end) return 'N/A'
 
   const parseFormat = date =>
@@ -186,10 +156,6 @@ const calculateTrackedTime = (start, end) => {
   const startDate = parseFormat(start)
   const endDate = parseFormat(end)
 
-  console.log(startDate, endDate)
-
-  // const startDate = parse(start, "yyyy-MM-dd'T'HH:mm:ss", new Date())
-  // const endDate = parse(end, "yyyy-MM-dd'T'HH:mm:ss", new Date())
   const seconds = differenceInSeconds(endDate, startDate)
   if (seconds < 0) return 'Invalid Time'
 
@@ -201,18 +167,25 @@ const calculateTrackedTime = (start, end) => {
 }
 
 const watchTimeEntries = () => {
-  if (!localMemberDetails.value?.timeEntries) return
-
-  localMemberDetails.value.timeEntries.forEach(entry => {
-    watch(
-      () => [entry.startFormatted, entry.endFormatted],
-      ([newStart, newEnd]) => {
-        entry.trackedTimeDisplay = calculateTrackedTime(newStart, newEnd)
-      },
-      { immediate: true, deep: true },
-    )
-  })
-}
+  watch(
+    () => localMemberDetails.value.timeEntries,
+    (timeEntries) => {
+      timeEntries.forEach((entry) => {
+        if (!entry._isWatching) {
+          watch(
+            () => [entry.startFormatted, entry.endFormatted],
+            ([newStart, newEnd]) => {
+              entry.trackedTimeDisplay = calculateTrackedTime(newStart, newEnd);
+            },
+            { immediate: true, deep: true }
+          );
+          entry._isWatching = true; // Flag to prevent duplicate watchers
+        }
+      });
+    },
+    { immediate: true, deep: true }
+  );
+};
 
 const convertToDatetimeLocal = dateString => {
   if (!dateString) return ''
@@ -285,6 +258,10 @@ watch(
             convertToDatetimeLocal(entry.start),
             convertToDatetimeLocal(entry.end),
           ),
+          oldTrackedTimeDisplay: calculateTrackedTime(
+            convertToDatetimeLocal(entry.start),
+            convertToDatetimeLocal(entry.end),
+          ),
         })),
       }
       watchTimeEntries()
@@ -292,17 +269,121 @@ watch(
   },
   { immediate: true },
 )
+
+const addNewEntry = () => {
+  localMemberDetails.value.timeEntries.push({
+    id: null,
+    startFormatted: '',
+    endFormatted: '',
+    trackedTimeDisplay: 'N/A',
+    _isWatching: false,
+  })
+}
+
+const deleteEntry = index => {
+  localMemberDetails.value.timeEntries.splice(index, 1)
+}
 </script>
 
-<style scoped>
-.grid {
-  display: grid;
+<style lang="scss" scoped>
+.github-dialog {
+  .v-card {
+    background-color: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
 }
-.grid-cols-3 {
-  grid-template-columns: repeat(3, 1fr);
+
+.github-card {
+  padding: 1.5rem;
 }
-.gap-4 {
-  gap: 1rem;
+
+.entry-card-github {
+  background-color: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #f6f8fa;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.input-github {
+  .v-input {
+    background-color: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 0.5rem;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: #0969da;
+    }
+  }
+}
+
+.btn-github {
+  background-color: #0969da;
+  color: #ffffff;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #055dba;
+  }
+}
+
+.btn-delete-github {
+  background-color: #cf222e;
+  color: #ffffff;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #a40f1b;
+  }
+}
+
+.chip-github {
+  background-color: #ddf4ff;
+  color: #0969da;
+  border: 1px solid #0969da;
+  border-radius: 12px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.chip-time-new {
+  background-color: #ddf4ff;
+  color: #0969da;
+  border: 1px solid #0969da;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+}
+
+.chip-time-old {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #d0d7de;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  padding: 0.2rem 0.5rem;
+
+  s {
+    color: #6c757d;
+  }
 }
 </style>
 

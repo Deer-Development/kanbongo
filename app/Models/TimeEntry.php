@@ -1,17 +1,20 @@
 <?php
 
 namespace App\Models;
+use App\Enums\LogAction;
 use App\Traits\Filterable;
 use Carbon\CarbonInterval;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class TimeEntry extends Model
 {
-    use Filterable;
+    use Filterable, SoftDeletes;
 
     protected $guarded = ['id'];
 
@@ -19,6 +22,37 @@ class TimeEntry extends Model
         'start' => 'datetime',
         'end' => 'datetime',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::updated(function ($entry) {
+            Log::create([
+                'loggable_type' => self::class,
+                'loggable_id' => $entry->id,
+                'user_id' => Auth::user()->id,
+                'action' => LogAction::UPDATE,
+                'old_data' => $entry->getOriginal(),
+                'new_data' => $entry->getChanges(),
+                'task_id' => $entry->task_id,
+                'container_id' => $entry->container_id,
+            ]);
+        });
+
+        static::deleting(function ($entry) {
+            Log::create([
+                'loggable_type' => self::class,
+                'loggable_id' => $entry->id,
+                'user_id' => Auth::user()->id,
+                'action' => LogAction::DELETE,
+                'task_id' => $entry->task_id,
+                'container_id' => $entry->container_id,
+                'old_data' => $entry->toArray(),
+                'new_data' => null,
+            ]);
+        });
+    }
 
     public function user(): BelongsTo
     {
@@ -35,8 +69,8 @@ class TimeEntry extends Model
         return $this->belongsTo(Container::class, 'container_id');
     }
 
-    public function logs(): HasMany
+    public function logs(): MorphMany
     {
-        return $this->hasMany(TimeEntryLog::class);
+        return $this->morphMany(Log::class, 'loggable');
     }
 }
