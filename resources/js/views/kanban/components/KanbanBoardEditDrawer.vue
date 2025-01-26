@@ -174,6 +174,8 @@ const closeDrawer = () => {
   refEditTaskForm.value?.reset()
   messages.value = []
   message.value = ''
+
+  emit('refreshKanbanData')
 }
 
 const isDeleteDisabled = computed(() => {
