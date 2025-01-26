@@ -61,6 +61,8 @@ const getPriorityColor = priority => {
     return '#338DFF'
   if (priority == Priority.LOW)
     return '#30c15a'
+
+  return '#c2c2c3'
 }
 
 const priorityMenu = ref(null)
@@ -190,9 +192,7 @@ onUnmounted(() => {
     :link="false"
     class="kanban-card position-relative"
   >
-    <div
-      class="card-header"
-    >
+    <div class="card-header">
       <div class="d-flex align-center">
         <VIcon
           class="card-handler"
@@ -202,7 +202,7 @@ onUnmounted(() => {
         />
         <h3
           v-tooltip="item.name"
-          class="card-title truncate"
+          class="card-title"
           @click="$emit('editKanbanItem', item.id)"
         >
           {{ item.name }}
@@ -211,51 +211,59 @@ onUnmounted(() => {
     </div>
 
     <VCardText class="card-body">
-      <div v-if="dueDate">
-        <AppDateTimePicker
-          v-model="dueDate"
-          density="compact"
-          outlined
-          prepend-icon="tabler-calendar"
-          @change="updateDueDate"
-        />
-        <VDivider class="my-2" />
-      </div>
-      <div class="kanban-row">
-        <VMenu
-          v-model="priorityMenu"
-          offset-y
+      <VRow>
+        <VCol cols="3">
+          <VMenu
+            v-model="priorityMenu"
+            offset-y
+          >
+            <template #activator="{ props }">
+              <VChip
+                v-bind="props"
+                :color="getPriorityColor(item.priority)"
+                size="small"
+                variant="elevated"
+                class="comments-chip"
+              >
+                <VIcon
+                  left
+                  size="16"
+                >
+                  tabler-flag
+                </VIcon>
+              </VChip>
+            </template>
+            <div class="priority-options">
+              <VChip
+                v-for="(label, key) in Priority.data"
+                :key="key"
+                :color="getPriorityColor(key)"
+                class="chip-priority-github"
+                @click="setPriority(key)"
+              >
+                {{ label }}
+              </VChip>
+            </div>
+          </VMenu>
+        </VCol>
+        <VCol cols="5" class="px-0">
+          <AppDateTimePicker
+            v-model="dueDate"
+            density="compact"
+            variant="underlined"
+            placeholder="Due Date"
+            prepend-inner-icon="tabler-calendar"
+            @change="updateDueDate"
+          />
+        </VCol>
+        <VCol
+          cols="4"
+          class="d-flex justify-end"
         >
-          <template #activator="{ props }">
-            <VBtn
-              v-bind="props"
-              :color="getPriorityColor(item.priority)"
-              size="x-small"
-              class="btn-github"
-              prepend-icon="tabler-flag"
-            >
-              {{ Priority.getName(item.priority) || "Set Priority" }}
-            </VBtn>
-          </template>
-          <div class="priority-options">
-            <VChip
-              v-for="(label, key) in Priority.data"
-              :key="key"
-              :color="getPriorityColor(key)"
-              variant="flat"
-              class="chip-priority-github"
-              @click="setPriority(key)"
-            >
-              {{ label }}
-            </VChip>
-          </div>
-        </VMenu>
-        <div class="d-flex flex gap-2">
           <VChip
-            v-if="item.comments.length"
-            size="x-small"
-            variant="text"
-            color="warning"
+            size="small"
+            variant="elevated"
+            :color="item.comments.length ? '#faca15' : '#c2c2c3'"
             class="comments-chip"
           >
             <VIcon
@@ -263,99 +271,100 @@ onUnmounted(() => {
               size="16"
             >
               tabler-message-2
-            </VIcon>
-            {{ item.comments.length }}
+            </VIcon> {{ item.comments.length }}
           </VChip>
+        </VCol>
+      </VRow>
+      <VDivider class="my-2" />
+      <VRow class="d-flex gap-1 justify-space-between">
+        <VCol cols="8" class="d-flex gap-1">
+          <VMenu
+            v-model="membersMenu"
+            offset-y
+          >
+            <template #activator="{ props }">
+              <VAvatar
+                v-bind="props"
+                size="28"
+                class="cursor-pointer"
+                :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+              >
+                <VIcon
+                  size="18"
+                  icon="tabler-users-plus"
+                />
+              </VAvatar>
+            </template>
+            <VList
+              class="github-style-list"
+              style="min-width: 100%;"
+            >
+              <template v-if="props.availableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id)).length">
+                <VListItem
+                  v-for="(member, index) in props.availableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id))"
+                  :key="member.id"
+                  class="github-list-item"
+                  @click="addMember(member.user_id)"
+                >
+                  <VListItemTitle class="font-medium text-sm text-gray-800">
+                    {{ member.user.full_name }}
+                  </VListItemTitle>
+                  <VListItemSubtitle class="text-xs text-gray-500">
+                    {{ member.user.email }}
+                  </VListItemSubtitle>
+                </VListItem>
+              </template>
+              <template v-else>
+                <VListItem class="empty-state text-center">
+                  <VListItemTitle class="text-gray-500 text-sm">
+                    No available members to add
+                  </VListItemTitle>
+                </VListItem>
+              </template>
+            </VList>
+          </VMenu>
+          <div class="v-avatar-group">
+            <template
+              v-for="(member, index) in item.members"
+              :key="member.id"
+            >
+              <VAvatar
+                v-tooltip="member.user.full_name"
+                size="28"
+                class="cursor-pointer"
+                :color="member.isTiming ? '#38a169' : (member.timeEntries.length ? 'rgb(249 220 107)' : '#EEEDF0')"
+                :class="member.isTiming ? 'glow' : (member.timeEntries.length ? 'worked' : '')"
+                @click="editTimer(member, item.id, item.name)"
+              >
+                <template v-if="member.user.avatar">
+                  <img
+                    :src="member.user.avatar"
+                    alt="Avatar"
+                  >
+                </template>
+                <template v-else>
+                  <span>{{ member.user.avatar_or_initials }}</span>
+                </template>
+              </VAvatar>
+            </template>
+          </div>
+        </VCol>
+        <VCol cols="3" class="d-flex justify-end">
           <VChip
             v-if="item.members.some(member => authId === member.user.id)"
-            size="x-small"
-            variant="text"
-            class="play-stop-btn"
+            size="small"
+            variant="elevated"
             :disabled="hasLocalActiveTimer && !item.members.some(member => authId === member.user.id && member.isTiming)"
             :class="item.members.some(member => authId === member.user.id && member.isTiming) ? 'stop-btn' : 'play-btn'"
             @click.stop="toggleTimer(item.members.find(member => authId === member.user.id))"
           >
             <VIcon
               :icon="item.members.some(member => authId === member.user.id && member.isTiming) ? 'tabler-pause' : 'tabler-play'"
-              size="14"
-              class="play-stop-icon"
+              size="16"
             />
           </VChip>
-        </div>
-      </div>
-      <VDivider class="my-2" />
-      <div class="d-flex gap-1 w-100">
-        <VMenu
-          v-model="membersMenu"
-          offset-y
-        >
-          <template #activator="{ props }">
-            <VAvatar
-              v-bind="props"
-              size="28"
-              class="cursor-pointer"
-              :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-            >
-              <VIcon
-                size="18"
-                icon="tabler-users-plus"
-              />
-            </VAvatar>
-          </template>
-          <VList
-            class="github-style-list"
-            style="min-width: 100%;"
-          >
-            <template v-if="props.availableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id)).length">
-              <VListItem
-                v-for="(member, index) in props.availableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id))"
-                :key="member.id"
-                class="github-list-item"
-                @click="addMember(member.user_id)"
-              >
-                <VListItemTitle class="font-medium text-sm text-gray-800">
-                  {{ member.user.full_name }}
-                </VListItemTitle>
-                <VListItemSubtitle class="text-xs text-gray-500">
-                  {{ member.user.email }}
-                </VListItemSubtitle>
-              </VListItem>
-            </template>
-            <template v-else>
-              <VListItem class="empty-state text-center">
-                <VListItemTitle class="text-gray-500 text-sm">
-                  No available members to add
-                </VListItemTitle>
-              </VListItem>
-            </template>
-          </VList>
-        </VMenu>
-        <div class="v-avatar-group">
-          <template
-            v-for="(member, index) in item.members"
-            :key="member.id"
-          >
-            <VAvatar
-              v-tooltip="member.user.full_name"
-              size="28"
-              class="cursor-pointer"
-              :color="member.isTiming ? 'success' : (member.timeEntries.length ? '#FACA15' : '#EEEDF0')"
-              :class="member.isTiming ? 'glow' : (member.timeEntries.length ? 'worked' : '')"
-              @click="editTimer(member, item.id, item.name)"
-            >
-              <template v-if="member.user.avatar">
-                <img
-                  :src="member.user.avatar"
-                  alt="Avatar"
-                >
-              </template>
-              <template v-else>
-                <span>{{ member.user.avatar_or_initials }}</span>
-              </template>
-            </VAvatar>
-          </template>
-        </div>
-      </div>
+        </VCol>
+      </VRow>
     </VCardText>
   </VCard>
 </template>
@@ -402,12 +411,15 @@ onUnmounted(() => {
 }
 
 .card-title {
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 14px;
   font-weight: 600;
   color: #1f2937;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .card-body {
@@ -421,7 +433,7 @@ onUnmounted(() => {
 }
 
 .worked {
-  border: 1px solid rgba(53, 186, 109, 0.8);
+  border: 1px solid #f8d234;
 }
 
 @keyframes pulse {
@@ -472,16 +484,8 @@ onUnmounted(() => {
 }
 
 .comments-chip {
-  background-color: #faca15;
   color: #ffffff !important;
-  font-size: 12px;
-  font-weight: 500;
-  display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-radius: 16px;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .comments-chip:hover {

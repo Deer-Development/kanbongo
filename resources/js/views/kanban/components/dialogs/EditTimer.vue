@@ -38,8 +38,8 @@
             </template>
           </VAvatar>
         </div>
-        <div>
-          <span class="text-muted">Tracked Time:</span>
+        <div class="d-flex flex-column gap-1">
+          <span class="text-success font-weight-bold">Tracked Time</span>
           <VChip
             label
             class="chip-time-new"
@@ -511,7 +511,7 @@ watch(
 
 .btn-github {
   background-color: #0969da;
-  color: #ffffff;
+  color: #ffffff !important;
   font-weight: 600;
   padding: 0.5rem 1rem;
   border-radius: 6px;
@@ -562,7 +562,7 @@ watch(
 }
 
 .worked {
-  border: 1px solid rgba(53, 186, 109, 0.8);
+  border: 1px solid #f8d234;
 }
 
 @keyframes pulse {
