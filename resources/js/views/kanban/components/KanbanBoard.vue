@@ -10,6 +10,7 @@ import KanbanItems from './KanbanItems.vue'
 import ConfettiExplosion from "vue-confetti-explosion"
 import { now } from "@vueuse/core"
 import { ref, defineExpose, defineProps, defineEmits, watch } from 'vue'
+import { useMobileDetection } from "vue3-mobile-detection"
 import EditTimerDialog from "@/views/kanban/components/dialogs/EditTimer.vue"
 
 const props = defineProps({
@@ -68,6 +69,7 @@ const editKanbanItem = ref()
 const isEditTimerDialogVisible = ref(false)
 const memberDetails = ref(null)
 const taskId = ref(null)
+const { isMobile } = useMobileDetection()
 
 const addNewBoard = () => {
   refAddNewBoard.value?.validate().then(valid => {
@@ -130,6 +132,7 @@ dragAndDrop({
   parent: kanbanWrapper,
   values: localKanbanData,
   dragHandle: '.drag-handler',
+  disabled: isMobile.value,
   plugins: [animations()],
 })
 
