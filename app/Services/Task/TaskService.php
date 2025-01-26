@@ -132,6 +132,10 @@ class TaskService extends BaseService
 
         try {
             foreach ($data as $timer) {
+                if(isset($timer['deleted']) && $timer['deleted']) {
+                    TimeEntry::destroy($timer['id']);
+                    continue;
+                }
                 if (isset($timer['id']) && $timer['id']) {
                     $timeEntry = TimeEntry::find($timer['id']);
 

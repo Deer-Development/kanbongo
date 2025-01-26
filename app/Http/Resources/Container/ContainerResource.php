@@ -15,12 +15,33 @@ class ContainerResource extends JsonResource
         $authUser = Auth::user();
         $isOwner = $authUser->id === $this->owner_id;
         $isMember = $this->members->contains('user_id', $authUser->id);
-        $hasActiveTimeEntries = $this->boards->flatMap(function ($board) {
-            return $board->tasks;
-        })->flatMap(function ($task) {
-            return $task->timeEntries;
-        })->contains('end', null);
         $isSuperAdmin = $authUser->isSuperAdmin();
+        $boards = $this->boards()->orderBy('order')->get()->map(function ($board) {
+            return [
+                'id' => $board->id,
+                'container_id' => $board->container_id,
+                'name' => $board->name,
+                'description' => $board->description,
+                'is_active' => $board->is_active,
+                'order' => $board->order,
+                'color' => $board->color,
+                'created_at' => $board->created_at,
+                'updated_at' => $board->updated_at,
+                'deleted_at' => $board->deleted_at,
+                'members' => $board->members,
+                'tasks' => TaskResource::collection($board->tasks()->orderBy('order')->get()),
+            ];
+        });
+
+        $hasActiveTimeEntries = $boards->flatMap(function ($board) {
+            return collect($board['tasks']);
+        })->some(function ($task) use ($authUser) {
+            return collect($task->members)->contains(function ($member) use ($authUser) {
+                return $member['user_id'] === $authUser->id &&$member->user->timeEntries->some(function ($timeEntry) {
+                    return $timeEntry->end === null;
+                });
+            });
+        });
 
         return [
             'id' => $this->id,
@@ -30,22 +51,7 @@ class ContainerResource extends JsonResource
             'owner_id' => $this->owner_id,
             'owner' => $this->owner,
             'members' => $this->members,
-            'boards' => $this->boards()->orderBy('order')->get()->map(function ($board) {
-                return [
-                    'id' => $board->id,
-                    'container_id' => $board->container_id,
-                    'name' => $board->name,
-                    'description' => $board->description,
-                    'is_active' => $board->is_active,
-                    'order' => $board->order,
-                    'color' => $board->color,
-                    'created_at' => $board->created_at,
-                    'updated_at' => $board->updated_at,
-                    'deleted_at' => $board->deleted_at,
-                    'members' => $board->members,
-                    'tasks' => TaskResource::collection($board->tasks()->orderBy('order')->get()),
-                ];
-            }),
+            'boards' => $boards,
             'auth' => [
                 'id' => $authUser->id,
                 'is_owner' => $isOwner,

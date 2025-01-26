@@ -56,6 +56,7 @@ const colors = [
 
 const kanbanWrapper = ref()
 const localKanbanData = ref(props.kanbanData.boards)
+const hasActiveTimer = ref(props.kanbanData.auth.has_active_time_entries)
 const localAvailableMembers = ref(props.kanbanData.members)
 const isKanbanBoardEditVisible = ref(false)
 const isAddNewFormVisible = ref(false)
@@ -135,6 +136,7 @@ dragAndDrop({
 // assign the new kanban data to the local kanban data
 watch(() => props, () => {
   localKanbanData.value = props.kanbanData.boards
+  hasActiveTimer.value = props.kanbanData.auth.has_active_time_entries
 
   // 👉 remap the nodes when we rename the board: https://github.com/formkit/drag-and-drop/discussions/52#discussioncomment-8995203
   remapNodes(kanbanWrapper.value)
@@ -188,6 +190,7 @@ defineExpose({
         :key="kb.id"
       >
         <KanbanItems
+          :has-active-timer="hasActiveTimer"
           :group-name="groupName"
           :kanban-ids="kb.tasks?.map(task => task.id)"
           :board-name="kb.name"
@@ -196,10 +199,10 @@ defineExpose({
           :kanban-items="kb.tasks"
           :kanban-data="kb"
           :is-super-admin="props.kanbanData.auth.is_super_admin"
-          :has-active-timer="props.kanbanData.auth.has_active_time_entries"
           :is-owner="props.kanbanData.auth.is_owner"
           :is-member="props.kanbanData.auth.is_member"
           :auth-id="props.kanbanData.auth.id"
+          :available-members="localAvailableMembers"
           :colors="colors"
           @delete-board="deleteBoard"
           @toggle-timer="toggleTimer"
@@ -363,7 +366,6 @@ defineExpose({
     .kanban-board-header {
       position: sticky;
       top: 0;
-      margin-bottom: 0.2rem;
       z-index: 10;
       background-color: #f1f1f3;
       padding: 0.5rem;
@@ -373,7 +375,7 @@ defineExpose({
 
     .kanban-board-drop-zone {
       overflow: auto;
-      padding: 0.1rem;
+      padding: 0.2rem 0 0.1rem 0.1rem;
       min-block-size: 100%;
       background-color: #fbf8f8;
       scroll-behavior: smooth;

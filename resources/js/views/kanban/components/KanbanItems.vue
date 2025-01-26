@@ -37,6 +37,11 @@ const props = defineProps({
     type: null,
     required: true,
   },
+  availableMembers: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
   isSuperAdmin: { type: Boolean, required: false, default: false },
   hasActiveTimer: { type: Boolean, required: false, default: false },
   isOwner: { type: Boolean, required: false, default: false },
@@ -59,6 +64,7 @@ const emit = defineEmits([
 const refKanbanBoard = ref()
 const localBoardName = ref(props.boardName)
 const localBoardColor = ref(props.boardColor)
+const hasLocalActiveTimer = ref(false)
 const localIds = ref(props.kanbanIds)
 const isAddNewFormVisible = ref(false)
 const isBoardNameEditing = ref(false)
@@ -110,6 +116,7 @@ dragAndDrop({
   values: localIds,
   group: props.groupName,
   draggable: child => child.classList.contains('kanban-card'),
+  dragHandle: '.card-handler',
   plugins: [animations()],
   performTransfer: (state, data) => {
     performTransfer(state, data)
@@ -234,46 +241,45 @@ const refreshData = () => {
         v-else
         class="d-flex align-center justify-space-between "
       >
-        <VChip
-          class="text-md font-weight-medium text-truncate text-center"
-          :color="props.boardColor"
-          variant="elevated"
-        >
-          <VIcon
-            icon="tabler-circle"
-            size="14"
-            class="mr-1"
-          />
-          {{ boardName }}
-        </VChip>
-
         <div class="d-flex align-center">
           <VIcon
             class="drag-handler"
             size="20"
-            icon="tabler-arrows-move"
+            icon="tabler-grip-vertical"
           />
-
+          <VChip
+            class="text-md font-weight-medium text-truncate text-center"
+            :color="props.boardColor"
+            size="small"
+            variant="elevated"
+          >
+            <VIcon
+              icon="tabler-layout-kanban"
+              size="16"
+              class="mr-1"
+            />
+            {{ boardName }}
+          </VChip>
+        </div>
+        <div class="d-flex align-center gap-2">
           <VIcon
+            v-tooltip="'Edit Board Name'"
             class="text-high-emphasis"
             size="20"
             icon="tabler-edit"
             @click="isBoardNameEditing = true"
           />
+          <VIcon
+            v-tooltip="'Add New Task'"
+            class="text-high-emphasis"
+            size="20"
+            icon="tabler-square-rounded-plus"
+            @click="isAddNewFormVisible = !isAddNewFormVisible"
+          />
         </div>
       </div>
 
       <div class="add-new-form mt-2">
-        <VBtn
-          size="small"
-          class="w-100"
-          variant="elevated"
-          color="primary"
-          @click="isAddNewFormVisible = !isAddNewFormVisible"
-        >
-          Add New Task
-        </VBtn>
-
         <VForm
           v-if="isAddNewFormVisible"
           ref="refForm"
@@ -331,6 +337,7 @@ const refreshData = () => {
           :is-owner="props.isOwner"
           :is-member="props.isMember"
           :auth-id="props.authId"
+          :available-members="props.availableMembers"
           @delete-kanban-item="deleteItem"
           @toggle-timer="toggleTimer"
           @edit-timer="editTimerFn"
@@ -346,7 +353,6 @@ const refreshData = () => {
 .kanban-board-header {
   .drag-handler {
     cursor: grab;
-    opacity: 0;
 
     &:active {
       cursor: grabbing;
