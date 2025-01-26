@@ -124,13 +124,13 @@ const deleteKanbanItem = () => {
 
 const getPriorityColor = priority => {
   if (priority == Priority.URGENT)
-    return 'success'
+    return '#FF5733'
   if (priority == Priority.HIGH)
-    return 'error'
+    return '#FFA533'
   if (priority == Priority.NORMAL)
-    return 'info'
+    return '#338DFF'
   if (priority == Priority.LOW)
-    return 'warning'
+    return '#33FF6D'
 
   return 'primary'
 }
