@@ -367,7 +367,6 @@ defineExpose({
       position: sticky;
       top: 0;
       z-index: 10;
-      background-color: #f1f1f3;
       padding: 0.5rem;
       border-top-left-radius: 8px;
       border-top-right-radius: 8px;

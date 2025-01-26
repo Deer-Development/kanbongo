@@ -183,7 +183,14 @@ const refreshData = () => {
 
 <template>
   <div class="kanban-board">
-    <div class="kanban-board-header pb-4">
+    <div
+      class="kanban-board-header"
+      :style="{
+        backgroundColor: props.boardColor 
+          ? `${props.boardColor}33`
+          : '#f1f1f3'
+      }"
+    >
       <VForm
         v-if="isBoardNameEditing"
         ref="refKanbanBoardTitle"
@@ -322,6 +329,11 @@ const refreshData = () => {
       v-if="localIds"
       ref="refKanbanBoard"
       class="kanban-board-drop-zone d-flex flex-column gap-2"
+      :style="{
+        backgroundColor: props.boardColor
+          ? `${props.boardColor}05`
+          : '#f1f1f3'
+      }"
       :class="localIds.length ? 'mb-4' : ''"
     >
       <template
