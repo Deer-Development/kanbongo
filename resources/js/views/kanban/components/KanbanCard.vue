@@ -135,8 +135,8 @@ watch(() => props.hasActiveTimer, () => {
   hasLocalActiveTimer.value = props.hasActiveTimer
 }, { deep: true })
 
-const editTimer = (member, id) => {
-  emit('editTimer', member, id)
+const editTimer = (member, id, name) => {
+  emit('editTimer', member, id, name)
 }
 
 const updateTask = async updates => {
@@ -267,7 +267,7 @@ onUnmounted(() => {
             {{ item.comments.length }}
           </VChip>
           <VChip
-            v-if="isSuperAdmin || item.members.some(member => authId === member.user.id)"
+            v-if="item.members.some(member => authId === member.user.id)"
             size="x-small"
             variant="text"
             class="play-stop-btn"
@@ -341,7 +341,7 @@ onUnmounted(() => {
               class="cursor-pointer"
               :color="member.isTiming ? 'success' : (member.timeEntries.length ? '#FACA15' : '#EEEDF0')"
               :class="member.isTiming ? 'glow' : (member.timeEntries.length ? 'worked' : '')"
-              @click="editTimer(member, item.id)"
+              @click="editTimer(member, item.id, item.name)"
             >
               <template v-if="member.user.avatar">
                 <img
@@ -473,7 +473,7 @@ onUnmounted(() => {
 
 .comments-chip {
   background-color: #faca15;
-  color: #1f2937;
+  color: #ffffff !important;
   font-size: 12px;
   font-weight: 500;
   display: flex;

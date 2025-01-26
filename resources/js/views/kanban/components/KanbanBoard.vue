@@ -68,6 +68,7 @@ const editKanbanItem = ref()
 const isEditTimerDialogVisible = ref(false)
 const memberDetails = ref(null)
 const taskId = ref(null)
+const taskName = ref(null)
 const isMobile = useMediaQuery('(max-width: 768px)')
 
 const addNewBoard = () => {
@@ -93,9 +94,10 @@ const toggleTimer = (member, taskId) => {
   emit('toggleTimer', member, taskId)
 }
 
-const editTimer = (member, id) => {
+const editTimer = (member, id, name) => {
   memberDetails.value = member
   taskId.value = id
+  taskName.value = name
   isEditTimerDialogVisible.value = true
 }
 
@@ -103,6 +105,7 @@ const closeDialog = () => {
   isEditTimerDialogVisible.value = false
   taskId.value = null
   memberDetails.value = null
+  taskName.value = null
 
   refreshData()
 }
@@ -309,6 +312,7 @@ defineExpose({
     v-model:is-dialog-visible="isEditTimerDialogVisible"
     v-model:member-details="memberDetails"
     v-model:task-id="taskId"
+    v-model:task-name="taskName"
     @form-submitted="closeDialog"
   />
 </template>

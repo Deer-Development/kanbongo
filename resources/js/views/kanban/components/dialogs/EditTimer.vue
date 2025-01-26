@@ -9,29 +9,71 @@
       class="close-btn"
       @click="closeDialog"
     />
-    <VCard class="p-4 github-card">
-      <VCardTitle class="d-flex justify-content-between align-items-center">
-        <span class="fs-6 fw-bold text-dark">Manage Time Entries</span>
+    <VCard
+      v-if="props.isDialogVisible"
+      class="p-4 github-card"
+    >
+      <VCardTitle class="d-flex justify-content-between align-items-center bg-warning rounded">
+        <span class="fs-6 fw-bold text-white text-wrap text-h6">{{ props.taskName }}</span>
       </VCardTitle>
 
-      <VCardText>
-        <VBtn
-          class="mb-3"
-          color="primary"
-          variant="outlined"
-          prepend-icon="tabler-plus"
-          @click="addNewEntry"
-        >
-          Add New Entry
-        </VBtn>
+      <div class="d-flex align-items-center text-center gap-1 mt-2">
+        <div class="mt-2">
+          <VAvatar
+            v-tooltip="localMemberDetails.user.full_name"
+            size="28"
+            class="cursor-pointer"
+            :color="localMemberDetails.isTiming ? 'success' : (localMemberDetails.timeEntries.length ? '#FACA15' : '#EEEDF0')"
+            :class="localMemberDetails.isTiming ? 'glow' : (localMemberDetails.timeEntries.length ? 'worked' : '')"
+            @click="editTimer(member, item.id, item.name)"
+          >
+            <template v-if="localMemberDetails.user.avatar">
+              <img
+                :src="localMemberDetails.user.avatar"
+                alt="Avatar"
+              >
+            </template>
+            <template v-else>
+              <span>{{ localMemberDetails.user.avatar_or_initials }}</span>
+            </template>
+          </VAvatar>
+        </div>
+        <div>
+          <span class="text-muted">Tracked Time:</span>
+          <VChip
+            label
+            class="chip-time-new"
+            color="success"
+            size="small"
+            outlined
+          >
+            {{ localMemberDetails.totalTrackedTimeDisplay }}
+          </VChip>
+        </div>
+        <!--        <div -->
+        <!--          v-if="getActiveTimeEntry(localMemberDetails)" -->
+        <!--          class="active-timer-badge" -->
+        <!--        > -->
+        <!--          <div class="badge-title mt-2"> -->
+        <!--            Active Timer -->
+        <!--          </div> -->
+        <!--          <div class="badge-time"> -->
+        <!--            {{ activeTimerDisplay }} -->
+        <!--          </div> -->
+        <!--        </div> -->
+      </div>
 
+      <VCardText>
         <div
           v-for="(entry, index) in localMemberDetails.timeEntries"
           :key="index"
           class="entry-card-github"
           :class="[{ 'entry-card-deleted': entry.deleted }]"
         >
-          <div v-if="entry.added_manually" class="chip-manually-added">
+          <div
+            v-if="entry.added_manually"
+            class="chip-manually-added"
+          >
             <VChip
               label
               color="warning"
@@ -96,7 +138,7 @@
                   size="small"
                   outlined
                 >
-                  {{ entry.trackedTimeDisplay }}
+                  {{ entry.end ? entry.trackedTimeDisplay : activeTimerDisplay }}
                 </VChip>
                 <VChip
                   v-if="entry.oldTrackedTimeDisplay && entry.trackedTimeDisplay !== entry.oldTrackedTimeDisplay"
@@ -125,6 +167,15 @@
             </VCol>
           </VRow>
         </div>
+        <VBtn
+          class="mb-3"
+          color="primary"
+          variant="outlined"
+          prepend-icon="tabler-plus"
+          @click="addNewEntry"
+        >
+          Add New Entry
+        </VBtn>
       </VCardText>
 
       <VCardActions class="d-flex justify-content-end">
@@ -143,7 +194,7 @@
 <script setup>
 import { defineProps, nextTick, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
-import { parse, format, differenceInSeconds } from 'date-fns'
+import { parse, format, differenceInSeconds, parseISO } from 'date-fns'
 
 const props = defineProps({
   isDialogVisible: {
@@ -154,9 +205,13 @@ const props = defineProps({
     type: Number,
     required: false,
   },
+  taskName: {
+    type: String,
+    required: false,
+  },
   memberDetails: {
     type: Object,
-    required: false,
+    default: () => ({ user: {}, timeEntries: [] }),
   },
 })
 
@@ -166,6 +221,7 @@ const toast = useToast()
 const refForm = ref()
 const localMemberDetails = ref(props.memberDetails)
 const errors = ref({})
+let activeTimerInterval
 
 const datetimeConfig = {
   enableTime: true,
@@ -176,8 +232,6 @@ const datetimeConfig = {
 }
 
 const calculateTrackedTime = (start, end) => {
-  if (!start || !end) return 'N/A'
-
   const parseFormat = date =>
     parse(date, "yyyy-MM-dd'T'HH:mm:ss", new Date())
 
@@ -266,14 +320,56 @@ const closeDialog = () => {
   emit('update:isDialogVisible', false)
 }
 
+const updateActiveTimer = () => {
+  const activeEntry = getActiveTimeEntry(localMemberDetails.value)
+  if (!activeEntry) {
+    activeTimerDisplay.value = "N/A"
+
+    return
+  }
+
+  const rawStartTime = activeEntry.start
+
+  console.log("Raw Start Time:", rawStartTime)
+
+  const localStartTime = parse(rawStartTime, "MM/dd/yyyy hh:mm:ss a", new Date())
+
+  const startTimeUTC = new Date(Date.UTC(
+    localStartTime.getFullYear(),
+    localStartTime.getMonth(),
+    localStartTime.getDate(),
+    localStartTime.getHours(),
+    localStartTime.getMinutes(),
+    localStartTime.getSeconds(),
+  ))
+
+  const nowUTC = new Date()
+
+  const secondsElapsed = Math.floor((nowUTC - startTimeUTC) / 1000)
+
+  if (secondsElapsed < 0) {
+    activeTimerDisplay.value = "Invalid Time"
+
+    return
+  }
+
+  const hours = Math.floor(secondsElapsed / 3600)
+  const minutes = Math.floor((secondsElapsed % 3600) / 60)
+  const seconds = secondsElapsed % 60
+
+  activeTimerDisplay.value = `${hours}h ${minutes}m ${seconds}s`
+}
+
 watch(
   () => props.memberDetails,
   newDetails => {
     if (newDetails) {
+
       localMemberDetails.value = {
         ...newDetails,
         timeEntries: newDetails.timeEntries.map(entry => ({
           ...entry,
+
           startFormatted: convertToDatetimeLocal(entry.start),
           endFormatted: convertToDatetimeLocal(entry.end),
           added_manually: entry.added_manually || false,
@@ -288,6 +384,9 @@ watch(
           ),
         })),
       }
+
+      activeTimerInterval = setInterval(updateActiveTimer, 1000)
+
       watchTimeEntries()
     }
   },
@@ -320,6 +419,25 @@ const deleteEntry = index => {
     entry.deleted = true
   }
 }
+
+const getActiveTimeEntry = member => {
+  if (!member || !member.timeEntries) return null
+
+  return member.timeEntries.find(entry => !entry.end)
+}
+
+const activeTimerDisplay = ref("")
+
+onBeforeUnmount(() => {
+  if (activeTimerInterval) clearInterval(activeTimerInterval)
+})
+
+watch(
+  () => getActiveTimeEntry(localMemberDetails.value),
+  () => {
+    updateActiveTimer()
+  },
+)
 </script>
 
 <style lang="scss" scoped>
@@ -434,6 +552,52 @@ const deleteEntry = index => {
 
   s {
     color: #6c757d;
+  }
+}
+
+.glow {
+  box-shadow: 0 0 8px 2px rgba(72, 187, 120, 0.8);
+  animation: pulse 1.5s infinite ease-in-out;
+  border: 1px solid rgba(53, 186, 109, 0.8);
+}
+
+.worked {
+  border: 1px solid rgba(53, 186, 109, 0.8);
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 8px 2px rgba(72, 187, 120, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(72, 187, 120, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 8px 2px rgba(72, 187, 120, 0.8);
+  }
+}
+.active-timer-badge {
+  display: inline-block;
+  background-color: #28a745;
+  color: #ffffff;
+  border-radius: 5px;
+  padding: 0.2rem 0.5rem;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  .badge-title {
+    font-size: 0.5rem;
+    font-weight: bold;
+    margin-bottom: 0.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-time {
+    font-size: 0.7rem;
+    font-weight: bold;
+    font-family: "Courier New", monospace;
   }
 }
 </style>

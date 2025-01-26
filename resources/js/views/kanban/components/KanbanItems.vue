@@ -130,7 +130,7 @@ dragAndDrop({
   },
   handleEnd: data => {
     handleEnd(data)
-    console.log(props.boardId, localIds.value)
+
     emit('updateItemsState', {
       boardId: props.boardId,
       ids: localIds.value,
@@ -148,8 +148,8 @@ const toggleTimer = (member, taskId) => {
   emit('toggleTimer', member, taskId)
 }
 
-const editTimerFn = (member, taskId) => {
-  emit('editTimer', member, taskId)
+const editTimerFn = (member, taskId, taskName) => {
+  emit('editTimer', member, taskId, taskName)
 }
 
 // 👉 reset add new item form when esc or close
