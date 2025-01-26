@@ -130,7 +130,7 @@ const getPriorityColor = priority => {
   if (priority == Priority.NORMAL)
     return '#338DFF'
   if (priority == Priority.LOW)
-    return '#33FF6D'
+    return '#30c15a'
 
   return 'primary'
 }
