@@ -43,6 +43,7 @@ const props = defineProps({
     default: () => [],
   },
   isSuperAdmin: { type: Boolean, required: false, default: false },
+  isMobile: { type: Boolean, required: false, default: false },
   hasActiveTimer: { type: Boolean, required: false, default: false },
   isOwner: { type: Boolean, required: false, default: false },
   isMember: { type: Boolean, required: false, default: false },
@@ -117,6 +118,7 @@ dragAndDrop({
   group: props.groupName,
   draggable: child => child.classList.contains('kanban-card'),
   dragHandle: '.card-handler',
+  disabled: props.isMobile,
   plugins: [animations()],
   performTransfer: (state, data) => {
     performTransfer(state, data)

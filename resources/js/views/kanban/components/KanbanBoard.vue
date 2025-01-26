@@ -8,9 +8,8 @@ import { VForm } from 'vuetify/components/VForm'
 import KanbanBoardEditDrawer from './KanbanBoardEditDrawer.vue'
 import KanbanItems from './KanbanItems.vue'
 import ConfettiExplosion from "vue-confetti-explosion"
-import { now } from "@vueuse/core"
+import { useMediaQuery } from "@vueuse/core"
 import { ref, defineExpose, defineProps, defineEmits, watch } from 'vue'
-// import { useMobileDetection } from "vue3-mobile-detection"
 import EditTimerDialog from "@/views/kanban/components/dialogs/EditTimer.vue"
 
 const props = defineProps({
@@ -69,7 +68,7 @@ const editKanbanItem = ref()
 const isEditTimerDialogVisible = ref(false)
 const memberDetails = ref(null)
 const taskId = ref(null)
-// const { isMobile } = useMobileDetection()
+const isMobile = useMediaQuery('(max-width: 768px)')
 
 const addNewBoard = () => {
   refAddNewBoard.value?.validate().then(valid => {
@@ -132,7 +131,7 @@ dragAndDrop({
   parent: kanbanWrapper,
   values: localKanbanData,
   dragHandle: '.drag-handler',
-  disabled: true,
+  disabled: isMobile.value,
   plugins: [animations()],
 })
 
@@ -204,6 +203,7 @@ defineExpose({
           :is-super-admin="props.kanbanData.auth.is_super_admin"
           :is-owner="props.kanbanData.auth.is_owner"
           :is-member="props.kanbanData.auth.is_member"
+          :is-mobile="isMobile"
           :auth-id="props.kanbanData.auth.id"
           :available-members="localAvailableMembers"
           :colors="colors"
