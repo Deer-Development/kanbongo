@@ -25,7 +25,6 @@
             class="cursor-pointer"
             :color="localMemberDetails.isTiming ? 'success' : (localMemberDetails.timeEntries.length ? '#FACA15' : '#EEEDF0')"
             :class="localMemberDetails.isTiming ? 'glow' : (localMemberDetails.timeEntries.length ? 'worked' : '')"
-            @click="editTimer(member, item.id, item.name)"
           >
             <template v-if="localMemberDetails.user.avatar">
               <img
