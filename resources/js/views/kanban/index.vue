@@ -1,10 +1,15 @@
 <script setup>
 import KanbanBoardComp from './components/KanbanBoard.vue'
+import { differenceInSeconds, format, formatDistanceToNow, parse, parseISO } from 'date-fns'
+import { watch } from "vue"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
+const activeUsersMenu = ref(false)
 const deleteItem = ref(null)
 const kanbanBoard = ref(null)
+const userData = computed(() => useCookie('userData', { default: null }).value)
+const userTimers = reactive({})
 
 const {
   data: kanban,
@@ -12,6 +17,8 @@ const {
 } = useApi(createUrl(`/container/${ route.params.containerId }`, {
   method: 'GET',
 }))
+
+const kanbanData = computed(() => kanban.value)
 
 const addNewBoard = async (newBoardName, newBoardColor) => {
   await $api('/board', {
@@ -63,7 +70,6 @@ const editItemFn = async editItem => {
 const persistDelete = item => {
   deleteItem.value = item
 
-  console.log(deleteItem.value)
   isDeleteModalVisible.value = true
 }
 
@@ -95,6 +101,72 @@ const updateBoardState = async kanbanBoardIds => {
     body: kanbanBoardIds,
   })
 }
+
+const calculateTrackedTime = start => {
+  try {
+    const startDate = parseISO(start)
+    const now = new Date()
+    const seconds = differenceInSeconds(now, startDate)
+
+    if (seconds < 0) return 'Invalid Time'
+
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const remainingSeconds = seconds % 60
+
+    return `${hours}h ${minutes}m ${remainingSeconds}s`
+  } catch (error) {
+
+    return 'Error calculating time'
+  }
+}
+
+const updateUserTimers = () => {
+  kanbanData.value?.active_users?.forEach(user => {
+    if (user.active_time_entry?.start) {
+      if (!userTimers[user.id]) {
+        userTimers[user.id] = calculateTrackedTime(user.active_time_entry.start)
+
+        const intervalId = setInterval(() => {
+          userTimers[user.id] = calculateTrackedTime(user.active_time_entry.start)
+        }, 1000)
+
+        user.intervalId = intervalId
+      }
+    }
+  })
+}
+
+const clearUserTimers = () => {
+  kanbanData.value?.active_users?.forEach(user => {
+    if (user.intervalId) {
+      clearInterval(user.intervalId)
+      user.intervalId = null
+    }
+  })
+  Object.keys(userTimers).forEach(key => delete userTimers[key])
+}
+
+watch(
+  () => activeUsersMenu.value,
+  isOpen => {
+    if (isOpen) {
+      updateUserTimers()
+    } else {
+      clearUserTimers()
+    }
+  },
+)
+
+onMounted(() => {
+  if (kanbanData.value?.active_users) {
+    updateUserTimers()
+  }
+})
+
+onBeforeUnmount(() => {
+  clearUserTimers()
+})
 </script>
 
 <template>
@@ -114,6 +186,74 @@ const updateBoardState = async kanbanBoardIds => {
           <span class="font-weight-bold mr-1"> Owner: </span> {{ kanban?.owner?.full_name }}
         </VChip>
       </h4>
+      <div class="d-flex gap-1 align-content-center">
+        <VMenu
+          v-if="kanbanData?.active_users?.length"
+          v-model="activeUsersMenu"
+          offset-y
+        >
+          <template #activator="{ props }">
+            <VChip
+              v-bind="props"
+              size="small"
+              color="rgb(56, 161, 105)"
+              variant="elevated"
+              class="cursor-pointer"
+            >
+              <VIcon
+                left
+                size="16"
+              >
+                tabler-hourglass
+              </VIcon>
+            </VChip>
+          </template>
+          <div class="p-4">
+            <div v-if="kanbanData?.active_users?.length">
+              <div
+                v-for="user in kanbanData.active_users"
+                :key="user.id"
+                class="d-flex flex-column align-items-start mb-3 bg-success px-2 py-1 rounded"
+              >
+                <div class="font-weight-bold">
+                  {{ user.full_name }}
+                </div>
+                <div class="text-sm text-muted">
+                  Timer: {{ userTimers[user.id] || 'Loading...' }}
+                </div>
+              </div>
+            </div>
+            <div v-else>
+              <p>No active users found.</p>
+            </div>
+          </div>
+        </VMenu>
+        <VChip
+          v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id"
+          size="small"
+          variant="elevated"
+        >
+          <VIcon
+            left
+            size="16"
+          >
+            tabler-user-edit
+          </VIcon>
+        </VChip>
+        <VChip
+          v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id"
+          size="small"
+          variant="elevated"
+          class="comments-chip"
+        >
+          <VIcon
+            left
+            size="16"
+          >
+            tabler-credit-card
+          </VIcon>
+        </VChip>
+      </div>
     </div>
     <KanbanBoardComp
       v-if="kanban"

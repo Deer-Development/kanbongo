@@ -42,6 +42,23 @@ class ContainerResource extends JsonResource
             });
         });
 
+        $activeUsers = $boards->flatMap(function ($board) {
+            return collect($board['tasks']);
+        })->flatMap(function ($task) {
+            return collect($task->members);
+        })->filter(function ($member) {
+            return $member->user->timeEntries->some(function ($timeEntry) {
+                return $timeEntry->end === null && $timeEntry->container_id == $this->id;
+            });
+        })->map(function ($member) {
+            $user = $member->user;
+            $user->active_time_entry = $user->timeEntries->filter(function ($timeEntry) {
+                return $timeEntry->end == null && $timeEntry->container_id == $this->id;
+            })->first();
+            unset($user->timeEntries);
+            return $user;
+        })->unique();
+
         return [
             'id' => $this->id,
             'project_id' => $this->project_id,
@@ -58,6 +75,7 @@ class ContainerResource extends JsonResource
                 'has_active_time_entries' => $hasActiveTimeEntries,
                 'is_super_admin' => $isSuperAdmin,
             ],
+            'active_users' => $activeUsers,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,
