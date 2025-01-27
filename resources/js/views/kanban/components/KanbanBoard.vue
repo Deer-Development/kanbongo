@@ -382,7 +382,7 @@ defineExpose({
 
     .kanban-board-drop-zone {
       overflow: auto;
-      padding: 0.2rem 0 0.1rem 0.1rem;
+      padding: 0.2rem 0.1rem 0.1rem 0.1rem;
       min-block-size: 100%;
       background-color: #fbf8f8;
       scroll-behavior: smooth;

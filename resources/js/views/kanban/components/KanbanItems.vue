@@ -191,6 +191,36 @@ const handleEnterKeydown = event => {
 const refreshData = () => {
   emit('refreshKanbanData')
 }
+
+const lightenColor = (color, percent) => {
+  const num = parseInt(color.slice(1), 16),
+    amt = Math.round(2.55 * percent),
+    R = (num >> 16) + amt,
+    G = ((num >> 8) & 0x00ff) + amt,
+    B = (num & 0x0000ff) + amt
+
+  
+  return `rgb(${Math.min(255, Math.max(0, R))}, ${Math.min(255, Math.max(0, G))}, ${Math.min(255, Math.max(0, B))})`
+}
+
+const hexToRgba = (hex, alpha = 1) => {
+  const bigint = parseInt(hex.slice(1), 16)
+  const r = (bigint >> 16) & 255
+  const g = (bigint >> 8) & 255
+  const b = bigint & 255
+  
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+const adjustBrightness = (hex, amount) => {
+  const num = parseInt(hex.slice(1), 16),
+    R = Math.min(255, Math.max(0, (num >> 16) + amount)),
+    G = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + amount)),
+    B = Math.min(255, Math.max(0, (num & 0x0000ff) + amount))
+
+  
+  return `#${(R << 16 | G << 8 | B).toString(16).padStart(6, '0')}`
+}
 </script>
 
 <template>
@@ -199,7 +229,10 @@ const refreshData = () => {
       class="kanban-board-header"
       :style="{
         backgroundColor: props.boardColor
-          ? `${props.boardColor}33`
+          // ? hexToRgba(props.boardColor, 0.9)
+          // ? `${props.boardColor}33`
+          ? lightenColor(props.boardColor, 20)
+          // ? adjustBrightness(props.boardColor, 99)
           : '#f1f1f3'
       }"
     >
@@ -350,7 +383,8 @@ const refreshData = () => {
       class="kanban-board-drop-zone d-flex flex-column gap-2"
       :style="{
         backgroundColor: props.boardColor
-          ? `${props.boardColor}05`
+          // ? lightenColor(props.boardColor, 20)
+          ? `${props.boardColor}13`
           : '#f1f1f3'
       }"
       :class="localIds.length ? 'mb-4' : ''"
