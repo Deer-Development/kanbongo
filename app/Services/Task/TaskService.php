@@ -88,7 +88,6 @@ class TaskService extends BaseService
         try {
             $task->update([
                 'name' => $data['name'],
-                'description' => $data['description'],
                 'priority' => $data['priority'],
                 'due_date' => $data['due_date'] ? Carbon::parse($data['due_date']) : null,
             ]);

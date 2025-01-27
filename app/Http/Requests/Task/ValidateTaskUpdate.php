@@ -25,7 +25,6 @@ class ValidateTaskUpdate extends FormRequest
     {
         return [
             'name' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
             'priority' => 'nullable',
             'due_date' => 'nullable',
             'members' => 'array',
@@ -44,8 +43,6 @@ class ValidateTaskUpdate extends FormRequest
             'name.required' => 'The name field is required.',
             'name.string' => 'The name field must be a string.',
             'name.max' => 'The name field must not exceed 255 characters.',
-            'description.required' => 'The description field is required.',
-            'description.string' => 'The description field must be a string.',
             'members.array' => 'The members field must be an array.',
             'members.*.integer' => 'The members field must contain integers.',
             'members.*.exists' => 'The members field contains invalid user IDs.',

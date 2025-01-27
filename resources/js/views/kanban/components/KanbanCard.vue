@@ -1,7 +1,5 @@
 <script setup>
 import { ref, onUnmounted, onMounted, defineEmits, watch } from 'vue'
-import MemberCard from "@/views/kanban/components/MemberCard.vue"
-import { remapNodes } from "@formkit/drag-and-drop"
 
 const props = defineProps({
   item: {
@@ -83,25 +81,6 @@ const formatTime = (seconds = 0) => {
     .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-const initializeMemberTimers = () => {
-  props.item?.members?.forEach(member => {
-    const latestEntry = member.timeEntries[member.timeEntries.length - 1]
-    if (latestEntry && !latestEntry.end) {
-      member.isTiming = true
-      member.timerInterval = setInterval(() => {
-        latestEntry.trackedTime += 1
-        latestEntry.trackedTimeDisplay = formatTime(latestEntry.trackedTime)
-      }, 1000)
-
-      membersExpanded.value = 0
-    } else {
-      member.isTiming = false
-    }
-  })
-
-  dueDate.value = props.item.due_date
-}
-
 const toggleTimer = member => {
   const latestEntry = member.timeEntries[member.timeEntries.length - 1]
 
@@ -146,7 +125,6 @@ const updateTask = async updates => {
     method: 'PUT',
     body: {
       name: props.item.name,
-      description: props.item.description,
       priority: props.item.priority,
       due_date: dueDate.value,
       members: props.item.members.map(member => member.user.id),
@@ -170,19 +148,9 @@ const setPriority = async priority => {
   await updateTask({ priority })
 }
 
-const updateDueDate = async () => {
-  await updateTask({ due_date: dueDate.value })
+const updateDueDate = async date => {
+  await updateTask({ due_date: date })
 }
-
-onMounted(() => {
-  initializeMemberTimers()
-})
-
-onUnmounted(() => {
-  props.item?.members?.forEach(member => {
-    if (member.timerInterval) clearInterval(member.timerInterval)
-  })
-})
 </script>
 
 <template>
@@ -202,7 +170,7 @@ onUnmounted(() => {
         />
         <h3
           v-tooltip="item.name"
-          class="card-title"
+          class="card-title cursor-pointer"
           @click="$emit('editKanbanItem', item.id)"
         >
           {{ item.name }}
@@ -238,7 +206,6 @@ onUnmounted(() => {
                 v-for="(label, key) in Priority.data"
                 :key="key"
                 :color="getPriorityColor(key)"
-                class="chip-priority-github"
                 @click="setPriority(key)"
               >
                 {{ label }}
@@ -246,14 +213,22 @@ onUnmounted(() => {
             </div>
           </VMenu>
         </VCol>
-        <VCol cols="5" class="px-0">
+        <div class="align-content-center">
+          <VIcon
+            right
+            icon="tabler-calendar"
+          />
+        </div>
+        <VCol
+          cols="4"
+          class="px-0"
+        >
           <AppDateTimePicker
-            v-model="dueDate"
+            v-model="item.due_date"
             density="compact"
             variant="underlined"
             placeholder="Due Date"
-            prepend-inner-icon="tabler-calendar"
-            @change="updateDueDate"
+            @change="updateDueDate(item.due_date)"
           />
         </VCol>
         <VCol
@@ -263,7 +238,7 @@ onUnmounted(() => {
           <VChip
             size="small"
             variant="elevated"
-            :color="item.comments.length ? '#faca15' : '#c2c2c3'"
+            :color="item.comments_count ? '#faca15' : '#c2c2c3'"
             class="comments-chip"
           >
             <VIcon
@@ -271,13 +246,16 @@ onUnmounted(() => {
               size="16"
             >
               tabler-message-2
-            </VIcon> {{ item.comments.length }}
+            </VIcon> {{ item.comments_count }}
           </VChip>
         </VCol>
       </VRow>
       <VDivider class="my-2" />
       <VRow class="d-flex gap-1 justify-space-between">
-        <VCol cols="8" class="d-flex gap-1">
+        <VCol
+          cols="8"
+          class="d-flex gap-1"
+        >
           <VMenu
             v-model="membersMenu"
             offset-y
@@ -349,11 +327,15 @@ onUnmounted(() => {
             </template>
           </div>
         </VCol>
-        <VCol cols="3" class="d-flex justify-end">
+        <VCol
+          cols="3"
+          class="d-flex justify-end"
+        >
           <VChip
             v-if="item.members.some(member => authId === member.user.id)"
             size="small"
             variant="elevated"
+            :color="item.members.some(member => authId === member.user.id && member.isTiming) ? '#e53e3e' : '#38a169'"
             :disabled="hasLocalActiveTimer && !item.members.some(member => authId === member.user.id && member.isTiming)"
             :class="item.members.some(member => authId === member.user.id && member.isTiming) ? 'stop-btn' : 'play-btn'"
             @click.stop="toggleTimer(item.members.find(member => authId === member.user.id))"
@@ -368,166 +350,3 @@ onUnmounted(() => {
     </VCardText>
   </VCard>
 </template>
-
-<style scoped>
-.kanban-card {
-  border-radius: 6px;
-  border: 1px solid #d1d0d0;
-  height: auto;
-  max-height: none;
-  background: linear-gradient(135deg, #f9fafb, #ffffff);
-  transition: height 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.kanban-card.hover-scale:hover {
-  transform: scale(1.02);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-.card-handler {
-  cursor: grab;
-
-  &:active {
-    cursor: grabbing;
-  }
-}
-
-.kanban-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-}
-
-.card-header {
-  position: relative;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  justify-content: space-between;
-  padding: 12px 16px 12px 1px;
-  background-color: #f3f4f6;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.card-title {
-  font-size: 12px;
-  line-height: 14px;
-  font-weight: 600;
-  color: #1f2937;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-.card-body {
-  padding: 8px;
-}
-
-.glow {
-  box-shadow: 0 0 8px 2px rgba(72, 187, 120, 0.8);
-  animation: pulse 1.5s infinite ease-in-out;
-  border: 1px solid rgba(53, 186, 109, 0.8);
-}
-
-.worked {
-  border: 1px solid #f8d234;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 8px 2px rgba(72, 187, 120, 0.8);
-  }
-  50% {
-    box-shadow: 0 0 16px 4px rgba(72, 187, 120, 0.6);
-  }
-  100% {
-    box-shadow: 0 0 8px 2px rgba(72, 187, 120, 0.8);
-  }
-}
-
-.github-style-list {
-  background-color: #f6f8fa;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.github-list-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  border-bottom: 1px solid #eaecef;
-  transition: background-color 0.2s ease;
-}
-
-.github-list-item:last-child {
-  border-bottom: none;
-}
-
-.github-list-item:hover {
-  background-color: #f0f0f0;
-}
-
-.github-list-item .v-avatar {
-  margin-right: 12px;
-}
-
-.empty-state {
-  padding: 16px;
-}
-
-.empty-state .text-center {
-  margin: 0 auto;
-}
-
-.comments-chip {
-  color: #ffffff !important;
-  align-items: center;
-}
-
-.comments-chip:hover {
-  background-color: #f5b509;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.play-stop-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 16px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
-}
-
-.play-btn {
-  background-color: #38a169;
-  color: #fff;
-}
-
-.play-btn:hover {
-  background-color: #2f855a;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  transform: scale(1.05);
-}
-
-.stop-btn {
-  background-color: #e53e3e;
-  color: #fff;
-}
-
-.stop-btn:hover {
-  background-color: #c53030;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  transform: scale(1.05);
-}
-
-.play-stop-icon {
-  font-size: 14px;
-  line-height: 1;
-}
-</style>

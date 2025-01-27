@@ -7,6 +7,9 @@ import {
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
 import KanbanCard from './KanbanCard.vue'
+import { defineAsyncComponent } from 'vue'
+import { VProgressCircular } from 'vuetify/components/VProgressCircular'
+import { VSkeletonLoader } from 'vuetify/components/VSkeletonLoader'
 
 const props = defineProps({
   kanbanIds: {
@@ -61,6 +64,13 @@ const emit = defineEmits([
   'editTimer',
   'refreshKanbanData',
 ])
+
+// const KanbanCard = defineAsyncComponent({
+//   loader: () => import('./KanbanCard.vue'),
+//   loadingComponent: VProgressCircular,
+//   delay: 200,
+//   errorComponent: VSkeletonLoader,
+// })
 
 const refKanbanBoard = ref()
 const localBoardName = ref(props.boardName)
@@ -188,7 +198,7 @@ const refreshData = () => {
     <div
       class="kanban-board-header"
       :style="{
-        backgroundColor: props.boardColor 
+        backgroundColor: props.boardColor
           ? `${props.boardColor}33`
           : '#f1f1f3'
       }"
@@ -257,22 +267,29 @@ const refreshData = () => {
             icon="tabler-grip-vertical"
           />
           <VChip
+            v-if="localIds.length"
+            class="text-md font-weight-medium text-truncate text-center mr-1"
+            :color="props.boardColor"
+            rounded
+            size="small"
+            variant="elevated"
+          >
+            {{ localIds.length }}
+          </VChip>
+          <VChip
             class="text-md font-weight-medium text-truncate text-center"
             :color="props.boardColor"
             size="small"
             variant="elevated"
+            pill
+            prepend-icon="tabler-layout-kanban"
           >
-            <VIcon
-              icon="tabler-layout-kanban"
-              size="16"
-              class="mr-1"
-            />
             {{ boardName }}
           </VChip>
         </div>
         <div class="d-flex align-center gap-2">
           <VIcon
-            v-tooltip="'Edit Board Name'"
+            v-tooltip="'Edit Column Name'"
             class="text-high-emphasis"
             size="20"
             icon="tabler-edit"

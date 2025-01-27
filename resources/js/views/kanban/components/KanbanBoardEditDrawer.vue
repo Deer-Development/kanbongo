@@ -1,9 +1,9 @@
 <script setup>
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
-import { VForm } from 'vuetify/components/VForm'
 import CKEditor from "@/@core/components/CKEditor.vue"
 import { useToast } from "vue-toastification"
 import { ref } from "vue"
+import { watchDebounced } from "@vueuse/core"
 
 const props = defineProps({
   kanbanItem: {
@@ -46,14 +46,13 @@ const emit = defineEmits([
   'update:kanbanItem',
   'deleteKanbanItem',
   'refreshKanbanData',
+  'editTimer',
 ])
 
 const messages = ref([])
 const message = ref('')
-const description = ref('')
 const currentMessageId = ref(null)
 
-const refEditTaskForm = ref()
 const toast = useToast()
 
 const Priority = {
@@ -73,47 +72,85 @@ const Priority = {
 }
 
 const localKanbanItem = ref(JSON.parse(JSON.stringify(props.kanbanItem.item)))
-const localAvailableMembers = ref(props.availableMembers)
 
 const handleDrawerModelValueUpdate = val => {
   emit('update:isDrawerOpen', val)
-  if (!val)
-    refEditTaskForm.value?.reset()
 }
 
-watch(() => props.kanbanItem, () => {
+const fetchKanbanItem = async () => {
+  const res = await $api(`/task/${localKanbanItem.value.id}`)
+  if (res) {
+    localKanbanItem.value = res.data
+  }
+}
+
+watch(() => props.kanbanItem, async () => {
   localKanbanItem.value = JSON.parse(JSON.stringify(props.kanbanItem.item))
 
-  if(localKanbanItem.value.comments) {
+  await fetchKanbanItem()
+
+  if (localKanbanItem.value.comments) {
     messages.value = localKanbanItem.value.comments
     resizeImages()
     scrollToBottom()
   }
 }, { deep: true })
 
-const updateKanbanItem = () => {
-  refEditTaskForm.value?.validate().then(async valid => {
-    if (valid.valid) {
-      const res = await $api(`/task/${localKanbanItem.value.id}`, {
-        method: 'PUT',
-        body: {
-          name: localKanbanItem.value.name,
-          description: description.value,
-          priority: localKanbanItem.value.priority,
-          due_date: localKanbanItem.value.due_date,
-          members: localKanbanItem.value.members.map(member => member.user.id),
-        },
-      })
-
-      if (res) {
-        emit('refreshKanbanData')
-      }
-
-      emit('update:isDrawerOpen', false)
-      await nextTick()
-      refEditTaskForm.value?.reset()
-    }
+const updateTask = async updates => {
+  return await $api(`/task/${localKanbanItem.value.id}`, {
+    method: 'PUT',
+    body: {
+      name: localKanbanItem.value.name,
+      priority: localKanbanItem.value.priority,
+      due_date: localKanbanItem.value.due_date,
+      members: localKanbanItem.value.members.map(member => member.user.id),
+      ...updates,
+    },
   })
+}
+
+const addMember = async userId => {
+  const userIds = localKanbanItem.value.members.map(member => member.user.id)
+
+  userIds.push(userId)
+
+  const res = await updateTask({ members: userIds })
+
+  if (res) {
+    localKanbanItem.value.members = res.data.members
+  }
+}
+
+const setPriority = async priority => {
+  const res = await updateTask({ priority })
+
+  if (res) {
+    localKanbanItem.value.priority = priority
+  }
+}
+
+watchDebounced(
+  () => localKanbanItem.value.name,
+  async newName => {
+    if (newName) {
+      await updateTask({ name: newName })
+    }
+  },
+  { debounce: 500 },
+)
+
+watchDebounced(
+  () => localKanbanItem.value.due_date,
+  async (newDate, oldDate) => {
+    if (newDate !== oldDate) {
+      await updateTask({ due_date: newDate })
+    }
+  },
+  { debounce: 500 },
+)
+
+const editTimer = (member, id, name) => {
+  emit('editTimer', member, id, name)
 }
 
 const deleteKanbanItem = () => {
@@ -136,10 +173,9 @@ const getPriorityColor = priority => {
 }
 
 const priorityMenu = ref(false)
+const membersMenu = ref(false)
 
 const messageListRef = ref(null)
-
-const showEditor = ref(false)
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -162,7 +198,6 @@ const handleAddMessage = async () => {
     messages.value = res.data
   }
 
-  showEditor.value = false
   message.value = ''
   resizeImages()
 
@@ -171,7 +206,6 @@ const handleAddMessage = async () => {
 
 const closeDrawer = () => {
   emit('update:isDrawerOpen', false)
-  refEditTaskForm.value?.reset()
   messages.value = []
   message.value = ''
 
@@ -208,7 +242,6 @@ const editMessage = async messageId => {
   if (messageToEdit) {
     message.value = messageToEdit.content
     currentMessageId.value = messageId
-    showEditor.value = true
   }
 }
 
@@ -225,7 +258,6 @@ const submitEditMessage = async messageId => {
   if (res) {
     messages.value = res.data
 
-    showEditor.value = false
     currentMessageId.value = null
     message.value = ''
 
@@ -258,7 +290,7 @@ const deleteMessage = async messageId => {
     @update:model-value="handleDrawerModelValueUpdate"
   >
     <VCard class="github-edit-card h-full flex flex-col">
-      <VRow class="github-header">
+      <VRow class="github-header my-0 py-0">
         <VCol
           cols="8"
           class="d-flex justify-start gap-2"
@@ -276,14 +308,6 @@ const deleteMessage = async messageId => {
           class="d-flex justify-end gap-2"
         >
           <VBtn
-            color="primary"
-            class="btn-github"
-            type="submit"
-            @click="updateKanbanItem"
-          >
-            Update
-          </VBtn>
-          <VBtn
             v-if="isSuperAdmin && !isDeleteDisabled"
             color="error"
             class="btn-github"
@@ -293,16 +317,10 @@ const deleteMessage = async messageId => {
             Delete
           </VBtn>
         </VCol>
-        <!--        <VCol cols="12" class="header-name-container"> -->
-        <!--          <span class="header-name">{{ localKanbanItem.name }}</span> -->
-        <!--        </VCol> -->
       </VRow>
 
       <VCardText class="flex-grow flex flex-col p-4 gap-6">
-        <VForm
-          ref="refEditTaskForm"
-          class="form-github"
-        >
+        <div class="form-github">
           <VRow>
             <VCol cols="12">
               <VTextarea
@@ -317,7 +335,10 @@ const deleteMessage = async messageId => {
             </VCol>
           </VRow>
           <VRow align="center">
-            <VCol cols="2" class="d-flex flex-column">
+            <VCol
+              cols="1"
+              class="d-flex flex-column"
+            >
               <VLabel
                 class="mb-1 text-body-2"
                 style="line-height: 15px;"
@@ -329,57 +350,142 @@ const deleteMessage = async messageId => {
                 offset-y
               >
                 <template #activator="{ props }">
-                  <VBtn
+                  <VChip
                     v-bind="props"
                     :color="getPriorityColor(localKanbanItem.priority)"
                     size="small"
-                    class="btn-github"
-                    prepend-icon="tabler-flag"
+                    variant="elevated"
                   >
+                    <VIcon
+                      left
+                      size="16"
+                      icon="tabler-flag"
+                    />
                     {{ Priority.getName(localKanbanItem.priority) || "Set Priority" }}
-                  </VBtn>
+                  </VChip>
                 </template>
                 <div class="priority-options">
                   <VChip
                     v-for="(label, key) in Priority.data"
-                    :key="key"
+                    :key="key + label"
                     :color="getPriorityColor(key)"
-                    variant="flat"
-                    class="chip-priority-github"
-                    @click.stop="localKanbanItem.priority = key"
+                    @click="setPriority(key)"
                   >
                     {{ label }}
                   </VChip>
                 </div>
               </VMenu>
             </VCol>
-
-            <VCol cols="2">
-              <DynamicMemberSelector
-                v-model="localKanbanItem.members"
-                :items="localAvailableMembers"
-                :is-super-admin="props.isSuperAdmin"
-                label="Assign Members"
-                item-title="user.full_name"
-                item-value="user.id"
-                dense
-                outlined
+            <div class="align-content-end mt-5">
+              <VIcon
+                right
+                icon="tabler-calendar"
               />
-            </VCol>
-
-            <VCol cols="2">
+            </div>
+            <VCol
+              cols="1"
+              class="pl-0"
+            >
+              <VLabel
+                class="text-body-2"
+                style="line-height: 10px;"
+              >
+                Due Date
+              </VLabel>
               <AppDateTimePicker
                 v-model="localKanbanItem.due_date"
-                label="Due Date"
-                dense
-                outlined
+                variant="underlined"
+                placeholder="Due Date"
               />
             </VCol>
+            <VCol
+              cols="2"
+              class="d-flex flex-column"
+            >
+              <VLabel
+                class="mb-1 text-body-2"
+                style="line-height: 15px;"
+              >
+                Assignees
+              </VLabel>
+              <div class="d-flex gap-1">
+                <VMenu
+                  v-model="membersMenu"
+                  offset-y
+                >
+                  <template #activator="{ props }">
+                    <VAvatar
+                      v-bind="props"
+                      size="28"
+                      class="cursor-pointer"
+                      :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+                    >
+                      <VIcon
+                        size="18"
+                        icon="tabler-users-plus"
+                      />
+                    </VAvatar>
+                  </template>
+                  <VList
+                    class="github-style-list"
+                    style="min-width: 100%;"
+                  >
+                    <template v-if="props.availableMembers.filter(member => !localKanbanItem.members.some(m => m.user.id === member.user_id)).length">
+                      <VListItem
+                        v-for="(member, index) in props.availableMembers.filter(member => !localKanbanItem.members.some(m => m.user.id === member.user_id))"
+                        :key="member.id"
+                        class="github-list-item"
+                        @click="addMember(member.user_id)"
+                      >
+                        <VListItemTitle class="font-medium text-sm text-gray-800">
+                          {{ member.user.full_name }}
+                        </VListItemTitle>
+                        <VListItemSubtitle class="text-xs text-gray-500">
+                          {{ member.user.email }}
+                        </VListItemSubtitle>
+                      </VListItem>
+                    </template>
+                    <template v-else>
+                      <VListItem class="empty-state text-center">
+                        <VListItemTitle class="text-gray-500 text-sm">
+                          No available members to add
+                        </VListItemTitle>
+                      </VListItem>
+                    </template>
+                  </VList>
+                </VMenu>
+                <div class="v-avatar-group">
+                  <template
+                    v-for="(member, index) in localKanbanItem.members"
+                    :key="member.id"
+                  >
+                    <VAvatar
+                      v-tooltip="member.user.full_name"
+                      size="28"
+                      class="cursor-pointer"
+                      :color="member.isTiming ? '#38a169' : (member.timeEntries.length ? 'rgb(249 220 107)' : '#EEEDF0')"
+                      :class="member.isTiming ? 'glow' : (member.timeEntries.length ? 'worked' : '')"
+                      @click="editTimer(member, localKanbanItem.id, localKanbanItem.name)"
+                    >
+                      <template v-if="member.user.avatar">
+                        <img
+                          :src="member.user.avatar"
+                          alt="Avatar"
+                        >
+                      </template>
+                      <template v-else>
+                        <span>{{ member.user.avatar_or_initials }}</span>
+                      </template>
+                    </VAvatar>
+                  </template>
+                </div>
+              </div>
+            </VCol>
           </VRow>
-        </VForm>
+        </div>
 
         <div class="comments-section">
-          <VDivider/>
+          <VDivider />
           <VCardTitle class="text-center text-dark fs-6 fw-bold mb-2">
             Comments
           </VCardTitle>
@@ -488,32 +594,11 @@ const deleteMessage = async messageId => {
 
 .github-header {
   border-bottom: 1px solid #d8dee4;
-  padding: 1rem 2rem;
+  padding: 0.2rem 2rem;
   background-color: #f6f8fa;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-}
-
-.header-name-container {
-  text-align: center;
-  margin-top: 4px;
-}
-
-.header-name {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #24292f;
-  line-height: 1.5;
-  letter-spacing: 0.2px;
-  padding: 2px 4px;
-  border-bottom: 2px solid #d0d7de;
-  display: inline-block;
-  transition: border-color 0.2s;
-}
-
-.header-name:hover {
-  border-color: #0366d6;
 }
 
 .btn-github {

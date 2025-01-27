@@ -4,7 +4,7 @@ namespace App\Http\Resources\Container;
 
 namespace App\Http\Resources\Container;
 
-use App\Http\Resources\Task\TaskResource;
+use App\Http\Resources\Task\TaskBoardResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +21,6 @@ class ContainerResource extends JsonResource
                 'id' => $board->id,
                 'container_id' => $board->container_id,
                 'name' => $board->name,
-                'description' => $board->description,
                 'is_active' => $board->is_active,
                 'order' => $board->order,
                 'color' => $board->color,
@@ -29,7 +28,7 @@ class ContainerResource extends JsonResource
                 'updated_at' => $board->updated_at,
                 'deleted_at' => $board->deleted_at,
                 'members' => $board->members,
-                'tasks' => TaskResource::collection($board->tasks()->orderBy('order')->get()),
+                'tasks' => TaskBoardResource::collection($board->tasks()->orderBy('order')->get()),
             ];
         });
 

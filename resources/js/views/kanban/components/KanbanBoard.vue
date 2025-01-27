@@ -304,6 +304,7 @@ defineExpose({
     :is-member="props.kanbanData.auth.is_member"
     :auth-id="props.kanbanData.auth.id"
     @update:kanban-item="emitUpdatedTaskFn"
+    @edit-timer="editTimer"
     @delete-kanban-item="deleteKanbanItemFn"
     @refresh-kanban-data="refreshData"
   />
