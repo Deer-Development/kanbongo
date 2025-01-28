@@ -300,16 +300,6 @@ const adjustBrightness = (hex, amount) => {
             icon="tabler-grip-vertical"
           />
           <VChip
-            v-if="localIds.length"
-            class="text-md font-weight-medium text-truncate text-center mr-1"
-            :color="props.boardColor"
-            rounded
-            size="small"
-            variant="elevated"
-          >
-            {{ localIds.length }}
-          </VChip>
-          <VChip
             class="text-md font-weight-medium text-truncate text-center"
             :color="props.boardColor"
             size="small"
@@ -319,10 +309,20 @@ const adjustBrightness = (hex, amount) => {
           >
             {{ boardName }}
           </VChip>
+          <VChip
+            v-if="localIds.length"
+            class="text-md font-weight-medium text-truncate text-center ml-1"
+            :color="props.boardColor"
+            rounded
+            size="small"
+            variant="elevated"
+          >
+            {{ localIds.length }}
+          </VChip>
         </div>
         <div class="d-flex align-center gap-2">
           <VIcon
-            v-tooltip="'Edit Column Name'"
+            v-tooltip="'Edit Column'"
             class="text-high-emphasis"
             size="20"
             icon="tabler-edit"

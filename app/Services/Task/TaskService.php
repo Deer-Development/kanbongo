@@ -187,5 +187,23 @@ class TaskService extends BaseService
             throw $e;
         }
     }
+
+    public function unassignMember(int $taskId, int $userId): Task
+    {
+        $task = $this->getById($taskId);
+
+        DB::beginTransaction();
+
+        try {
+            $task->members()->where('user_id', $userId)->delete();
+
+            DB::commit();
+
+            return $task;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
 }
 

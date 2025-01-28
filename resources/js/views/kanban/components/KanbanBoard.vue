@@ -7,7 +7,6 @@ import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
 import KanbanBoardEditDrawer from './KanbanBoardEditDrawer.vue'
 import KanbanItems from './KanbanItems.vue'
-import ConfettiExplosion from "vue-confetti-explosion"
 import { useMediaQuery } from "@vueuse/core"
 import { ref, defineExpose, defineProps, defineEmits, watch } from 'vue'
 import EditTimerDialog from "@/views/kanban/components/dialogs/EditTimer.vue"
@@ -60,7 +59,6 @@ const hasActiveTimer = ref(props.kanbanData.auth.has_active_time_entries)
 const localAvailableMembers = ref(props.kanbanData.members)
 const isKanbanBoardEditVisible = ref(false)
 const isAddNewFormVisible = ref(false)
-const confettiVisible = ref(false)
 const refAddNewBoard = ref()
 const boardColor = ref('#ef5350')
 const boardTitle = ref('')
@@ -69,6 +67,7 @@ const isEditTimerDialogVisible = ref(false)
 const memberDetails = ref(null)
 const taskId = ref(null)
 const taskName = ref(null)
+const editDialog = ref(null)
 const isMobile = useMediaQuery('(max-width: 768px)')
 
 const addNewBoard = () => {
@@ -106,6 +105,19 @@ const closeDialog = () => {
   taskId.value = null
   memberDetails.value = null
   taskName.value = null
+
+  refreshData()
+}
+
+const memberUnassigned = () => {
+  isEditTimerDialogVisible.value = false
+  taskId.value = null
+  memberDetails.value = null
+  taskName.value = null
+
+  if(isKanbanBoardEditVisible.value) {
+    editDialog.value.fetchKanbanItem()
+  }
 
   refreshData()
 }
@@ -295,6 +307,7 @@ defineExpose({
   </div>
 
   <KanbanBoardEditDrawer
+    ref="editDialog"
     v-model:is-drawer-open="isKanbanBoardEditVisible"
     :kanban-item="editKanbanItem"
     :available-members="localAvailableMembers"
@@ -315,6 +328,7 @@ defineExpose({
     v-model:task-id="taskId"
     v-model:task-name="taskName"
     @form-submitted="closeDialog"
+    @unassign-member="memberUnassigned"
   />
 </template>
 

@@ -2,7 +2,7 @@
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import CKEditor from "@/@core/components/CKEditor.vue"
 import { useToast } from "vue-toastification"
-import { ref } from "vue"
+import { defineExpose, ref } from "vue"
 import { watchDebounced } from "@vueuse/core"
 
 const props = defineProps({
@@ -277,6 +277,10 @@ const deleteMessage = async messageId => {
     toast.success('Comment deleted successfully')
   }
 }
+
+defineExpose({
+  fetchKanbanItem,
+})
 </script>
 
 <template>

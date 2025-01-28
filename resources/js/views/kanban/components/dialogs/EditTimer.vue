@@ -17,49 +17,66 @@
         <span class="fs-6 fw-bold text-white text-wrap text-h6">{{ props.taskName }}</span>
       </VCardTitle>
 
-      <div class="d-flex align-items-center text-center gap-1 mt-2">
-        <div class="mt-2">
-          <VAvatar
-            v-tooltip="localMemberDetails.user.full_name"
-            size="28"
-            class="cursor-pointer"
-            :color="localMemberDetails.isTiming ? 'success' : (localMemberDetails.timeEntries.length ? '#FACA15' : '#EEEDF0')"
-            :class="localMemberDetails.isTiming ? 'glow' : (localMemberDetails.timeEntries.length ? 'worked' : '')"
+      <div class="d-flex align-items-center justify-space-between text-center gap-1 mt-2">
+        <div class="d-flex align-items-center text-center gap-1">
+          <div class="mt-2">
+            <VAvatar
+              v-tooltip="localMemberDetails.user.full_name"
+              size="28"
+              class="cursor-pointer"
+              :color="localMemberDetails.isTiming ? 'success' : (localMemberDetails.timeEntries.length ? '#FACA15' : '#EEEDF0')"
+              :class="localMemberDetails.isTiming ? 'glow' : (localMemberDetails.timeEntries.length ? 'worked' : '')"
+            >
+              <template v-if="localMemberDetails.user.avatar">
+                <img
+                  :src="localMemberDetails.user.avatar"
+                  alt="Avatar"
+                >
+              </template>
+              <template v-else>
+                <span>{{ localMemberDetails.user.avatar_or_initials }}</span>
+              </template>
+            </VAvatar>
+          </div>
+          <div class="d-flex flex-column gap-1">
+            <span class="text-success font-weight-bold">Tracked Time</span>
+            <VChip
+              label
+              class="chip-time-new"
+              color="success"
+              size="small"
+              outlined
+            >
+              {{ localMemberDetails.totalTrackedTimeDisplay }}
+            </VChip>
+          </div>
+          <div
+            v-if="getActiveTimeEntry(localMemberDetails)"
+            class="d-flex flex-column gap-1 ml-2"
           >
-            <template v-if="localMemberDetails.user.avatar">
-              <img
-                :src="localMemberDetails.user.avatar"
-                alt="Avatar"
-              >
-            </template>
-            <template v-else>
-              <span>{{ localMemberDetails.user.avatar_or_initials }}</span>
-            </template>
-          </VAvatar>
+            <div class="text-success font-weight-bold">
+              Active Timer
+            </div>
+            <VChip
+              label
+              class="chip-time-new"
+              color="success"
+              size="small"
+              outlined
+            >
+              {{ activeTimerDisplay }}
+            </VChip>
+          </div>
         </div>
-        <div class="d-flex flex-column gap-1">
-          <span class="text-success font-weight-bold">Tracked Time</span>
-          <VChip
-            label
-            class="chip-time-new"
-            color="success"
-            size="small"
-            outlined
+        <div v-if="localMemberDetails.timeEntries.length === 0">
+          <VBtn
+            color="error"
+            variant="outlined"
+            @click="unassignMember"
           >
-            {{ localMemberDetails.totalTrackedTimeDisplay }}
-          </VChip>
+            Unassign Member
+          </VBtn>
         </div>
-        <!--        <div -->
-        <!--          v-if="getActiveTimeEntry(localMemberDetails)" -->
-        <!--          class="active-timer-badge" -->
-        <!--        > -->
-        <!--          <div class="badge-title mt-2"> -->
-        <!--            Active Timer -->
-        <!--          </div> -->
-        <!--          <div class="badge-time"> -->
-        <!--            {{ activeTimerDisplay }} -->
-        <!--          </div> -->
-        <!--        </div> -->
       </div>
 
       <VCardText>
@@ -105,14 +122,14 @@
                 v-model="entry.endFormatted"
                 placeholder="Select end time"
                 :config="datetimeConfig"
-                :readonly="entry.deleted"
+                :readonly="(entry.deleted || !entry.endFormatted) && !entry.added_manually && getActiveTimeEntry(localMemberDetails)"
                 class="input-github"
               />
             </VCol>
             <VCol
               cols="12"
               md="2"
-              class="text-end"
+              class="text-end d-flex flex-column gap-2"
             >
               <VBtn
                 prepend-icon="tabler-trash"
@@ -122,6 +139,17 @@
                 @click="deleteEntry(index)"
               >
                 Delete
+              </VBtn>
+              <!-- Stop Timer Button -->
+              <VBtn
+                v-if="!entry.endFormatted && !entry.deleted"
+                prepend-icon="tabler-pause"
+                color="warning"
+                variant="outlined"
+                class="btn-stop-timer"
+                @click="stopTimer(index)"
+              >
+                Stop Timer
               </VBtn>
             </VCol>
           </VRow>
@@ -140,7 +168,7 @@
                   {{ entry.end ? entry.trackedTimeDisplay : activeTimerDisplay }}
                 </VChip>
                 <VChip
-                  v-if="entry.oldTrackedTimeDisplay && entry.trackedTimeDisplay !== entry.oldTrackedTimeDisplay"
+                  v-if="entry.oldTrackedTimeDisplay && entry.trackedTimeDisplay !== entry.oldTrackedTimeDisplay && !entry.skipOldTrackedTimeDisplay"
                   label
                   class="chip-time-old"
                   size="small"
@@ -155,7 +183,7 @@
               class="text-end"
             >
               <VChip
-                v-if="entry.oldTrackedTimeDisplay && entry.trackedTimeDisplay !== entry.oldTrackedTimeDisplay"
+                v-if="entry.oldTrackedTimeDisplay && entry.trackedTimeDisplay !== entry.oldTrackedTimeDisplay && !entry.skipOldTrackedTimeDisplay"
                 label
                 class="chip-github"
                 size="small"
@@ -214,7 +242,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:isDialogVisible', 'formSubmitted'])
+const emit = defineEmits(['update:isDialogVisible', 'formSubmitted', 'unassignMember'])
 
 const toast = useToast()
 const refForm = ref()
@@ -321,15 +349,18 @@ const closeDialog = () => {
 
 const updateActiveTimer = () => {
   const activeEntry = getActiveTimeEntry(localMemberDetails.value)
+
   if (!activeEntry) {
     activeTimerDisplay.value = "N/A"
 
     return
   }
 
-  const rawStartTime = activeEntry.start
+  if(!activeEntry.start && activeEntry.startFormatted) {
+    activeEntry.start = convertToOriginalFormat(activeEntry.startFormatted)
+  }
 
-  console.log("Raw Start Time:", rawStartTime)
+  const rawStartTime = activeEntry.start
 
   const localStartTime = parse(rawStartTime, "MM/dd/yyyy hh:mm:ss a", new Date())
 
@@ -409,6 +440,7 @@ const addNewEntry = () => {
     added_manually: true,
     deleted: false,
     _isWatching: false,
+    skipOldTrackedTimeDisplay: false,
   })
 }
 
@@ -419,13 +451,48 @@ const deleteEntry = index => {
   }
 }
 
+const stopTimer = index => {
+  const entry = localMemberDetails.value.timeEntries[index]
+
+  if (entry && !entry.endFormatted) {
+
+    const nowUTC = new Date().toISOString()
+
+    entry.endFormatted = nowUTC.slice(0, 19)
+
+    entry.trackedTimeDisplay = calculateTrackedTime(
+      entry.startFormatted,
+      entry.endFormatted,
+    )
+    clearInterval(activeTimerInterval)
+
+    entry.skipOldTrackedTimeDisplay = true
+
+    toast.success('Timer stopped successfully.')
+  }
+}
+
 const getActiveTimeEntry = member => {
   if (!member || !member.timeEntries) return null
 
-  return member.timeEntries.find(entry => !entry.end)
+  return member.timeEntries.find(entry => (!entry.end && !entry.deleted && entry.start) || (entry.added_manually && !entry.deleted && !entry.endFormatted && entry.startFormatted))
 }
 
 const activeTimerDisplay = ref("")
+
+const unassignMember = async () => {
+  const res = await $api(`/task/unassign-member/${props.taskId}`, {
+    method: 'POST',
+    body: {
+      member: localMemberDetails.value.user_id,
+    },
+  })
+
+  if (res) {
+    toast.success('Member unassigned successfully')
+    emit('unassignMember', true)
+  }
+}
 
 onBeforeUnmount(() => {
   if (activeTimerInterval) clearInterval(activeTimerInterval)

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Task\ToggleTimer;
+use App\Http\Controllers\Task\UnassignMember;
 use App\Http\Controllers\Task\UpdateTimers;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Task\Index;
@@ -16,5 +17,6 @@ Route::group(['prefix' => 'task'], function () {
     Route::put('/{id}', Update::class)->name("task.update");
     Route::post('/toggle-timer/{id}', ToggleTimer::class)->name("task.toggle-timer");
     Route::post('/update-timer/{id}', UpdateTimers::class)->name("task.change-timer");
+    Route::post('/unassign-member/{id}', UnassignMember::class)->name("task.unassign-member");
     Route::delete('/{id}', Destroy::class)->name("task.destroy");
 });
