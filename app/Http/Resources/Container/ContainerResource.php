@@ -5,6 +5,8 @@ namespace App\Http\Resources\Container;
 namespace App\Http\Resources\Container;
 
 use App\Http\Resources\Task\TaskBoardResource;
+use App\Models\TimeEntry;
+use App\Models\User;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
 
@@ -32,35 +34,30 @@ class ContainerResource extends JsonResource
             ];
         });
 
-//        $hasActiveTimeEntries = $boards->flatMap(function ($board) {
-//            return collect($board['tasks']);
-//        })->some(function ($task) use ($authUser) {
-//            return collect($task->members)->contains(function ($member) use ($authUser) {
-//                return $member['user_id'] === $authUser->id &&$member->user->timeEntries->some(function ($timeEntry) {
-//                    return $timeEntry->end === null;
-//                });
-//            });
-//        });
-//
-//        $activeUsers = $boards->flatMap(function ($board) {
-//            return collect($board['tasks']);
-//        })->flatMap(function ($task) {
-//            return collect($task->members);
-//        })->filter(function ($member) {
-//            return $member->user->timeEntries->some(function ($timeEntry) {
-//                return $timeEntry->end === null && $timeEntry->container_id == $this->id;
-//            });
-//        })->map(function ($member) {
-//            $user = $member->user;
-//            $user->active_time_entry = $user->timeEntries->filter(function ($timeEntry) {
-//                return $timeEntry->end == null && $timeEntry->container_id == $this->id;
-//            })->first();
-//            unset($user->timeEntries);
-//            return $user;
-//        })->unique();
+        $hasActiveTimeEntries = $boards->flatMap(fn($board) => $board['tasks'])
+            ->flatMap(fn($task) => $task->members)
+            ->pluck('user.timeEntries')
+            ->flatten()
+            ->contains(fn($timeEntry) => $timeEntry->end === null);
 
-        $hasActiveTimeEntries = false;
-        $activeUsers = [];
+
+        $taskIds = $this->boards->flatMap(fn($board) => $board->tasks)->pluck('id')->toArray();
+
+        $activeUserIds = TimeEntry::whereNull('end')
+            ->whereIn('task_id', $taskIds)
+            ->pluck('user_id')
+            ->unique();
+
+        $activeUsers = User::whereIn('id', $activeUserIds)
+            ->get()
+            ->map(function ($user) use ($taskIds) {
+                $user->active_time_entry = TimeEntry::where('user_id', $user->id)
+                    ->whereIn('task_id', $taskIds)
+                    ->whereNull('end')
+                    ->select(['id', 'start', 'task_id'])
+                    ->first();
+                return $user;
+            });
 
         return [
             'id' => $this->id,
