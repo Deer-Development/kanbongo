@@ -18,7 +18,7 @@ class ContainerResource extends JsonResource
         $isOwner = $authUser->id === $this->owner_id;
         $isMember = $this->members->contains('user_id', $authUser->id);
         $isSuperAdmin = $authUser->isSuperAdmin();
-        $boards = $this->boards()->orderBy('order')->get()->map(function ($board) {
+        $boards = $this->boards->map(function ($board) {
             return [
                 'id' => $board->id,
                 'container_id' => $board->container_id,
@@ -30,7 +30,7 @@ class ContainerResource extends JsonResource
                 'updated_at' => $board->updated_at,
                 'deleted_at' => $board->deleted_at,
                 'members' => $board->members,
-                'tasks' => TaskBoardResource::collection($board->tasks()->orderBy('order')->get()),
+                'tasks' => TaskBoardResource::collection($board->tasks),
             ];
         });
 

@@ -24,9 +24,11 @@ class Show extends BaseController
             'members.user',
             'owner',
             'boards' => function ($q) {
-                $q->orderBy('created_at')->with([
+                $q->orderBy('order')
+                    ->with([
                     'members',
                     'tasks' => function ($q) {
+                        $q->orderBy('order');
                         $q->with(['members.user']);
                         $q->with(['timeEntries' => function ($q) {
                             $q->with('logs');
