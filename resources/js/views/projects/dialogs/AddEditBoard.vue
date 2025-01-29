@@ -104,10 +104,10 @@ const addUser = userId => {
     return
   }
 
-  const exists = members.value.some(member => member.id === user.id)
-  if (exists) {
-    return
-  }
+  // const exists = members.value.some(member => member.id === user.id)
+  // if (exists) {
+  //   return
+  // }
 
   members.value.push({
     user_id: user.id,
@@ -210,7 +210,7 @@ const applyInvite = async () => {
     if (response?.data) {
       members.value.push({
         user_id: response.data.id,
-        name:  response.data.name,
+        name: response.data.name,
         email: response.data.email,
         avatar: response.data.avatar,
         avatarOrInitials: response.data.avatarOrInitials,
