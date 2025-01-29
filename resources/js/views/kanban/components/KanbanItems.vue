@@ -2,12 +2,12 @@
 import {
   animations,
   handleEnd,
-  performTransfer,
+  performTransfer, remapNodes,
 } from '@formkit/drag-and-drop'
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
 import KanbanCard from './KanbanCard.vue'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, watch } from 'vue'
 import { VProgressCircular } from 'vuetify/components/VProgressCircular'
 import { VSkeletonLoader } from 'vuetify/components/VSkeletonLoader'
 
@@ -76,6 +76,7 @@ const refKanbanBoard = ref()
 const localBoardName = ref(props.boardName)
 const localBoardColor = ref(props.boardColor)
 const hasLocalActiveTimer = ref(false)
+// const localIds = ref(props.kanbanIds)
 const localIds = ref(props.kanbanIds)
 const isAddNewFormVisible = ref(false)
 const isBoardNameEditing = ref(false)
@@ -129,7 +130,11 @@ dragAndDrop({
   draggable: child => child.classList.contains('kanban-card'),
   dragHandle: '.card-handler',
   disabled: props.isMobile,
-  plugins: [animations()],
+  plugins: [animations({
+    duration: 80,
+    easing: 'linear',
+    delay: 0,
+  })],
   performTransfer: (state, data) => {
     performTransfer(state, data)
 
@@ -241,7 +246,7 @@ const adjustBrightness = (hex, amount) => {
         ref="refKanbanBoardTitle"
         @submit.prevent="renameBoard"
       >
-        <div class="mb-4">
+        <div class="mb-2">
           <VTextField
             v-model="localBoardName"
             autofocus
@@ -269,7 +274,7 @@ const adjustBrightness = (hex, amount) => {
             </template>
           </VTextField>
         </div>
-        <div class="d-flex mb-4">
+        <div class="d-flex">
           <VRadioGroup
             v-model="localBoardColor"
             class="d-flex gap-3"
@@ -291,7 +296,7 @@ const adjustBrightness = (hex, amount) => {
 
       <div
         v-else
-        class="d-flex align-center justify-space-between "
+        class="d-flex align-center justify-space-between"
       >
         <div class="d-flex align-center">
           <VIcon
@@ -338,9 +343,8 @@ const adjustBrightness = (hex, amount) => {
         </div>
       </div>
 
-      <div class="add-new-form mt-2">
+      <div class="add-new-form mt-2" v-if="isAddNewFormVisible">
         <VForm
-          v-if="isAddNewFormVisible"
           ref="refForm"
           class="mt-4"
           validate-on="submit"

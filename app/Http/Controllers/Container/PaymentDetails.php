@@ -8,6 +8,7 @@ use App\Models\Container;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentDetails extends BaseController
 {
@@ -16,6 +17,9 @@ class PaymentDetails extends BaseController
         $dateRange = $request->input('date_range');
         $startDate = null;
         $endDate = null;
+        $isSuperAdmin = filter_var($request->input('is_super_admin'), FILTER_VALIDATE_BOOLEAN);
+        $isOwner = filter_var($request->input('is_owner'), FILTER_VALIDATE_BOOLEAN);
+        $authUserId = Auth::id();
 
         if ($dateRange) {
             [$start, $end] = array_pad(explode(' to ', $dateRange), 2, null);
@@ -24,8 +28,6 @@ class PaymentDetails extends BaseController
         }
 
         $model = Container::with([
-            'members.user',
-            'members',
             'boards' => function ($q) use ($startDate, $endDate) {
                 $q->orderBy('created_at')->with([
                     'tasks' => function ($q) use ($startDate, $endDate) {
@@ -43,6 +45,12 @@ class PaymentDetails extends BaseController
                     }
                 ]);
             },
+            'members' => function ($q) use ($isSuperAdmin, $isOwner, $authUserId) {
+                if (!$isSuperAdmin && !$isOwner) {
+                    $q->where('user_id', $authUserId);
+                }
+                $q->with('user');
+            }
         ])->findOrFail($id);
 
         $paymentDetails = [];
@@ -80,17 +88,14 @@ class PaymentDetails extends BaseController
 
     private function calculateTrackedTime($timeEntry)
     {
-        if (!$timeEntry) {
-            return null;
-        }
-
-        if (!$timeEntry->end) {
+        if (!$timeEntry || !$timeEntry->end) {
             return 0;
         }
 
         $start = Carbon::parse($timeEntry->start);
-        $end = $timeEntry->end ? Carbon::parse($timeEntry->end) : now();
+        $end = Carbon::parse($timeEntry->end) ?? now();
 
         return $start->lte($end) ? $start->diffInSeconds($end) : 0;
     }
 }
+

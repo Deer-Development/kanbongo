@@ -2,9 +2,11 @@
 import KanbanBoardComp from './components/KanbanBoard.vue'
 import { differenceInSeconds, format, formatDistanceToNow, parse, parseISO } from 'date-fns'
 import { watch } from "vue"
+import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
+const isPaymentDetailsDialogVisible = ref(false)
 const activeUsersMenu = ref(false)
 const deleteItem = ref(null)
 const kanbanBoard = ref(null)
@@ -19,6 +21,9 @@ const {
 }))
 
 const kanbanData = computed(() => kanban.value)
+const isOwner = computed(() => kanbanData.value?.owner_id === userData.value.id)
+const boardId = computed(() => kanban.value?.id)
+const isSuperAdmin = computed(() => kanbanData.value?.auth.is_super_admin)
 
 const addNewBoard = async (newBoardName, newBoardColor) => {
   await $api('/board', {
@@ -34,10 +39,14 @@ const deleteBoard = async boardId => {
 }
 
 const toggleTimerFn = async (memberData, taskId) => {
-  await $api(`/task/toggle-timer/${taskId}`, {
+  const res = await $api(`/task/toggle-timer/${taskId}`, {
     method: 'POST',
     body: memberData,
   })
+
+  if(res) {
+    refetchKanban()
+  }
 }
 
 const renameTheBoard = async kanbanBoard => {
@@ -188,7 +197,7 @@ onBeforeUnmount(() => {
       </h4>
       <div class="d-flex gap-1 align-content-center">
         <VMenu
-          v-if="kanbanData?.active_users?.length"
+          v-if="kanban?.active_users?.length"
           v-model="activeUsersMenu"
           offset-y
         >
@@ -209,7 +218,7 @@ onBeforeUnmount(() => {
             </VChip>
           </template>
           <div class="p-4">
-            <div v-if="kanbanData?.active_users?.length">
+            <div v-if="kanban?.active_users?.length">
               <div
                 v-for="user in kanbanData.active_users"
                 :key="user.id"
@@ -241,10 +250,10 @@ onBeforeUnmount(() => {
           </VIcon>
         </VChip>
         <VChip
-          v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id"
           size="small"
           variant="elevated"
           class="comments-chip"
+          @click="isPaymentDetailsDialogVisible = true"
         >
           <VIcon
             left
@@ -254,6 +263,12 @@ onBeforeUnmount(() => {
           </VIcon>
         </VChip>
       </div>
+      <PaymentDetails
+        v-model:board-id="boardId"
+        v-model:is-super-admin="isSuperAdmin"
+        v-model:is-owner="isOwner"
+        v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
+      />
     </div>
     <KanbanBoardComp
       v-if="kanban"

@@ -46,14 +46,17 @@ onMounted(() => {
           >
             <span class="font-weight-bold mr-1"> Owner: </span> {{ projectData?.owner?.full_name }}
           </VChip>
+          <VBtn
+            class="ml-2"
+            size="small"
+            @click="isAddBoardDialogVisible = true"
+          >
+            Add New Board
+          </VBtn>
         </h4>
 
-        <VBtn
-          @click="isAddBoardDialogVisible = true"
-        >
-          Add New Board
-        </VBtn>
-            
+
+
         <AddEditBoard
           v-model:is-dialog-visible="isAddBoardDialogVisible"
           v-model:board-details="boardDetails"
@@ -73,6 +76,6 @@ onMounted(() => {
           @form-submitted="fetchContainer"
         />
       </VCol>
-    </vcol>
+    </VCol>
   </VRow>
 </template>

@@ -7,6 +7,7 @@ use App\Http\Requests\User\ValidateUserStore;
 use App\Notifications\WelcomeEmail;
 use App\Services\User\UserService;
 use App\Http\Resources\User\UserResource;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\JsonResponse;
 
@@ -28,6 +29,7 @@ class Store extends BaseController
 //        }
 
         $data['invited_at'] = now();
+        $data['invited_by'] = Auth::user()->id;
         $model = $this->service->create($data);
 
         $model->notify(new WelcomeEmail());

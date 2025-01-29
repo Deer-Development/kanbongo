@@ -107,9 +107,9 @@ const toggleTimer = member => {
 
   emit('toggleTimer', member, props.item.id)
 
-  nextTick(() => {
-    emit('refreshKanbanData')
-  })
+  // nextTick(() => {
+  //   emit('refreshKanbanData')
+  // })
 }
 
 watch(() => props.hasActiveTimer, () => {
@@ -306,23 +306,23 @@ const updateDueDate = async date => {
               v-for="(member, index) in item.members"
               :key="member.id"
             >
-              <VAvatar
-                v-tooltip="member.user.full_name"
-                size="28"
-                class="cursor-pointer"
-                :color="member.isTiming ? '#38a169' : (member.timeEntries.length ? 'rgb(249 220 107)' : '#EEEDF0')"
-                :class="member.isTiming ? 'glow' : (member.timeEntries.length ? 'worked' : '')"
-                @click="editTimer(member, item.id, item.name)"
-              >
-                <template v-if="member.user.avatar">
-                  <img
-                    :src="member.user.avatar"
-                    alt="Avatar"
-                  >
-                </template>
-                <template v-else>
-                  <span>{{ member.user.avatar_or_initials }}</span>
-                </template>
+             <VAvatar
+                  v-tooltip="member.user.full_name"
+                  size="28"
+                  class="cursor-pointer"
+                  :color="member.isTiming ? '#38a169' : (member.timeEntries.length ? 'rgb(249 220 107)' : '#EEEDF0')"
+                  :class="member.isTiming ? 'glow' : (member.timeEntries.length ? 'worked' : '')"
+                  @click="editTimer(member, item.id, item.name)"
+                >
+                  <template v-if="member.user.avatar">
+                    <img
+                      :src="member.user.avatar"
+                      alt="Avatar"
+                    >
+                  </template>
+                  <template v-else>
+                    <span>{{ member.user.avatar_or_initials }}</span>
+                  </template>
               </VAvatar>
             </template>
           </div>

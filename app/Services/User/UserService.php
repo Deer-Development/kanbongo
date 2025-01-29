@@ -23,7 +23,8 @@ class UserService extends BaseService
             : [];
 
         return $this->getQueryBuilder()
-            ->withoutRole('Super-Admin')
+//            ->withoutRole('Super-Admin')
+//            ->with('roles')
             ->when($request->get('q'), function ($query) use ($request) {
                 $query->whereAny(
                     ['first_name', 'last_name', 'email'],

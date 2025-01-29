@@ -36,6 +36,7 @@ const isBoardDialogVisible = ref(false)
 const isPaymentDetailsDialogVisible = ref(false)
 const boardDetails = ref()
 const boardId = ref(0)
+const isOwner = computed(() => projectDataLocal.value.owner.id === props.userData.id)
 
 const editBoard = board => {
   boardDetails.value = board
@@ -145,7 +146,6 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
               </div>
               <div class="d-flex gap-4">
                 <VBtn
-                  v-if="props.isSuperAdmin || projectDataLocal.owner.id === props.userData.id"
                   icon
                   color="info"
                   @click="paymentBoard(item)"
@@ -175,6 +175,8 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
 
     <PaymentDetails
       v-model:board-id="boardId"
+      v-model:is-super-admin="props.isSuperAdmin"
+      v-model:is-owner="isOwner"
       v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
       @form-submitted="handleFormSubmitted"
     />

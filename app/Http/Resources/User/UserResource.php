@@ -15,6 +15,7 @@ class UserResource extends JsonResource
             'is_active' => $this->is_active,
             'avatar' => $this->avatar ?? null,
             'avatarOrInitials' => $this->avatar_or_initials,
+            'role' => $this->roles->first()?->name,
             'invited_at' => $this->invited_at,
             'created_at' => $this->created_at->diffForHumans(),
         ];

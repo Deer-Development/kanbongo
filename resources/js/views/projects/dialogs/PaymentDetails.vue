@@ -110,6 +110,7 @@
 
             <div class="card-actions">
               <VBtn
+                v-if="props.isSuperAdmin || props.isOwner"
                 color="primary"
                 variant="tonal"
                 class="btn-github"
@@ -163,9 +164,20 @@ const props = defineProps({
     required: true,
     default: 0,
   },
+  isOwner: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  isSuperAdmin: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
   isDialogVisible: {
     type: Boolean,
     required: true,
+    default: false,
   },
 })
 
@@ -181,6 +193,8 @@ const fetchMemberDetails = async () => {
     method: "GET",
     params: {
       date_range: selectedDateRange.value,
+      is_super_admin: props.isSuperAdmin,
+      is_owner: props.isOwner,
     },
   })
 
@@ -193,6 +207,16 @@ watch(
     boardIdLocal.value = value
 
     if (boardIdLocal.value !== 0) {
+      fetchMemberDetails()
+    }
+  },
+)
+
+watch(
+  () => props.isDialogVisible,
+  value => {
+    boardIdLocal.value = props.boardId
+    if (value) {
       fetchMemberDetails()
     }
   },
