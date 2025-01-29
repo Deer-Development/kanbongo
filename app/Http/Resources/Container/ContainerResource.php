@@ -32,32 +32,35 @@ class ContainerResource extends JsonResource
             ];
         });
 
-        $hasActiveTimeEntries = $boards->flatMap(function ($board) {
-            return collect($board['tasks']);
-        })->some(function ($task) use ($authUser) {
-            return collect($task->members)->contains(function ($member) use ($authUser) {
-                return $member['user_id'] === $authUser->id &&$member->user->timeEntries->some(function ($timeEntry) {
-                    return $timeEntry->end === null;
-                });
-            });
-        });
+//        $hasActiveTimeEntries = $boards->flatMap(function ($board) {
+//            return collect($board['tasks']);
+//        })->some(function ($task) use ($authUser) {
+//            return collect($task->members)->contains(function ($member) use ($authUser) {
+//                return $member['user_id'] === $authUser->id &&$member->user->timeEntries->some(function ($timeEntry) {
+//                    return $timeEntry->end === null;
+//                });
+//            });
+//        });
+//
+//        $activeUsers = $boards->flatMap(function ($board) {
+//            return collect($board['tasks']);
+//        })->flatMap(function ($task) {
+//            return collect($task->members);
+//        })->filter(function ($member) {
+//            return $member->user->timeEntries->some(function ($timeEntry) {
+//                return $timeEntry->end === null && $timeEntry->container_id == $this->id;
+//            });
+//        })->map(function ($member) {
+//            $user = $member->user;
+//            $user->active_time_entry = $user->timeEntries->filter(function ($timeEntry) {
+//                return $timeEntry->end == null && $timeEntry->container_id == $this->id;
+//            })->first();
+//            unset($user->timeEntries);
+//            return $user;
+//        })->unique();
 
-        $activeUsers = $boards->flatMap(function ($board) {
-            return collect($board['tasks']);
-        })->flatMap(function ($task) {
-            return collect($task->members);
-        })->filter(function ($member) {
-            return $member->user->timeEntries->some(function ($timeEntry) {
-                return $timeEntry->end === null && $timeEntry->container_id == $this->id;
-            });
-        })->map(function ($member) {
-            $user = $member->user;
-            $user->active_time_entry = $user->timeEntries->filter(function ($timeEntry) {
-                return $timeEntry->end == null && $timeEntry->container_id == $this->id;
-            })->first();
-            unset($user->timeEntries);
-            return $user;
-        })->unique();
+        $hasActiveTimeEntries = false;
+        $activeUsers = [];
 
         return [
             'id' => $this->id,

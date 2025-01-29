@@ -7,9 +7,6 @@ import {
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
 import KanbanCard from './KanbanCard.vue'
-import { defineAsyncComponent, watch } from 'vue'
-import { VProgressCircular } from 'vuetify/components/VProgressCircular'
-import { VSkeletonLoader } from 'vuetify/components/VSkeletonLoader'
 
 const props = defineProps({
   kanbanIds: {
@@ -76,7 +73,7 @@ const refKanbanBoard = ref()
 const localBoardName = ref(props.boardName)
 const localBoardColor = ref(props.boardColor)
 const hasLocalActiveTimer = ref(false)
-// const localIds = ref(props.kanbanIds)
+
 const localIds = ref(props.kanbanIds)
 const isAddNewFormVisible = ref(false)
 const isBoardNameEditing = ref(false)
@@ -130,11 +127,7 @@ dragAndDrop({
   draggable: child => child.classList.contains('kanban-card'),
   dragHandle: '.card-handler',
   disabled: props.isMobile,
-  plugins: [animations({
-    duration: 80,
-    easing: 'linear',
-    delay: 0,
-  })],
+  plugins: [animations()],
   performTransfer: (state, data) => {
     performTransfer(state, data)
 
