@@ -13,6 +13,7 @@ class UserResource extends JsonResource
             'name' => $this->full_name,
             'email' => $this->email,
             'is_active' => $this->is_active,
+            'from_registration' => $this->from_registration,
             'avatar' => $this->avatar ?? null,
             'avatarOrInitials' => $this->avatar_or_initials,
             'role' => $this->roles->first()?->name,

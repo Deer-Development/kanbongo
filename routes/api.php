@@ -4,12 +4,14 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RefreshTokenController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\General\Statuses;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'auth'], function () {
     Route::post('/send-token', [LoginController::class, 'sendLoginToken'])->name('vue.user.send-token');
+    Route::post('/register', [RegisterController::class, 'register'])->name('vue.user.register');
     Route::post('/verify-token', [LoginController::class, 'verifyLoginToken'])->name('vue.user.verify-token');
     Route::post('forgot-password', ForgotPasswordController::class)->name('vue.user.forgot-password');
     Route::post('reset-password', ResetPasswordController::class)->name('vue.user.reset-password');

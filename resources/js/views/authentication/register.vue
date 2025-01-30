@@ -1,15 +1,15 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue"
-import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
-import { themeConfig } from '@themeConfig'
-import { useAuthStore } from "@core/stores/authStore"
+import { VNodeRenderer } from '@/@layouts/components/VNodeRenderer'
 import { useGenerateImageVariant } from '@core/composable/useGenerateImageVariant'
+import { themeConfig } from '@themeConfig'
 import authV2RegisterIllustrationBorderedDark from '@images/pages/auth-v2-register-illustration-bordered-dark.png'
 import authV2RegisterIllustrationBorderedLight from '@images/pages/auth-v2-register-illustration-bordered-light.png'
 import authV2RegisterIllustrationDark from '@images/pages/auth-v2-register-illustration-dark.png'
 import authV2RegisterIllustrationLight from '@images/pages/auth-v2-register-illustration-light.png'
 import authV2MaskDark from '@images/pages/misc-mask-dark.png'
 import authV2MaskLight from '@images/pages/misc-mask-light.png'
+import { onBeforeUnmount, ref } from "vue"
+import { useAuthStore } from "@core/stores/authStore"
 
 definePage({
   meta: {
@@ -17,6 +17,9 @@ definePage({
     unauthenticatedOnly: true,
   },
 })
+
+const imageVariant = useGenerateImageVariant(authV2RegisterIllustrationLight, authV2RegisterIllustrationDark, authV2RegisterIllustrationBorderedLight, authV2RegisterIllustrationBorderedDark, true)
+const authThemeMask = useGenerateImageVariant(authV2MaskLight, authV2MaskDark)
 
 const step = ref('email')
 const refVForm = ref()
@@ -45,7 +48,7 @@ const sendToken = async () => {
       email: credentials.value.email,
     }
 
-    await authStore.requestLoginToken(data)
+    await authStore.requestRegisterToken(data)
     step.value = 'token'
     startCountdown()
   } catch (error) {
@@ -120,20 +123,17 @@ watch(
     }
   },
 )
-
-const imageVariant = useGenerateImageVariant(authV2RegisterIllustrationLight, authV2RegisterIllustrationDark, authV2RegisterIllustrationBorderedLight, authV2RegisterIllustrationBorderedDark, true)
-const authThemeMask = useGenerateImageVariant(authV2MaskLight, authV2MaskDark)
 </script>
 
 <template>
-  <a href="javascript:void(0)">
+  <RouterLink to="/">
     <div class="auth-logo d-flex align-center gap-x-3">
       <VNodeRenderer :nodes="themeConfig.app.logo" />
       <h1 class="auth-title">
         {{ themeConfig.app.title }}
       </h1>
     </div>
-  </a>
+  </RouterLink>
 
   <VRow
     no-gutters
@@ -173,16 +173,17 @@ const authThemeMask = useGenerateImageVariant(authV2MaskLight, authV2MaskDark)
       <VCard
         flat
         :max-width="500"
-        class="mt-12 mt-sm-0 pa-6"
+        class="mt-12 pa-6"
       >
         <VCardText>
-          <h4 class="text-h3 font-weight-bold mb-1">
-            Welcome to <span class="text-capitalize">{{ themeConfig.app.title }}</span>! 👋🏻
+          <h4 class="text-h4 mb-1">
+            Adventure starts here 🚀
           </h4>
           <p class="mb-0">
-            Please follow the steps below to log in.
+            Make your work management easy and fun!
           </p>
         </VCardText>
+
         <VCardText>
           <VForm
             ref="refVForm"
@@ -260,69 +261,93 @@ const authThemeMask = useGenerateImageVariant(authV2MaskLight, authV2MaskDark)
                   block
                   type="submit"
                 >
-                  Send Login Token
+                  Send Verification Token
                 </VBtn>
+              </VCol>
+
+              <VCol
+                v-if="step !== 'token'"
+                cols="12"
+                class="text-center text-base"
+              >
+                <span class="d-inline-block">Already have an account?</span>
+                <RouterLink
+                  class="text-primary ms-1 d-inline-block"
+                  :to="{ name: 'login' }"
+                >
+                  Sign in instead
+                </RouterLink>
               </VCol>
             </VRow>
           </VForm>
-
-          <VCol
-            cols="12"
-            class="text-center text-base"
-          >
-            <span class="d-inline-block">New on Kanbongo?</span>
-            <RouterLink
-              class="text-primary ms-1 d-inline-block"
-              :to="{ name: 'register' }"
-            >
-              Create an account
-            </RouterLink>
-          </VCol>
         </VCardText>
       </VCard>
     </VCol>
   </VRow>
 </template>
 
-
 <style lang="scss">
-@use "@core-scss/template/pages/page-auth.scss";
-
-.auth-wrapper {
-  .auth-logo {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    color: #fff;
-    font-size: 1.5rem;
-    font-weight: bold;
+.layout-blank {
+  .auth-wrapper {
+    min-block-size: 100dvh;
   }
 
-  .auth-card-v2 {
-    .v-card {
-      backdrop-filter: blur(10px);
-      background: rgba(255, 255, 255, 0.85);
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-      border-radius: 1rem;
+  .auth-v1-top-shape,
+  .auth-v1-bottom-shape {
+    position: absolute;
+  }
 
-      .text-h3 {
-        color: #1e3a8a;
-      }
+  .auth-footer-mask {
+    position: absolute;
+    inset-block-end: 0;
+    min-inline-size: 100%;
+  }
 
-      .v-btn {
-        background: #1e3a8a !important;
-        color: #fff;
-        font-weight: bold;
-        &:hover {
-          background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
-        }
-      }
+  .auth-card {
+    z-index: 1 !important;
+  }
 
-      .v-alert {
-        background-color: rgba(255, 0, 0, 0.1);
-        color: #b91c1c;
-      }
+  .auth-illustration {
+    z-index: 1;
+  }
+
+  .auth-v1-top-shape {
+    inset-block-start: -77px;
+    inset-inline-start: -45px;
+  }
+
+  .auth-v1-bottom-shape {
+    inset-block-end: -58px;
+    inset-inline-end: -58px;
+  }
+
+  @media (min-width: 1264px), (max-width: 959px) and (min-width: 450px) {
+    .v-otp-input .v-otp-input__content {
+      gap: 1rem;
     }
   }
+}
+
+@media (min-width: 960px) {
+  .skin--bordered {
+    .auth-card-v2 {
+      border-inline-start: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+    }
+  }
+}
+
+.auth-logo {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: 2rem;
+  inset-inline-start: 2.3rem;
+}
+
+.auth-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0.25px;
+  line-height: 1.5rem;
+  text-transform: capitalize;
 }
 </style>

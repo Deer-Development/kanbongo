@@ -33,6 +33,15 @@ export const routes = [
     },
   },
   {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/views/authentication/register.vue'),
+    meta: {
+      layout: 'blank',
+      unauthenticatedOnly: true,
+    },
+  },
+  {
     path: '/forgot-password',
     name: 'forgot-password',
     component: () => import('@/views/authentication/forgot-password.vue'),

@@ -21,11 +21,12 @@ class WelcomeEmail extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-            ->subject('Welcome to Our Platform!')
-            ->greeting('Hello ' . $notifiable->first_name . '!')
-            ->line('Thank you for joining us. We’re thrilled to have you on board.')
-            ->action('Get Started', url('/login'))
-            ->line('If you have any questions, feel free to reach out!');
+            ->subject('🎉 Welcome to Kanbongo, ' . $notifiable->first_name . '!')
+            ->greeting('Hey ' . $notifiable->first_name . ',')
+            ->line('We’re thrilled to have you on **Kanbongo**, the most elegant time-tracking and Kanban board platform.')
+            ->line('Start organizing your projects seamlessly, track time like a pro, and boost your productivity effortlessly.')
+            ->action('🚀 Get Started Now', url('/login'))
+            ->salutation('Welcome aboard, and happy tracking! 🚀');
     }
 }
 

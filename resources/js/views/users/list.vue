@@ -31,6 +31,10 @@ const headers = [
     key: 'status',
   },
   {
+    title: 'From Registration',
+    key: 'from_registration',
+  },
+  {
     title: 'Actions',
     key: 'actions',
     sortable: false,
@@ -196,6 +200,17 @@ const confirmDelete = async id => {
             class="text-capitalize"
           >
             {{ item.is_active ? 'active' : 'inactive' }}
+          </VChip>
+        </template>
+
+        <template #item.from_registration="{ item }">
+          <VChip
+            :color="resolveUserStatusVariant(item.from_registration)"
+            size="small"
+            label
+            class="text-capitalize"
+          >
+            {{ item.from_registration ? 'yes' : 'no' }}
           </VChip>
         </template>
 

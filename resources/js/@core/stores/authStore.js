@@ -22,6 +22,20 @@ export const useAuthStore = defineStore('authStore', {
         throw error
       }
     },
+    async requestRegisterToken(data) {
+      try {
+        await $api('/auth/register', {
+          method: 'POST',
+          body: data,
+          onResponseError({ response }) {
+            throw response._data.errors
+          },
+        })
+      } catch (error) {
+        console.error('Token Request Error:', error)
+        throw error
+      }
+    },
     async verifyLoginToken(data) {
       try {
         const res = await $api('/auth/verify-token', {
