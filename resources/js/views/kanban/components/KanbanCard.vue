@@ -67,7 +67,7 @@ const priorityMenu = ref(null)
 const membersMenu = ref(null)
 const dueDate = ref(null)
 const hasLocalActiveTimer = ref(props.hasActiveTimer)
-
+const localAvailableMembers = ref([...props.availableMembers])
 const membersExpanded = ref(null)
 
 const formatTime = (seconds = 0) => {
@@ -114,6 +114,10 @@ const toggleTimer = member => {
 
 watch(() => props.hasActiveTimer, () => {
   hasLocalActiveTimer.value = props.hasActiveTimer
+}, { deep: true })
+
+watch(() => props.availableMembers, () => {
+  localAvailableMembers.value = [...props.availableMembers]
 }, { deep: true })
 
 const editTimer = (member, id, name) => {
@@ -277,7 +281,7 @@ const updateDueDate = async date => {
               class="github-style-list"
               style="min-width: 100%;"
             >
-              <template v-if="props.availableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id)).length">
+              <template v-if="localAvailableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id)).length">
                 <VListItem
                   v-for="(member, index) in props.availableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id))"
                   :key="member.id"

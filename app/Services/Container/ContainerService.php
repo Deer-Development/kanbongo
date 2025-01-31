@@ -5,6 +5,7 @@ namespace App\Services\Container;
 use App\Http\Resources\Container\ContainerResource;
 use App\Models\Container;
 use App\Services\BaseService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ContainerService extends BaseService
@@ -83,5 +84,63 @@ class ContainerService extends BaseService
             'is_active' => $data['is_active'],
             'owner_id' => $data['owner_id'] ?? auth()->id(),
         ];
+    }
+
+    public function processPayment(int $id, int $userId, $dateRange): Container
+    {
+        $startDate = null;
+        $endDate = null;
+        if ($dateRange) {
+            [$start, $end] = array_pad(explode(' to ', $dateRange), 2, null);
+            $startDate = Carbon::parse($start)->startOfDay();
+            $endDate = $end ? Carbon::parse($end)->endOfDay() : now()->endOfDay();
+        }
+
+        $model = $this->getModelInstance()::with([
+            'boards' => function ($q) use ($startDate, $endDate) {
+                $q->orderBy('created_at')->with([
+                    'tasks' => function ($q) use ($startDate, $endDate) {
+                        $q->with([
+                            'timeEntries' => function ($q) use ($startDate, $endDate) {
+                                if ($startDate) {
+                                    $q->where('start', '>=', $startDate);
+                                }
+                                if ($endDate) {
+                                    $q->where('end', '<=', $endDate);
+                                }
+                                $q->where('is_paid', false);
+                            },
+                            'members'
+                        ]);
+                    }
+                ]);
+            },
+            'members' => function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            }
+        ])->findOrFail($id);
+
+        DB::transaction(function () use ($model) {
+            foreach ($model->members as $member) {
+                foreach ($model->boards as $board) {
+                    foreach ($board->tasks as $task) {
+                        foreach ($task->timeEntries as $timeEntry) {
+                            if ($timeEntry->user_id === $member->user_id && !$timeEntry->is_paid) {
+                                $durationInHours = Carbon::parse($timeEntry->start)
+                                        ->diffInMinutes(Carbon::parse($timeEntry->end)) / 60;
+
+                                $timeEntry->update([
+                                    'is_paid' => true,
+                                    'paid_rate' => $member->billable_rate,
+                                    'amount_paid' => $durationInHours * $member->billable_rate,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        return $model;
     }
 }

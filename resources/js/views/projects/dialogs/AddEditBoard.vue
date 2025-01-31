@@ -74,9 +74,8 @@ const openInviteDialog = () => {
   isInviteDialogVisible.value = true
 }
 
-watch(() => props.boardDetails, value => {
-  const data = JSON.parse(JSON.stringify(value))
-
+watch(() => props.isDialogVisible, value => {
+  const data = JSON.parse(JSON.stringify(props.boardDetails))
   boardDataLocal.value = data
 
   name.value = data.name
@@ -170,10 +169,11 @@ const onSubmit = async () => {
       )
     }
 
-    emit('formSubmitted')
-    emit('update:isDialogVisible', false)
-
     onReset()
+
+    await nextTick(() => {
+      emit('formSubmitted')
+    })
   } catch (err) {
     console.error(err)
   }

@@ -3,10 +3,12 @@ import KanbanBoardComp from './components/KanbanBoard.vue'
 import { differenceInSeconds, format, formatDistanceToNow, parse, parseISO } from 'date-fns'
 import { watch } from "vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
+import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
 const isPaymentDetailsDialogVisible = ref(false)
+const isEditContainerDialogVisible = ref(false)
 const activeUsersMenu = ref(false)
 const deleteItem = ref(null)
 const kanbanBoard = ref(null)
@@ -74,6 +76,10 @@ const editItemFn = async editItem => {
   //   body: editItem,
   // })
   // refetchKanban()
+}
+
+const membersEdited = async () => {
+  refetchKanban()
 }
 
 const persistDelete = item => {
@@ -241,6 +247,7 @@ onBeforeUnmount(() => {
           v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id"
           size="small"
           variant="elevated"
+          @click="isEditContainerDialogVisible = true"
         >
           <VIcon
             left
@@ -263,12 +270,7 @@ onBeforeUnmount(() => {
           </VIcon>
         </VChip>
       </div>
-      <PaymentDetails
-        v-model:board-id="boardId"
-        v-model:is-super-admin="isSuperAdmin"
-        v-model:is-owner="isOwner"
-        v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
-      />
+
     </div>
     <KanbanBoardComp
       v-if="kanban"
@@ -294,5 +296,19 @@ onBeforeUnmount(() => {
       cancel-msg="Delete action cancelled."
       @confirm="confirmed => confirmed && deleteItemFn()"
     />
+    <div v-if="kanban">
+      <PaymentDetails
+        v-model:board-id="boardId"
+        v-model:is-super-admin="isSuperAdmin"
+        v-model:is-owner="isOwner"
+        v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
+      />
+      <AddEditBoard
+        v-model:is-dialog-visible="isEditContainerDialogVisible"
+        v-model:board-details="kanban"
+        v-model:project-id="kanbanData.project_id"
+        @form-submitted="membersEdited"
+      />
+    </div>
   </section>
 </template>

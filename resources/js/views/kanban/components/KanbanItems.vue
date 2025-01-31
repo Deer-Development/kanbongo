@@ -7,6 +7,7 @@ import {
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
 import KanbanCard from './KanbanCard.vue'
+import { ref, watch } from "vue"
 
 const props = defineProps({
   kanbanIds: {
@@ -73,7 +74,7 @@ const refKanbanBoard = ref()
 const localBoardName = ref(props.boardName)
 const localBoardColor = ref(props.boardColor)
 const hasLocalActiveTimer = ref(false)
-
+const localAvailableMembers = ref(props.availableMembers)
 const localIds = ref(props.kanbanIds)
 const isAddNewFormVisible = ref(false)
 const isBoardNameEditing = ref(false)
@@ -119,6 +120,12 @@ watch(() => props, () => {
   immediate: true,
   deep: true,
 })
+
+watch(() => props.availableMembers, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    localAvailableMembers.value = [...props.availableMembers]
+  }
+}, { deep: true, immediate: true })
 
 dragAndDrop({
   parent: refKanbanBoard,
@@ -399,7 +406,7 @@ const adjustBrightness = (hex, amount) => {
           :is-owner="props.isOwner"
           :is-member="props.isMember"
           :auth-id="props.authId"
-          :available-members="props.availableMembers"
+          :available-members="localAvailableMembers"
           @delete-kanban-item="deleteItem"
           @toggle-timer="toggleTimer"
           @edit-timer="editTimerFn"

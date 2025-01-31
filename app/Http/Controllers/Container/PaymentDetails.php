@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Container;
 
 use App\Http\Controllers\BaseController;
-use App\Http\Resources\Container\ContainerResource;
 use App\Models\Container;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,30 +55,43 @@ class PaymentDetails extends BaseController
         $paymentDetails = [];
 
         foreach ($model->members as $member) {
-            $totalSecondsWorked = 0;
+            $totalPaidSeconds = 0;
+            $totalUnpaidSeconds = 0;
+            $totalAmountPaid = 0;
+            $pendingPayment = 0;
 
             foreach ($model->boards as $board) {
                 foreach ($board->tasks as $task) {
                     foreach ($task->timeEntries as $timeEntry) {
                         if ($timeEntry->user_id === $member->user_id) {
                             $trackedTime = $this->calculateTrackedTime($timeEntry);
-                            $totalSecondsWorked += $trackedTime;
+
+                            if ($timeEntry->is_paid) {
+                                $totalPaidSeconds += $trackedTime;
+                                $totalAmountPaid += $timeEntry->amount_paid;
+                            } else {
+                                $totalUnpaidSeconds += $trackedTime;
+                            }
                         }
                     }
                 }
             }
 
-            $totalHoursWorked = $totalSecondsWorked / 3600;
-            $totalPayment = $totalHoursWorked * $member->billable_rate;
+            $totalPaidHours = $totalPaidSeconds / 3600;
+            $totalUnpaidHours = $totalUnpaidSeconds / 3600;
+            $pendingPayment = $totalUnpaidHours * $member->billable_rate;
 
             $paymentDetails[] = [
                 'member_id' => $member->id,
                 'member_name' => $member->user->full_name ?? 'N/A',
                 'user' => $member->user,
-                'total_seconds_worked' => $totalSecondsWorked,
-                'total_hours_worked' => round($totalHoursWorked, 2),
+                'total_paid_seconds' => $totalPaidSeconds,
+                'total_paid_hours' => round($totalPaidHours, 2),
+                'total_amount_paid' => round($totalAmountPaid, 2),
+                'total_unpaid_seconds' => $totalUnpaidSeconds,
+                'total_unpaid_hours' => round($totalUnpaidHours, 2),
                 'billable_rate' => $member->billable_rate,
-                'total_payment' => round($totalPayment, 2),
+                'pending_payment' => round($pendingPayment, 2),
             ];
         }
 
@@ -98,4 +110,3 @@ class PaymentDetails extends BaseController
         return $start->lte($end) ? $start->diffInSeconds($end) : 0;
     }
 }
-

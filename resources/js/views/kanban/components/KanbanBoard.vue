@@ -154,7 +154,7 @@ dragAndDrop({
 watch(() => props, () => {
   localKanbanData.value = props.kanbanData.boards
   hasActiveTimer.value = props.kanbanData.auth.has_active_time_entries
-
+  localAvailableMembers.value = props.kanbanData.members
   // 👉 remap the nodes when we rename the board: https://github.com/formkit/drag-and-drop/discussions/52#discussioncomment-8995203
   remapNodes(kanbanWrapper.value)
 }, { deep: true })

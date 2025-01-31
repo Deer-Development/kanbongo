@@ -29,6 +29,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:isDialogVisible',
   'confirm',
+  'close',
 ])
 
 const unsubscribed = ref(false)
@@ -46,6 +47,7 @@ const onConfirmation = () => {
 
 const onCancel = () => {
   emit('confirm', false)
+  emit('close', true)
   emit('update:isDialogVisible', false)
   cancelled.value = true
 }
