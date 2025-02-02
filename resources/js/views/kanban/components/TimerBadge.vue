@@ -1,10 +1,24 @@
 <template>
-  <VMenu v-model="timerMenu" offset-y :close-on-content-click="false" eager persistent
+  <VMenu
+    v-model="timerMenu"
+    offset-y
+    :close-on-content-click="false"
+    eager
+    persistent
   >
     <template #activator="{ props }">
-      <div class="custom-badge" v-bind="props">
-        <VIcon left size="16" color="warning">tabler-hourglass</VIcon>
-        <span>{{ isTiming ? activeTimer : task.tracked_time.trackedTimeDisplay }}</span>
+      <div
+        class="custom-badge"
+        v-bind="props"
+      >
+        <VIcon
+          left
+          size="16"
+          color="warning"
+        >
+          tabler-hourglass
+        </VIcon>
+        <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay ? task.tracked_time.trackedTimeDisplay : '00:00:00') }}</span>
         <button
           v-if="member"
           class="timer-btn"
@@ -15,12 +29,19 @@
           :disabled="hasActiveTimer && !isTiming"
           @click.stop="toggleTimer"
         >
-          <VIcon :icon="isTiming ? 'tabler-pause' : 'tabler-play'" size="14" />
+          <VIcon
+            :icon="isTiming ? 'tabler-pause' : 'tabler-play'"
+            size="14"
+          />
         </button>
       </div>
     </template>
     <div class="timer-options ">
-      <VProgressCircular v-if="loading" indeterminate color="primary" />
+      <VProgressCircular
+        v-if="loading"
+        indeterminate
+        color="primary"
+      />
 
       <template v-else>
         <div class="d-flex justify-end">
@@ -28,26 +49,30 @@
             class="custom-badge mb-2"
             @click="timerMenu = false"
           >
-            <VIcon left>tabler-circle-x</VIcon>
+            <VIcon left>
+              tabler-circle-x
+            </VIcon>
             <span>Close</span>
           </div>
         </div>
 
-        <VExpansionPanels variant="accordion"
-                          class="expansion-panels-width-border">
+        <VExpansionPanels
+          variant="accordion"
+          class="expansion-panels-width-border"
+        >
           <VExpansionPanel
             v-for="entry in allEntries"
             :key="entry.details.user.id"
             class="user-panel"
           >
             <VExpansionPanelTitle click.stop>
-              <div class="custom-badge border-0 gap-1" >
+              <div class="custom-badge border-0 gap-1">
                 <VAvatar
                   size="26"
                   :color="entry.details.hasActiveTimer ? '#38a169' :
-                        entry.time_entries?.length ? '#42bc7b' : '#EEEDF0'"
+                    entry.time_entries?.length ? '#42bc7b' : '#EEEDF0'"
                   :class="entry.details.hasActiveTimer ? 'glow' :
-                        entry.time_entries?.length ? 'worked' : ''"
+                    entry.time_entries?.length ? 'worked' : ''"
                 >
                   <VImg
                     v-if="entry.details.user.avatar"
@@ -62,29 +87,40 @@
                 </div>
               </div>
               <template #actions>
-                <div class="custom-badge"
-                     :class="entry.details.hasActiveTimer ? 'has-active-timer' : (
+                <div
+                  class="custom-badge"
+                  :class="entry.details.hasActiveTimer ? 'has-active-timer' : (
                     entry.time_entries?.length ? 'has-time-entries' : ''
-                    )"
+                  )"
                 >
-                  <VIcon left size="16">tabler-hourglass</VIcon>
+                  <VIcon
+                    left
+                    size="16"
+                  >
+                    tabler-hourglass
+                  </VIcon>
                   <span>{{ entry.details.totalWorkedTime }}</span>
                 </div>
               </template>
             </VExpansionPanelTitle>
 
             <VExpansionPanelText>
-              <VList slim variant="flat">
+              <VList
+                slim
+                variant="flat"
+              >
                 <VListItemAction end>
-                  <div class="custom-badge-edit"
-                     @click="updateTimeEntries"
+                  <div
+                    class="custom-badge-edit"
+                    @click="updateTimeEntries"
                   >
                     <VIcon>tabler-circle-check</VIcon>
                     <span>Save</span>
                   </div>
-                  <div class="custom-badge-add"
-                       v-if="!entry.details.hasActiveTimer"
-                       @click="addTimeEntry(entry.details.user.id)"
+                  <div
+                    v-if="!entry.details.hasActiveTimer"
+                    class="custom-badge-add"
+                    @click="addTimeEntry(entry.details.user.id)"
                   >
                     <VIcon>tabler-plus</VIcon>
                     <span>Add Time</span>
@@ -96,17 +132,37 @@
                     v-for="(timeEntry, index) in entry.time_entries"
                     :key="timeEntry.id"
                   >
-                    <div class="d-flex gap-2" v-if="timeEntry.is_paid || timeEntry.added_manually">
-                      <div class="custom-badge-paid" v-if="timeEntry.is_paid">
-                        <VIcon left size="16">tabler-dollar</VIcon>
+                    <div
+                      v-if="timeEntry.is_paid || timeEntry.added_manually"
+                      class="d-flex gap-2"
+                    >
+                      <div
+                        v-if="timeEntry.is_paid"
+                        class="custom-badge-paid"
+                      >
+                        <VIcon
+                          left
+                          size="16"
+                        >
+                          tabler-dollar
+                        </VIcon>
                         <span>Paid</span>
                       </div>
-                      <div class="custom-badge-manually" v-if="timeEntry.added_manually">
-                        <VIcon left size="16">tabler-edit</VIcon>
+                      <div
+                        v-if="timeEntry.added_manually"
+                        class="custom-badge-manually"
+                      >
+                        <VIcon
+                          left
+                          size="16"
+                        >
+                          tabler-edit
+                        </VIcon>
                         <span>Manually Added</span>
                       </div>
                     </div>
-                    <div class="d-flex gap-2 align-content-center pa-1 rounded"
+                    <div
+                      class="d-flex gap-2 align-content-center pa-1 rounded"
                       :class="timeEntry.deleted ? 'border-color-error' : ''"
                     >
                       <BadgeDateTimePicker
@@ -132,21 +188,35 @@
                         @update:model-value="updateDuration(timeEntry)"
                       />
 
-                      <div class="d-flex flex-column gap-2" >
-                        <div class="custom-badge has-time-entries" v-if="timeEntry.duration">
-                          <VIcon left size="16">tabler-clock</VIcon>
+                      <div class="d-flex flex-column gap-2">
+                        <div
+                          v-if="timeEntry.duration"
+                          class="custom-badge has-time-entries"
+                        >
+                          <VIcon
+                            left
+                            size="16"
+                          >
+                            tabler-clock
+                          </VIcon>
                           <span>{{ timeEntry.duration }}</span>
                         </div>
-                        <div class="custom-badge-delete"
+                        <div
+                          class="custom-badge-delete"
                           @click="deleteEntry(entry, timeEntry)"
                         >
-                          <VIcon left size="16">tabler-circle-x</VIcon>
+                          <VIcon
+                            left
+                            size="16"
+                          >
+                            tabler-circle-x
+                          </VIcon>
                           <span>Delete</span>
                         </div>
                       </div>
                     </div>
                     <div v-if="index !== entry.time_entries.length - 1">
-                      <VDivider class="mt-2"/>
+                      <VDivider class="mt-2" />
                     </div>
                   </VListItem>
                 </div>
@@ -160,7 +230,7 @@
 </template>
 
 <script setup>
-import { ref, watch, defineProps, defineEmits } from 'vue';
+import { ref, watch, defineProps, defineEmits } from 'vue'
 import { differenceInSeconds, parseISO, format, parse } from "date-fns"
 
 const props = defineProps({
@@ -173,9 +243,9 @@ const props = defineProps({
     required: false,
     default: () => [],
   },
-});
+})
 
-const emit = defineEmits(['toggleTimer', 'refreshKanbanData']);
+const emit = defineEmits(['toggleTimer', 'refreshKanbanData'])
 
 const datetimeConfig = {
   enableTime: true,
@@ -214,64 +284,66 @@ watch(
   () => props.activeUsers,
   (newValue, oldValue) => {
     if(newValue.length === 0) {
-      isTiming.value = false;
-      activeTimer.value = null;
-      return;
+      isTiming.value = false
+      activeTimer.value = null
+      
+      return
     }
 
     isTiming.value = newValue.some(
-      (user) => user.user.id === props.authId && user.time_entry?.task_id === props.task.id
-    );
+      user => user.user.id === props.authId && user.time_entry?.task_id === props.task.id,
+    )
 
     if (isTiming.value && !activeTimer.value) {
       const trackedTime = newValue.find(
-        (user) => user.user.id === props.authId && user.time_entry?.task_id === props.task.id
-      );
+        user => user.user.id === props.authId && user.time_entry?.task_id === props.task.id,
+      )
 
-      activeTimer.value = calculateTrackedTime(trackedTime.time_entry.start);
+      activeTimer.value = calculateTrackedTime(trackedTime.time_entry.start)
 
       const intervalId = setInterval(() => {
-        activeTimer.value = calculateTrackedTime(trackedTime.time_entry.start);
-      }, 1000);
+        activeTimer.value = calculateTrackedTime(trackedTime.time_entry.start)
+      }, 1000)
 
-      trackedTime.user.intervalId = intervalId;
+      trackedTime.user.intervalId = intervalId
     }
   },
-  { deep: true, immediate: true }
-);
+  { deep: true, immediate: true },
+)
 
 const fetchTimeEntries = async () => {
-  loading.value = true;
+  loading.value = true
 
   const res = await $api(`/task/time-entries/${props.task.id}`)
 
   if (res) {
-    allEntries.value = res.data;
+    allEntries.value = res.data
   }
 
-  loading.value = false;
-};
+  loading.value = false
+}
 
 watch(
   () => timerMenu.value,
-  async (newValue) => {
+  async newValue => {
     if (newValue === true) {
-      await fetchTimeEntries();
+      await fetchTimeEntries()
     }else{
-      allEntries.value = [];
-      loading.value = false;
+      allEntries.value = []
+      loading.value = false
     }
   },
-  { deep: true }
-);
+  { deep: true },
+)
 
 const toggleTimer = () => {
-  emit('toggleTimer', props.member);
-};
+  emit('toggleTimer', props.member)
+}
 
 const updateTimeEntries = async () => {
   try {
-    const entriesArray = Object.values(allEntries.value);
+    const entriesArray = Object.values(allEntries.value)
+
     const timeEntries = entriesArray.flatMap(entry =>
       entry.time_entries.map(timeEntry => ({
         id: timeEntry.id || null,
@@ -281,26 +353,26 @@ const updateTimeEntries = async () => {
         end: timeEntry.end ? parseISO(timeEntry.end) : null,
         deleted: timeEntry.deleted || false,
         is_paid: timeEntry.is_paid || false,
-        added_manually: timeEntry.added_manually || false
-      }))
-    );
+        added_manually: timeEntry.added_manually || false,
+      })),
+    )
 
     await $api(`/task/update-timer/${props.task.id}`, {
       method: 'POST',
       body: JSON.stringify(timeEntries),
-    });
+    })
 
-    emit('refreshKanbanData');
+    emit('refreshKanbanData')
 
-    timerMenu.value = false;
+    timerMenu.value = false
   } catch (error) {
-    console.error("Error updating time entries:", error);
+    console.error("Error updating time entries:", error)
   }
-};
+}
 
 const addTimeEntry = userId => {
-  const entriesArray = Object.values(allEntries.value);
-  const userEntry = entriesArray.find(entry => entry.details.user.id === userId);
+  const entriesArray = Object.values(allEntries.value)
+  const userEntry = entriesArray.find(entry => entry.details.user.id === userId)
 
   if (userEntry) {
     userEntry.time_entries.push({
@@ -310,57 +382,58 @@ const addTimeEntry = userId => {
       is_paid: false,
       user_id: userId,
       added_manually: true,
-    });
+    })
   } else {
-    console.error("User not found in time entries");
+    console.error("User not found in time entries")
   }
-};
+}
 
 const updateDuration = timeEntry => {
-  console.log(timeEntry);
+  console.log(timeEntry)
 
   if (timeEntry.start && timeEntry.end) {
-    const startDate = parseISO(timeEntry.start);
-    const endDate = parseISO(timeEntry.end);
+    const startDate = parseISO(timeEntry.start)
+    const endDate = parseISO(timeEntry.end)
 
 
-    const seconds = differenceInSeconds(endDate, startDate);
+    const seconds = differenceInSeconds(endDate, startDate)
 
     if (seconds < 0) {
-      timeEntry.duration = 'Invalid Time';
-      return;
+      timeEntry.duration = 'Invalid Time'
+      
+      return
     }
 
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const remainingSeconds = seconds % 60
 
-    timeEntry.duration = `${hours}h ${minutes}m ${remainingSeconds}s`;
+    timeEntry.duration = `${hours}h ${minutes}m ${remainingSeconds}s`
   } else {
-    timeEntry.duration = null;
+    timeEntry.duration = null
   }
-};
+}
 
 const deleteEntry = (entry, timeEntry) => {
   if (timeEntry.added_manually && !timeEntry.id) {
-    const index = entry.time_entries.indexOf(timeEntry);
+    const index = entry.time_entries.indexOf(timeEntry)
     if (index !== -1) {
-      entry.time_entries.splice(index, 1);
+      entry.time_entries.splice(index, 1)
     }
   } else {
-    timeEntry.deleted = !timeEntry.deleted;
+    timeEntry.deleted = !timeEntry.deleted
   }
-};
+}
 
 onUnmounted(() => {
   if (props.member?.intervalId) {
-    clearInterval(props.member.intervalId);
-    props.member.intervalId = null;
+    clearInterval(props.member.intervalId)
+    props.member.intervalId = null
   }
 
-  isTiming.value = false;
-  activeTimer.value = null;
-});
+  isTiming.value = false
+  activeTimer.value = null
+})
 </script>
 
 <style lang="scss" scoped>
