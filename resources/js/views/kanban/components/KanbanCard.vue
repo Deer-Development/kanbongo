@@ -140,7 +140,7 @@ const updateDueDate = async date => {
       <div class="d-flex gap-2">
         <PriorityBadge
           :priority="item.priority"
-          :itemId="item.id"
+          :item-id="item.id"
           @update-priority="setPriority"
         />
 
@@ -150,14 +150,13 @@ const updateDueDate = async date => {
           variant="underlined"
           placeholder="Date"
           clearable
-          :config="{ altFormat: 'j, M', altInput: true }"
+          :config="{ altFormat: 'M, j Y', altInput: true }"
           @change="updateDueDate(item.due_date)"
         />
-        <div
-          class="d-flex justify-end"
-        >
-          <div class="custom-badge"
-           :class="item.comments_count ? 'has-comments' : ''"
+        <div class="d-flex justify-end">
+          <div
+            class="custom-badge"
+            :class="item.comments_count ? 'has-comments' : ''"
           >
             <VIcon
               left
@@ -172,8 +171,8 @@ const updateDueDate = async date => {
       <VDivider class="my-2" />
       <TimerBadge
         :task="item"
-        :authId="authId"
-        :hasActiveTimer="hasLocalActiveTimer"
+        :auth-id="authId"
+        :has-active-timer="hasLocalActiveTimer"
         :member="item.members.find(member => authId === member.user_id)"
         :active-users="localActiveUsers"
         @toggle-timer="toggleTimer"

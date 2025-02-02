@@ -139,6 +139,7 @@ watch(() => props.trackedUsers, () => {
   font-weight: 500;
   color: #374151;
   cursor: pointer;
+  width: 100%;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 
   .v-field.v-field--variant-plain .v-field__prepend-inner{

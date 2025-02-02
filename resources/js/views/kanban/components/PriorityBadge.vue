@@ -1,8 +1,20 @@
 <template>
-  <VMenu v-model="priorityMenu" offset-y>
+  <VMenu
+    v-model="priorityMenu"
+    offset-y
+  >
     <template #activator="{ props }">
-      <div class="custom-badge" v-bind="props">
-        <VIcon left size="16" :color="getPriorityColor(priority)">tabler-flag-3-filled</VIcon>
+      <div
+        class="custom-badge"
+        v-bind="props"
+      >
+        <VIcon
+          left
+          size="16"
+          :color="getPriorityColor(priority)"
+        >
+          tabler-flag-3-filled
+        </VIcon>
         <span>{{ priority ? Priority.data[priority] : 'Priority' }}</span>
       </div>
     </template>
@@ -13,12 +25,26 @@
         class="priority-option"
         @click="setPriority(key)"
       >
-        <VIcon size="16" :color="getPriorityColor(key)">tabler-flag-3-filled</VIcon>
+        <VIcon
+          size="16"
+          :color="getPriorityColor(key)"
+        >
+          tabler-flag-3-filled
+        </VIcon>
         <span>{{ label }}</span>
       </div>
       <VDivider />
-      <div class="priority-clear" @click="setPriority(0)">
-        <VIcon left size="16" color="gray">tabler-circle-off</VIcon>
+      <div
+        class="priority-clear"
+        @click="setPriority(0)"
+      >
+        <VIcon
+          left
+          size="16"
+          color="gray"
+        >
+          tabler-circle-off
+        </VIcon>
         <span>Clear</span>
       </div>
     </div>
@@ -26,16 +52,16 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from 'vue';
+import { ref, defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
   priority: { type: Number, required: true },
   itemId: { type: Number, required: true },
-});
+})
 
-const emit = defineEmits(['update-priority']);
+const emit = defineEmits(['updatePriority'])
 
-const priorityMenu = ref(null);
+const priorityMenu = ref(null)
 
 const Priority = {
   URGENT: 1,
@@ -48,9 +74,9 @@ const Priority = {
     3: 'Normal',
     4: 'Low',
   },
-};
+}
 
-const getPriorityColor = (priority) => {
+const getPriorityColor = priority => {
   if (priority == Priority.URGENT)
     return '#FF5733'
   if (priority == Priority.HIGH)
@@ -61,9 +87,9 @@ const getPriorityColor = (priority) => {
     return '#30c15a'
 
   return '#d2d2d5'
-};
+}
 
-const setPriority = (priority) => {
-  emit('update-priority', { itemId: props.itemId, priority });
-};
+const setPriority = priority => {
+  emit('updatePriority', { itemId: props.itemId, priority })
+}
 </script>
