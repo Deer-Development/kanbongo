@@ -162,8 +162,14 @@ watch(() => props.trackedUsers, () => {
       display: none;
     }
   }
+  .v-field--dirty .v-select__selection:first-child {
+    margin-inline-start: 0 !important;
+  }
+
   .v-field--dirty .v-select__selection {
-    margin-inline-start: -0.8rem;
+    &:not(:first-child) {
+      margin-inline-start: -0.8rem;
+    }
 
     > .v-avatar {
       //border: 2px solid rgb(var(--v-theme-surface));

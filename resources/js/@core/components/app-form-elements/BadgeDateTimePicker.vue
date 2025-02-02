@@ -143,8 +143,8 @@ const elementId = computed(() => {
       v-bind="{ ...inputProps, ...rootAttrs }"
       :model-value="modelValue"
       :hide-details="props.hideDetails"
+      class="position-relative v-text-field"
       :class="[
-        'position-relative v-text-field',
         props.extendedBadge ? 'custom-badge-extended' : 'custom-badge',
         {
           'v-text-field--prefixed': props.prefix,
@@ -156,15 +156,14 @@ const elementId = computed(() => {
       :style="props.style"
     >
       <template #prepend>
-          <VIcon
-            class="v-text-field__prepend"
-            :size="18"
-          >
-            tabler-calendar
-          </VIcon>
+        <VIcon
+          class="v-text-field__prepend"
+          :size="18"
+        >
+          tabler-calendar
+        </VIcon>
       </template>
       <template #default="{ id, isDirty, isValid, isDisabled, isReadonly, validate }">
-        <!-- v-field -->
         <VField
           v-bind="{ ...fieldProps, label: undefined }"
           :id="id.value"
@@ -202,6 +201,16 @@ const elementId = computed(() => {
                 type="text"
               >
             </div>
+          </template>
+          <template #clear>
+            <VIcon
+              left
+              size="18"
+              color="warning"
+              @click.stop="onClear"
+            >
+              tabler-square-x
+            </VIcon>
           </template>
         </VField>
       </template>
