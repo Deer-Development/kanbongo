@@ -439,7 +439,7 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .timer-options {
   min-width: 320px;
-  max-width: 500px;
+  max-width: 570px;
   padding: 6px 4px;
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
