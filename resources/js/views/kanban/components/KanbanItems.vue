@@ -43,6 +43,11 @@ const props = defineProps({
     required: false,
     default: () => [],
   },
+  activeUsers: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
   isSuperAdmin: { type: Boolean, required: false, default: false },
   isMobile: { type: Boolean, required: false, default: false },
   hasActiveTimer: { type: Boolean, required: false, default: false },
@@ -75,6 +80,7 @@ const localBoardName = ref(props.boardName)
 const localBoardColor = ref(props.boardColor)
 const hasLocalActiveTimer = ref(false)
 const localAvailableMembers = ref(props.availableMembers)
+const localActiveUsers = ref(props.activeUsers)
 const localIds = ref(props.kanbanIds)
 const isAddNewFormVisible = ref(false)
 const isBoardNameEditing = ref(false)
@@ -124,6 +130,12 @@ watch(() => props, () => {
 watch(() => props.availableMembers, (newValue, oldValue) => {
   if (newValue !== oldValue) {
     localAvailableMembers.value = [...props.availableMembers]
+  }
+}, { deep: true, immediate: true })
+
+watch(() => props.activeUsers, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    localActiveUsers.value = [...props.activeUsers]
   }
 }, { deep: true, immediate: true })
 
@@ -407,6 +419,7 @@ const adjustBrightness = (hex, amount) => {
           :is-member="props.isMember"
           :auth-id="props.authId"
           :available-members="localAvailableMembers"
+          :active-users="localActiveUsers"
           @delete-kanban-item="deleteItem"
           @toggle-timer="toggleTimer"
           @edit-timer="editTimerFn"

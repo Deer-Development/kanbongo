@@ -53,30 +53,311 @@ $focus-color: #6366f1;
   }
 }
 
-.priority-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px;
+.custom-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
   background-color: #f9fafb;
-  border: 1px solid $border-color;
-  border-radius: 10px;
-  max-height: 100px;
-}
-
-.priority-badge {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: $focus-color;
-  background-color: $highlight-color;
-  padding: 0.2rem 0.4rem;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  .timer-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    //width: 28px;
+    //height: 24px;
+    background: #38a169;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+    color: white;
+    font-size: 14px;
+    margin-left: 6px;
+    padding: 2px;
+  }
+
+  .timer-btn:hover {
+    background: #2f855a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .timer-btn:active {
+    transform: scale(0.95);
+  }
+
+  .timer-btn-active {
+    background: #e53e3e;
+  }
+
+  .timer-btn-active:hover {
+    background: #c53030;
+  }
+
+  .timer-btn-disabled {
+    background: #cbd5e0;
+    cursor: not-allowed;
+  }
 
   &:hover {
-    background-color: lighten($highlight-color, 10%);
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
   }
+
+  .v-input__prepend{
+    margin-inline-end: 0 !important;
+  }
+  .v-field .v-field__input{
+    cursor: pointer !important;
+    outline: none !important;
+    border-bottom: 0 !important;
+    font-size: 12px !important;
+    line-height: 0 !important;
+    --v-field-padding-start: 4px !important;
+    --v-field-padding-end: 0 !important;
+    --v-input-control-height: 18px !important;
+    padding-top: 0 !important;
+    max-width: 3rem !important;
+  }
+
+  .v-field__outline{
+    --v-field-border-width: 0 !important;
+    --v-field-border-opacity: 0 !important;
+  }
+
+  .v-field--variant-filled .v-field__outline::after, .v-field--variant-underlined .v-field__outline::after  {
+    border-color: transparent !important;
+  }
+}
+
+.custom-badge-delete {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  background-color: #e53e3e;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background-color: #c53030;
+    transform: scale(1.01);
+  }
+}
+
+.custom-badge-add {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  background-color: #38a169;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background-color: #2f855a;
+    transform: scale(1.01);
+  }
+}
+
+.custom-badge-manually {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  background-color: #f5b509;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background-color: #f5b509;
+    transform: scale(1.01);
+  }
+}
+
+.custom-badge-paid {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  background-color: #47c582;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background-color: #3da86f;
+    transform: scale(1.01);
+  }
+}
+
+.custom-badge-edit {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  background-color: #6b7280;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background-color: #4b5563;
+    transform: scale(1.01);
+  }
+}
+
+.custom-badge-extended {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  .v-input__prepend{
+    margin-inline-end: 0 !important;
+  }
+  .v-field .v-field__input{
+    cursor: pointer !important;
+    outline: none !important;
+    border-bottom: 0 !important;
+    font-size: 12px !important;
+    line-height: 0 !important;
+    --v-field-padding-start: 4px !important;
+    --v-field-padding-end: 0 !important;
+    --v-input-control-height: 18px !important;
+    padding-top: 0 !important;
+    max-width: 8rem !important;
+  }
+
+  .v-field__outline{
+    --v-field-border-width: 0 !important;
+    --v-field-border-opacity: 0 !important;
+  }
+
+  .v-field--variant-filled .v-field__outline::after, .v-field--variant-underlined .v-field__outline::after  {
+    border-color: transparent !important;
+  }
+}
+
+.has-comments {
+  background-color: #f5b509;
+  border-color: #f5b509;
+  color: #ffffff;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    background-color: #f5b509;
+    border-color: #cd9707;
+  }
+}
+
+.custom-badge span {
+  margin-left: 2px;
+}
+
+.has-active-timer {
+  background: #38a169;
+  color: white;
+}
+
+.glow {
+  box-shadow: 0 0 8px 2px rgba(72, 187, 120, 0.8);
+  animation: pulse 1.5s infinite ease-in-out;
+  border: 1px solid rgba(53, 186, 109, 0.8);
+}
+
+.worked {
+  border: 1px solid rgba(53, 186, 109, 0.8);
+}
+
+.has-time-entries {
+  background: #38a169;
+  color: white;
+}
+
+//.custom-badge:hover {
+//  background-color: #f3f4f6;
+//  border-color: #d1d5db;
+//}
+
+.priority-options {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.priority-option {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.priority-option:hover {
+  background-color: #f3f4f6;
+}
+
+.priority-option span {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.priority-clear {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #6b7280;
+  transition: background-color 0.2s ease;
+}
+
+.priority-clear:hover {
+  background-color: #f3f4f6;
+}
+
+.priority-clear span {
+  margin-left: 8px;
+  font-size: 14px;
 }
 
 .kanban-card {

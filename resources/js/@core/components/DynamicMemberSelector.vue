@@ -1,16 +1,30 @@
 <script setup>
-import { useToast } from "vue-toastification"
-
 const props = defineProps({
   isSuperAdmin: { type: Boolean, required: false, default: false },
+  taskId: {
+    type: Number,
+    required: false,
+    default: null,
+  },
+  activeUsers: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
+  trackedUsers: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
 })
+
+const localActiveUsers = ref(props.activeUsers)
+const localTrackedUsers = ref(props.trackedUsers)
 
 defineOptions({
   name: 'AppSelect',
   inheritAttrs: false,
 })
-
-const toast = useToast()
 
 const elementId = computed(() => {
   const attrs = useAttrs()
@@ -21,16 +35,13 @@ const elementId = computed(() => {
 
 const label = computed(() => useAttrs().label)
 
-const isUserDisabled = item => {
-  const attrs = useAttrs()
-  const memberIsSelected = attrs.modelValue.some(value => value.user_id === item.raw.user.id)
+watch(() => props.activeUsers, () => {
+  localActiveUsers.value = [...props.activeUsers]
+}, { deep: true })
 
-  if(props.isSuperAdmin){
-    return false
-  }else{
-    return !props.isSuperAdmin && memberIsSelected
-  }
-}
+watch(() => props.trackedUsers, () => {
+  localTrackedUsers.value = [...props.trackedUsers]
+}, { deep: true })
 </script>
 
 <template>
@@ -60,7 +71,7 @@ const isUserDisabled = item => {
       :menu-props="{
         offset: 10,
       }"
-      class="assignee-select avatar-group"
+      class="assignee-select"
     >
       <template #item="{ props, item }">
         <VListItem
@@ -68,13 +79,15 @@ const isUserDisabled = item => {
           :prepend-avatar="item?.raw?.avatar"
           :title="item?.raw?.user.full_name"
           :subtitle="item?.raw?.user.email"
-          :disabled="isUserDisabled(item)"
         />
       </template>
-      <template #selection="{ item }">
+      <template #selection="{ item }" style="margin-inline-start: -0.8rem;">
         <VAvatar
           size="26"
-          :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
+          :color="localActiveUsers.some(user => user.user.id === item.raw.user.id) ? '#38a169' :
+            localTrackedUsers.some(id => id === item.raw.user.id) ? '#42bc7b' : '#EEEDF0'"
+          :class="localActiveUsers.some(user => user.user.id === item.raw.user.id) ? 'glow' :
+            localTrackedUsers.some(id => id === item.raw.user.id) ? 'worked' : ''"
         >
           <VImg
             v-if="item.raw.user.avatar"
@@ -116,10 +129,54 @@ const isUserDisabled = item => {
 
 <style lang="scss">
 .assignee-select {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  .v-field.v-field--variant-plain .v-field__prepend-inner{
+    padding-top: 2px;
+  }
+
+  .v-input__control {
+    width: 100%;
+  }
+
+  .v-field__input{
+    padding-top: 0;
+    padding-left: 2px;
+    width: 100%;
+    margin-left: 0;
+  }
   .v-field__append-inner {
+    padding-top: 0 !important;
     .v-select__menu-icon {
       display: none;
     }
   }
+  .v-field--dirty .v-select__selection {
+    margin-inline-start: -0.8rem;
+
+    > .v-avatar {
+      //border: 2px solid rgb(var(--v-theme-surface));
+      transition: transform 0.15s ease;
+
+      &:hover {
+        transform: scale(1.15);
+        transition: .2s cubic-bezier(.4,0,.2,1);
+        transition-property: width, height;
+        z-index: 100;
+      }
+    }
+  }
 }
+//v-input.v-input--density-comfortable .v-field .v-field__input
+
 </style>

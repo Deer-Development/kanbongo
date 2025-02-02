@@ -22,6 +22,7 @@ const fetchMemberDetails = async () => {
     method: "GET",
     params: { date_range: selectedDateRange.value, is_super_admin: props.isSuperAdmin, is_owner: props.isOwner },
   })
+
   members.value = res.data
 }
 
@@ -64,6 +65,7 @@ const handlePayment = async () => {
     method: "POST",
     body: { date_range: selectedDateRange.value },
   })
+
   if (res) fetchMemberDetails()
 }
 
@@ -73,8 +75,16 @@ const handleDetails = member => {
 </script>
 
 <template>
-  <VDialog persistent max-width="80%" :model-value="props.isDialogVisible" class="github-dialog">
-    <DialogCloseBtn class="close-btn" @click="onReset" />
+  <VDialog
+    persistent
+    max-width="80%"
+    :model-value="props.isDialogVisible"
+    class="github-dialog"
+  >
+    <DialogCloseBtn
+      class="close-btn"
+      @click="onReset"
+    />
     <VCard class="p-4 github-card">
       <VCardTitle class="text-center text-dark fs-6 fw-bold">
         Board Payment Details
@@ -82,7 +92,10 @@ const handleDetails = member => {
 
       <VCardText>
         <div class="mb-4">
-          <label for="date-picker" class="form-label">Select Date Range:</label>
+          <label
+            for="date-picker"
+            class="form-label"
+          >Select Date Range:</label>
           <AppDateTimePicker
             v-model="selectedDateRange"
             :config="{ mode: 'range' }"
@@ -91,8 +104,15 @@ const handleDetails = member => {
           />
         </div>
 
-        <div v-if="members.length" class="members-container">
-          <div v-for="member in members" :key="member.member_id" class="entry-card-github">
+        <div
+          v-if="members.length"
+          class="members-container"
+        >
+          <div
+            v-for="member in members"
+            :key="member.member_id"
+            class="entry-card-github"
+          >
             <VChip
               :color="(member.total_unpaid_hours === 0 && member.total_paid_hours !== 0) ? 'success' : 'warning'"
               class="payment-status-badge"
@@ -105,9 +125,16 @@ const handleDetails = member => {
             </VChip>
 
             <div class="d-flex align-items-center gap-3 mb-3 mt-7">
-              <VAvatar size="50" class="avatar" :color="$vuetify.theme.current.dark ? '#373B50' : '#F5F7FA'">
+              <VAvatar
+                size="50"
+                class="avatar"
+                :color="$vuetify.theme.current.dark ? '#373B50' : '#F5F7FA'"
+              >
                 <template v-if="member.user.avatar">
-                  <img :src="member.user.avatar" alt="Avatar" />
+                  <img
+                    :src="member.user.avatar"
+                    alt="Avatar"
+                  >
                 </template>
                 <template v-else>
                   <span>{{ member.user.avatar_or_initials }}</span>
@@ -117,7 +144,9 @@ const handleDetails = member => {
                 <h3 class="fs-6 text-dark fw-bold">
                   {{ member.member_name }}
                 </h3>
-                <p class="text-muted">{{ member.user.email }}</p>
+                <p class="text-muted">
+                  {{ member.user.email }}
+                </p>
               </div>
             </div>
 
@@ -154,17 +183,29 @@ const handleDetails = member => {
               >
                 Pay Now
               </VBtn>
-              <VBtn color="secondary" variant="tonal" class="btn-github" @click="handleDetails(member)">
+              <VBtn
+                color="secondary"
+                variant="tonal"
+                class="btn-github"
+                @click="handleDetails(member)"
+              >
                 View Details
               </VBtn>
             </div>
           </div>
         </div>
 
-        <div v-else class="no-data">No payment details available.</div>
+        <div
+          v-else
+          class="no-data"
+        >
+          No payment details available.
+        </div>
 
         <div class="global-stats mt-4">
-          <h4 class="fs-6 fw-bold">Summary</h4>
+          <h4 class="fs-6 fw-bold">
+            Summary
+          </h4>
           <div class="d-flex justify-content-between">
             <span class="text-muted">Total Paid Amount:</span>
             <span class="text-success fw-bold">${{ totalPaid.toFixed(2) }}</span>
@@ -265,6 +306,10 @@ const handleDetails = member => {
       }
       .value {
         font-weight: bold;
+      }
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
       }
     }
   }

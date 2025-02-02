@@ -34,4 +34,9 @@ class Container extends Model
     {
         return $this->belongsTo(User::class, 'owner_id');
     }
+
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
 }

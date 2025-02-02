@@ -137,26 +137,26 @@ const calculateTrackedTime = start => {
 }
 
 const updateUserTimers = () => {
-  kanbanData.value?.active_users?.forEach(user => {
-    if (user.active_time_entry?.start) {
-      if (!userTimers[user.id]) {
-        userTimers[user.id] = calculateTrackedTime(user.active_time_entry.start)
+  kanbanData.value?.active_users?.forEach(entry => {
+    if (entry.time_entry?.start) {
+      if (!userTimers[entry.user.id]) {
+        userTimers[entry.user.id] = calculateTrackedTime(entry.time_entry.start)
 
         const intervalId = setInterval(() => {
-          userTimers[user.id] = calculateTrackedTime(user.active_time_entry.start)
+          userTimers[entry.user.id] = calculateTrackedTime(entry.time_entry.start)
         }, 1000)
 
-        user.intervalId = intervalId
+        entry.user.intervalId = intervalId
       }
     }
   })
 }
 
 const clearUserTimers = () => {
-  kanbanData.value?.active_users?.forEach(user => {
-    if (user.intervalId) {
-      clearInterval(user.intervalId)
-      user.intervalId = null
+  kanbanData.value?.active_users?.forEach(entry => {
+    if (entry.user.intervalId) {
+      clearInterval(entry.user.intervalId)
+      entry.user.intervalId = null
     }
   })
   Object.keys(userTimers).forEach(key => delete userTimers[key])
@@ -224,17 +224,36 @@ onBeforeUnmount(() => {
             </VChip>
           </template>
           <div class="p-4">
-            <div v-if="kanban?.active_users?.length">
+            <div v-if="kanban?.active_users?.length" class="d-flex flex-column gap-2 bg-white rounded">
               <div
-                v-for="user in kanbanData.active_users"
-                :key="user.id"
-                class="d-flex flex-column align-items-start mb-3 bg-success px-2 py-1 rounded"
+                v-for="entry in kanbanData.active_users"
+                :key="entry.user.id"
+                class="d-flex gap-2 custom-badge mt-1"
               >
-                <div class="font-weight-bold">
-                  {{ user.full_name }}
+                <div v-if="entry.user.id === userData.id">
+                  <button
+                    class="timer-btn"
+                    :class="{
+                      'timer-btn-active': entry.time_entry?.start,
+                    }"
+                    @click="toggleTimerFn({
+                      user_id: entry.user.id,
+                      task_id: entry.time_entry.task_id,
+                    }, entry.time_entry.task_id)"
+                  >
+                    <VIcon
+                      :icon="entry.time_entry?.start ? 'tabler-pause' : 'tabler-play'"
+                      size="14"
+                    />
+                  </button>
                 </div>
-                <div class="text-sm text-muted">
-                  Timer: {{ userTimers[user.id] || 'Loading...' }}
+                <div class="d-flex flex-column">
+                  <span class="font-weight-bold">
+                    {{ entry.user.full_name }}
+                  </span>
+                  <span class="text-sm text-success">
+                    {{ userTimers[entry.user.id] || 'Loading...' }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -270,7 +289,6 @@ onBeforeUnmount(() => {
           </VIcon>
         </VChip>
       </div>
-
     </div>
     <KanbanBoardComp
       v-if="kanban"

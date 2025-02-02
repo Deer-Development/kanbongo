@@ -4,6 +4,7 @@ import CKEditor from "@/@core/components/CKEditor.vue"
 import { useToast } from "vue-toastification"
 import { defineExpose, ref } from "vue"
 import { watchDebounced } from "@vueuse/core"
+import BadgeDateTimePicker from "@core/components/app-form-elements/BadgeDateTimePicker.vue"
 
 const props = defineProps({
   kanbanItem: {
@@ -30,6 +31,11 @@ const props = defineProps({
     required: false,
     default: () => [],
   },
+  activeUsers: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
   isDrawerOpen: {
     type: Boolean,
     required: true,
@@ -52,6 +58,8 @@ const emit = defineEmits([
 const messages = ref([])
 const message = ref('')
 const currentMessageId = ref(null)
+const isEditingName = ref(false)
+const localActiveUsers = ref([...props.activeUsers])
 
 const toast = useToast()
 
@@ -130,13 +138,13 @@ const setPriority = async priority => {
 }
 
 watchDebounced(
-  () => localKanbanItem.value.name,
-  async newName => {
-    if (newName) {
-      await updateTask({ name: newName })
+  () => isEditingName.value,
+  async value => {
+    if (!value) {
+      await updateTask({ name: localKanbanItem.value.name })
     }
   },
-  { debounce: 500 },
+  { debounce: 100 },
 )
 
 watchDebounced(
@@ -326,166 +334,79 @@ defineExpose({
       <VCardText class="flex-grow flex flex-col p-4 gap-6">
         <div class="form-github">
           <VRow>
-            <VCol cols="12">
+            <VCol cols="6">
               <VTextarea
                 v-model="localKanbanItem.name"
                 :rules="[requiredValidator, maxLengthValidator(localKanbanItem.name, 255)]"
                 rows="3"
+                :readonly="!isEditingName"
                 label="Title"
                 dense
-                outlined
+                variant="solo"
                 class="input-github"
-              />
+              >
+                <template #append-inner>
+                  <VSlideXReverseTransition mode="out-in">
+                    <VIcon
+                      size="20"
+                      :key="`icon-${isEditingName}`"
+                      :color="isEditingName ? 'success' : 'info'"
+                      :icon="isEditingName ? 'tabler-checks' : 'tabler-edit-circle'"
+                      @click="isEditingName = !isEditingName"
+                    />
+                  </VSlideXReverseTransition>
+                </template>
+              </VTextarea>
             </VCol>
           </VRow>
-          <VRow align="center">
-            <VCol
-              cols="1"
-              class="d-flex flex-column"
-            >
-              <VLabel
-                class="mb-1 text-body-2"
-                style="line-height: 15px;"
-              >
-                Priority
-              </VLabel>
-              <VMenu
-                v-model="priorityMenu"
-                offset-y
-              >
+          <div class="d-flex gap-2 flex-column mt-4">
+            <div class="d-flex gap-2">
+              <VMenu v-model="priorityMenu" offset-y>
                 <template #activator="{ props }">
-                  <VChip
-                    v-bind="props"
-                    :color="getPriorityColor(localKanbanItem.priority)"
-                    size="small"
-                    variant="elevated"
-                  >
-                    <VIcon
-                      left
-                      size="16"
-                      icon="tabler-flag"
-                    />
-                    {{ Priority.getName(localKanbanItem.priority) || "Set Priority" }}
-                  </VChip>
+                  <div class="custom-badge" v-bind="props">
+                    <VIcon left size="16" :color="getPriorityColor(localKanbanItem.priority)">tabler-flag-3-filled</VIcon>
+                    <span>{{ localKanbanItem.priority ? Priority.data[localKanbanItem.priority] : 'Priority' }}</span>
+                  </div>
                 </template>
                 <div class="priority-options">
-                  <VChip
+                  <div
                     v-for="(label, key) in Priority.data"
-                    :key="key + label"
-                    :color="getPriorityColor(key)"
+                    :key="key"
+                    class="priority-option"
                     @click="setPriority(key)"
                   >
-                    {{ label }}
-                  </VChip>
+                    <VIcon size="16" :color="getPriorityColor(key)">tabler-flag-3-filled</VIcon>
+                    <span>{{ label }}</span>
+                  </div>
+                  <VDivider />
+                  <div class="priority-clear" @click="setPriority(0)">
+                    <VIcon left size="16" color="gray">tabler-circle-off</VIcon>
+                    <span>Clear</span>
+                  </div>
                 </div>
               </VMenu>
-            </VCol>
-            <div class="align-content-end mt-5">
-              <VIcon
-                right
-                icon="tabler-calendar"
+              <BadgeDateTimePicker
+                v-model="localKanbanItem.due_date"
+                density="compact"
+                variant="underlined"
+                placeholder="Date"
+                clearable
+                :config="{ altFormat: 'j, M', altInput: true }"
               />
             </div>
-            <VCol
-              cols="1"
-              class="pl-0"
-            >
-              <VLabel
-                class="text-body-2"
-                style="line-height: 10px;"
-              >
-                Due Date
-              </VLabel>
-              <AppDateTimePicker
-                v-model="localKanbanItem.due_date"
-                variant="underlined"
-                placeholder="Due Date"
-              />
-            </VCol>
-            <VCol
-              cols="2"
-              class="d-flex flex-column"
-            >
-              <VLabel
-                class="mb-1 text-body-2"
-                style="line-height: 15px;"
-              >
-                Assignees
-              </VLabel>
-              <div class="d-flex gap-1">
-                <VMenu
-                  v-model="membersMenu"
-                  offset-y
-                >
-                  <template #activator="{ props }">
-                    <VAvatar
-                      v-bind="props"
-                      size="28"
-                      class="cursor-pointer"
-                      :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-                    >
-                      <VIcon
-                        size="18"
-                        icon="tabler-users-plus"
-                      />
-                    </VAvatar>
-                  </template>
-                  <VList
-                    class="github-style-list"
-                    style="min-width: 100%;"
-                  >
-                    <template v-if="props.availableMembers.filter(member => !localKanbanItem.members.some(m => m.user.id === member.user_id)).length">
-                      <VListItem
-                        v-for="(member, index) in props.availableMembers.filter(member => !localKanbanItem.members.some(m => m.user.id === member.user_id))"
-                        :key="member.id"
-                        class="github-list-item"
-                        @click="addMember(member.user_id)"
-                      >
-                        <VListItemTitle class="font-medium text-sm text-gray-800">
-                          {{ member.user.full_name }}
-                        </VListItemTitle>
-                        <VListItemSubtitle class="text-xs text-gray-500">
-                          {{ member.user.email }}
-                        </VListItemSubtitle>
-                      </VListItem>
-                    </template>
-                    <template v-else>
-                      <VListItem class="empty-state text-center">
-                        <VListItemTitle class="text-gray-500 text-sm">
-                          No available members to add
-                        </VListItemTitle>
-                      </VListItem>
-                    </template>
-                  </VList>
-                </VMenu>
-                <div class="v-avatar-group">
-                  <template
-                    v-for="(member, index) in localKanbanItem.members"
-                    :key="member.id"
-                  >
-                    <VAvatar
-                      v-tooltip="member.user.full_name"
-                      size="28"
-                      class="cursor-pointer"
-                      :color="member.isTiming ? '#38a169' : (member.timeEntries.length ? 'rgb(249 220 107)' : '#EEEDF0')"
-                      :class="member.isTiming ? 'glow' : (member.timeEntries.length ? 'worked' : '')"
-                      @click="editTimer(member, localKanbanItem.id, localKanbanItem.name)"
-                    >
-                      <template v-if="member.user.avatar">
-                        <img
-                          :src="member.user.avatar"
-                          alt="Avatar"
-                        >
-                      </template>
-                      <template v-else>
-                        <span>{{ member.user.avatar_or_initials }}</span>
-                      </template>
-                    </VAvatar>
-                  </template>
-                </div>
-              </div>
-            </VCol>
-          </VRow>
+            <DynamicMemberSelector
+              v-model="localKanbanItem.members"
+              :items="props.availableMembers"
+              :is-super-admin="props.isSuperAdmin"
+              item-title="user.full_name"
+              item-value="user.id"
+              :active-users="localActiveUsers"
+              :tracked-users="localKanbanItem.tracked_time?.usersTracked"
+              :task-id="localKanbanItem.id"
+              dense
+              outlined
+            />
+          </div>
         </div>
 
         <div class="comments-section">

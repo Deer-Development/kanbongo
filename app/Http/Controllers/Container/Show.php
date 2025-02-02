@@ -21,18 +21,17 @@ class Show extends BaseController
     public function __invoke(int $id): JsonResponse
     {
         $model = Container::with([
-            'members.user',
-            'owner',
-            'boards' => function ($q) {
+            'members.user:id,first_name,last_name,email',
+            'owner:id,first_name,last_name,email',
+            'timeEntries' => function ($q) {
+                $q->with('user:id,first_name,last_name,email');
+            },
+            'boards' => function ($q) use ($id) {
                 $q->orderBy('order')
                     ->with([
-                    'members',
-                    'tasks' => function ($q) {
+                    'tasks' => function ($q) use ($id) {
                         $q->orderBy('order');
-                        $q->with(['members.user']);
-                        $q->with(['timeEntries' => function ($q) {
-                            $q->with('logs');
-                        }]);
+                        $q->with(['members.user:id,first_name,last_name,email']);
                     },
                 ]);
             },

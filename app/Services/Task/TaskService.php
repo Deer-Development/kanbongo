@@ -49,16 +49,12 @@ class TaskService extends BaseService
         try {
             $task = $this->getById($taskId)->load('timeEntries');
 
-            if (!$data['isTiming']) {
-                $timeEntry = $task->timeEntries()
-                    ->where('user_id', $data['user_id'])
-                    ->whereNull('end')
-                    ->first();
+            $timeEntry = $task->timeEntries()
+                ->where('user_id', $data['user_id'])
+                ->whereNull('end')
+                ->first();
 
-                if (!$timeEntry) {
-                    throw new \Exception('No running timer found.');
-                }
-
+            if ($timeEntry) {
                 $timeEntry->update(['end' => now()]);
             } else {
                 $task->timeEntries()->create([
@@ -128,7 +124,7 @@ class TaskService extends BaseService
         $task = $this->getById($taskId);
 
         DB::beginTransaction();
-
+//        dd($data);
         try {
             foreach ($data as $timer) {
                 if(isset($timer['deleted']) && $timer['deleted']) {
@@ -143,11 +139,11 @@ class TaskService extends BaseService
                     }
 
                     $start = isset($timer['start'])
-                        ? Carbon::createFromFormat('m/d/Y h:i:s A', $timer['start'])->format('Y-m-d H:i:s')
+                        ? Carbon::parse($timer['start'])->format('Y-m-d H:i:s')
                         : null;
 
                     $end = isset($timer['end'])
-                        ? Carbon::createFromFormat('m/d/Y h:i:s A', $timer['end'])->format('Y-m-d H:i:s')
+                        ? Carbon::parse($timer['end'])->format('Y-m-d H:i:s')
                         : null;
 
                     $timeEntry->update([
@@ -156,10 +152,10 @@ class TaskService extends BaseService
                     ]);
                 } else {
                     if (!empty($timer['start'])) {
-                        $start = Carbon::createFromFormat('m/d/Y h:i:s A', $timer['start'])->format('Y-m-d H:i:s');
+                        $start = Carbon::parse($timer['start'])->format('Y-m-d H:i:s');
 
                         $end = !empty($timer['end'])
-                            ? Carbon::createFromFormat('m/d/Y h:i:s A', $timer['end'])->format('Y-m-d H:i:s')
+                            ? Carbon::parse($timer['end'])->format('Y-m-d H:i:s')
                             : null;
 
                         if ($start || $end) {

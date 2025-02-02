@@ -20,6 +20,7 @@ declare module 'vue' {
     AppStepper: typeof import('./resources/js/@core/components/AppStepper.vue')['default']
     AppTextarea: typeof import('./resources/js/@core/components/app-form-elements/AppTextarea.vue')['default']
     AppTextField: typeof import('./resources/js/@core/components/app-form-elements/AppTextField.vue')['default']
+    BadgeDateTimePicker: typeof import('./resources/js/@core/components/app-form-elements/BadgeDateTimePicker.vue')['default']
     BuyNow: typeof import('./resources/js/@core/components/BuyNow.vue')['default']
     CardStatisticsHorizontal: typeof import('./resources/js/@core/components/cards/CardStatisticsHorizontal.vue')['default']
     CardStatisticsVertical: typeof import('./resources/js/@core/components/cards/CardStatisticsVertical.vue')['default']

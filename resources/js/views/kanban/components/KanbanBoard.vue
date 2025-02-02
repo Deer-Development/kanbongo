@@ -57,6 +57,7 @@ const kanbanWrapper = ref()
 const localKanbanData = ref(props.kanbanData.boards)
 const hasActiveTimer = ref(props.kanbanData.auth.has_active_time_entries)
 const localAvailableMembers = ref(props.kanbanData.members)
+const localActiveUsers = ref(props.kanbanData.active_users)
 const isKanbanBoardEditVisible = ref(false)
 const isAddNewFormVisible = ref(false)
 const refAddNewBoard = ref()
@@ -155,6 +156,7 @@ watch(() => props, () => {
   localKanbanData.value = props.kanbanData.boards
   hasActiveTimer.value = props.kanbanData.auth.has_active_time_entries
   localAvailableMembers.value = props.kanbanData.members
+  localActiveUsers.value = props.kanbanData.active_users
   // 👉 remap the nodes when we rename the board: https://github.com/formkit/drag-and-drop/discussions/52#discussioncomment-8995203
   remapNodes(kanbanWrapper.value)
 }, { deep: true })
@@ -221,6 +223,7 @@ defineExpose({
           :is-mobile="isMobile"
           :auth-id="props.kanbanData.auth.id"
           :available-members="localAvailableMembers"
+          :active-users="localActiveUsers"
           :colors="colors"
           @delete-board="deleteBoard"
           @toggle-timer="toggleTimer"
@@ -316,6 +319,7 @@ defineExpose({
     :is-owner="props.kanbanData.auth.is_owner"
     :is-member="props.kanbanData.auth.is_member"
     :auth-id="props.kanbanData.auth.id"
+    :active-users="localActiveUsers"
     @update:kanban-item="emitUpdatedTaskFn"
     @edit-timer="editTimer"
     @delete-kanban-item="deleteKanbanItemFn"

@@ -9,7 +9,9 @@ use App\Models\Member;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\TimeEntry;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,34 +23,13 @@ class DatabaseSeeder extends Seeder
 //        $users = User::factory()->count(10)->create();
 //
 //        $projectNames = [
-//            "E-commerce Website",
-//            "Portfolio Website",
-//            "Corporate Website",
-//            "Social Media Platform",
-//            "Learning Management System",
-//            "Real Estate Platform",
-//            "Healthcare Management System",
-//            "Online Marketplace",
-//            "Event Management System",
-//            "Blog Platform"
+//            "E-commerce Website", "Portfolio Website", "Corporate Website",
+//            "Social Media Platform", "Learning Management System", "Real Estate Platform",
+//            "Healthcare Management System", "Online Marketplace", "Event Management System", "Blog Platform"
 //        ];
 //
-//        $containerNames = [
-//            "Planning",
-//            "Design",
-//            "Development",
-//            "Testing",
-//            "Deployment",
-//            "Maintenance"
-//        ];
-//
-//        $boardNames = [
-//            "Backlog",
-//            "To Do",
-//            "In Progress",
-//            "Review",
-//            "Completed"
-//        ];
+//        $containerNames = ["Planning", "Design", "Development", "Testing", "Deployment", "Maintenance"];
+//        $boardNames = ["Backlog", "To Do", "In Progress", "Review", "Completed"];
 //
 //        foreach ($projectNames as $projectName) {
 //            $project = Project::create([
@@ -107,6 +88,24 @@ class DatabaseSeeder extends Seeder
 //                                'created_by' => $users->random()->id,
 //                                'content' => "This is comment $cm for Task $t in Board {$board->name}",
 //                            ]);
+//                        }
+//
+//                        foreach ($taskMembers as $member) {
+//                            for ($te = 1; $te <= rand(1, 4); $te++) {
+//                                $start = Carbon::now()->subDays(rand(1, 30))->setHour(rand(8, 18))->setMinute(rand(0, 59));
+//                                $end = $start->copy()->addHours(rand(1, 4))->addMinutes(rand(0, 59));
+//                                $billable = rand(0, 1);
+//
+//                                TimeEntry::create([
+//                                    'start' => $start,
+//                                    'end' => $end,
+//                                    'billable_rate' => $billable ? rand(50, 200) : null,
+//                                    'billable' => $billable,
+//                                    'user_id' => $member->id,
+//                                    'container_id' => $container->id,
+//                                    'task_id' => $task->id,
+//                                ]);
+//                            }
 //                        }
 //                    }
 //                }

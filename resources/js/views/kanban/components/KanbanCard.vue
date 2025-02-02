@@ -1,5 +1,8 @@
 <script setup>
-import { ref, onUnmounted, onMounted, defineEmits, watch } from 'vue'
+import { ref, defineEmits, watch } from 'vue'
+import BadgeDateTimePicker from "@core/components/app-form-elements/BadgeDateTimePicker.vue"
+import PriorityBadge from "@/views/kanban/components/PriorityBadge.vue"
+import TimerBadge from "@/views/kanban/components/TimerBadge.vue"
 
 const props = defineProps({
   item: {
@@ -15,6 +18,11 @@ const props = defineProps({
     required: true,
   },
   availableMembers: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
+  activeUsers: {
     type: Array,
     required: false,
     default: () => [],
@@ -50,66 +58,13 @@ const Priority = {
   },
 }
 
-const getPriorityColor = priority => {
-  if (priority == Priority.URGENT)
-    return '#FF5733'
-  if (priority == Priority.HIGH)
-    return '#FFA533'
-  if (priority == Priority.NORMAL)
-    return '#338DFF'
-  if (priority == Priority.LOW)
-    return '#30c15a'
-
-  return '#c2c2c3'
-}
-
-const priorityMenu = ref(null)
-const membersMenu = ref(null)
 const dueDate = ref(null)
 const hasLocalActiveTimer = ref(props.hasActiveTimer)
 const localAvailableMembers = ref([...props.availableMembers])
-const membersExpanded = ref(null)
-
-const formatTime = (seconds = 0) => {
-  const roundedSeconds = Math.floor(seconds)
-  const hours = Math.floor(roundedSeconds / 3600)
-  const minutes = Math.floor((roundedSeconds % 3600) / 60)
-  const secs = roundedSeconds % 60
-
-  return `${hours.toString().padStart(2, '0')}:${minutes
-    .toString()
-    .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
+const localActiveUsers = ref([...props.activeUsers])
 
 const toggleTimer = member => {
-  const latestEntry = member.timeEntries[member.timeEntries.length - 1]
-
-  if (member.isTiming) {
-    clearInterval(member.timerInterval)
-    latestEntry.end = new Date().toISOString()
-    member.isTiming = false
-  } else {
-    const newTimeEntry = reactive({
-      start: new Date().toISOString(),
-      end: null,
-      trackedTime: 0,
-      trackedTimeDisplay: formatTime(0),
-    })
-
-    member.timeEntries.push(newTimeEntry)
-
-    member.isTiming = true
-    member.timerInterval = setInterval(() => {
-      newTimeEntry.trackedTime += 1
-      newTimeEntry.trackedTimeDisplay = formatTime(newTimeEntry.trackedTime)
-    }, 1000)
-  }
-
   emit('toggleTimer', member, props.item.id)
-
-  // nextTick(() => {
-  //   emit('refreshKanbanData')
-  // })
 }
 
 watch(() => props.hasActiveTimer, () => {
@@ -120,9 +75,9 @@ watch(() => props.availableMembers, () => {
   localAvailableMembers.value = [...props.availableMembers]
 }, { deep: true })
 
-const editTimer = (member, id, name) => {
-  emit('editTimer', member, id, name)
-}
+watch(() => props.activeUsers, () => {
+  localActiveUsers.value = [...props.activeUsers]
+}, { deep: true })
 
 const updateTask = async updates => {
   const res = await $api(`/task/${props.item.id}`, {
@@ -141,15 +96,14 @@ const updateTask = async updates => {
   }
 }
 
-const addMember = async userId => {
-  const userIds = props.item.members.map(member => member.user.id)
+watch(() => props.item.members, (value, oldValue) => {
+  if (value.length !== oldValue.length) {
+    updateTask({ members: props.item.members.map(member => member.user.id) })
+  }
+}, { deep: true })
 
-  userIds.push(userId)
-  await updateTask({ members: userIds })
-}
-
-const setPriority = async priority => {
-  await updateTask({ priority })
+const setPriority = async data => {
+  await updateTask({ priority: data.priority })
 }
 
 const updateDueDate = async date => {
@@ -183,174 +137,61 @@ const updateDueDate = async date => {
     </div>
 
     <VCardText class="card-body">
-      <VRow>
-        <VCol cols="3">
-          <VMenu
-            v-model="priorityMenu"
-            offset-y
-          >
-            <template #activator="{ props }">
-              <VChip
-                v-bind="props"
-                :color="getPriorityColor(item.priority)"
-                size="small"
-                variant="elevated"
-                class="comments-chip"
-              >
-                <VIcon
-                  left
-                  size="16"
-                >
-                  tabler-flag
-                </VIcon>
-              </VChip>
-            </template>
-            <div class="priority-options">
-              <VChip
-                v-for="(label, key) in Priority.data"
-                :key="key"
-                :color="getPriorityColor(key)"
-                @click="setPriority(key)"
-              >
-                {{ label }}
-              </VChip>
-            </div>
-          </VMenu>
-        </VCol>
-        <div class="align-content-center">
-          <VIcon
-            right
-            icon="tabler-calendar"
-          />
-        </div>
-        <VCol
-          cols="4"
-          class="px-0"
-        >
-          <AppDateTimePicker
-            v-model="item.due_date"
-            density="compact"
-            variant="underlined"
-            placeholder="Due Date"
-            @change="updateDueDate(item.due_date)"
-          />
-        </VCol>
-        <VCol
-          cols="4"
+      <div class="d-flex gap-2">
+        <PriorityBadge
+          :priority="item.priority"
+          :itemId="item.id"
+          @update-priority="setPriority"
+        />
+
+        <BadgeDateTimePicker
+          v-model="item.due_date"
+          density="compact"
+          variant="underlined"
+          placeholder="Date"
+          clearable
+          :config="{ altFormat: 'j, M', altInput: true }"
+          @change="updateDueDate(item.due_date)"
+        />
+        <div
           class="d-flex justify-end"
         >
-          <VChip
-            size="small"
-            variant="elevated"
-            :color="item.comments_count ? '#faca15' : '#c2c2c3'"
-            class="comments-chip"
+          <div class="custom-badge"
+           :class="item.comments_count ? 'has-comments' : ''"
           >
             <VIcon
               left
               size="16"
             >
               tabler-message-2
-            </VIcon> {{ item.comments_count }}
-          </VChip>
-        </VCol>
-      </VRow>
-      <VDivider class="my-2" />
-      <VRow class="d-flex gap-1 justify-space-between">
-        <VCol
-          cols="8"
-          class="d-flex gap-1"
-        >
-          <VMenu
-            v-model="membersMenu"
-            offset-y
-          >
-            <template #activator="{ props }">
-              <VAvatar
-                v-bind="props"
-                size="28"
-                class="cursor-pointer"
-                :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-              >
-                <VIcon
-                  size="18"
-                  icon="tabler-users-plus"
-                />
-              </VAvatar>
-            </template>
-            <VList
-              class="github-style-list"
-              style="min-width: 100%;"
-            >
-              <template v-if="localAvailableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id)).length">
-                <VListItem
-                  v-for="(member, index) in props.availableMembers.filter(member => !item.members.some(m => m.user.id === member.user_id))"
-                  :key="member.id"
-                  class="github-list-item"
-                  @click="addMember(member.user_id)"
-                >
-                  <VListItemTitle class="font-medium text-sm text-gray-800">
-                    {{ member.user.full_name }}
-                  </VListItemTitle>
-                  <VListItemSubtitle class="text-xs text-gray-500">
-                    {{ member.user.email }}
-                  </VListItemSubtitle>
-                </VListItem>
-              </template>
-              <template v-else>
-                <VListItem class="empty-state text-center">
-                  <VListItemTitle class="text-gray-500 text-sm">
-                    No available members to add
-                  </VListItemTitle>
-                </VListItem>
-              </template>
-            </VList>
-          </VMenu>
-          <div class="v-avatar-group">
-            <template
-              v-for="(member, index) in item.members"
-              :key="member.id"
-            >
-              <VAvatar
-                v-tooltip="member.user.full_name"
-                size="28"
-                class="cursor-pointer"
-                :color="member.isTiming ? '#38a169' : (member.timeEntries.length ? '#44b87a' : '#EEEDF0')"
-                :class="member.isTiming ? 'glow' : (member.timeEntries.length ? 'worked' : '')"
-                @click="editTimer(member, item.id, item.name)"
-              >
-                <template v-if="member.user.avatar">
-                  <img
-                    :src="member.user.avatar"
-                    alt="Avatar"
-                  >
-                </template>
-                <template v-else>
-                  <span>{{ member.user.avatar_or_initials }}</span>
-                </template>
-              </VAvatar>
-            </template>
+            </VIcon>
+            <span>{{ item.comments_count }}</span>
           </div>
-        </VCol>
-        <VCol
-          cols="3"
-          class="d-flex justify-end"
-        >
-          <VChip
-            v-if="item.members.some(member => authId === member.user.id)"
-            size="small"
-            variant="elevated"
-            :color="item.members.some(member => authId === member.user.id && member.isTiming) ? '#e53e3e' : '#38a169'"
-            :disabled="hasLocalActiveTimer && !item.members.some(member => authId === member.user.id && member.isTiming)"
-            :class="item.members.some(member => authId === member.user.id && member.isTiming) ? 'stop-btn' : 'play-btn'"
-            @click.stop="toggleTimer(item.members.find(member => authId === member.user.id))"
-          >
-            <VIcon
-              :icon="item.members.some(member => authId === member.user.id && member.isTiming) ? 'tabler-pause' : 'tabler-play'"
-              size="16"
-            />
-          </VChip>
-        </VCol>
-      </VRow>
+        </div>
+      </div>
+      <VDivider class="my-2" />
+      <TimerBadge
+        :task="item"
+        :authId="authId"
+        :hasActiveTimer="hasLocalActiveTimer"
+        :member="item.members.find(member => authId === member.user_id)"
+        :active-users="localActiveUsers"
+        @toggle-timer="toggleTimer"
+        @refresh-kanban-data="emit('refreshKanbanData')"
+      />
+      <VDivider class="my-2" />
+      <DynamicMemberSelector
+        v-model="item.members"
+        :items="localAvailableMembers"
+        :is-super-admin="props.isSuperAdmin"
+        item-title="user.full_name"
+        item-value="user.id"
+        :active-users="localActiveUsers"
+        :tracked-users="item.tracked_time?.usersTracked"
+        :task-id="item.id"
+        dense
+        outlined
+      />
     </VCardText>
   </VCard>
 </template>

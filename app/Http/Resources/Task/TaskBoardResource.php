@@ -19,39 +19,8 @@ class TaskBoardResource extends JsonResource
             'priority' => $this->priority,
             'due_date' => $this->due_date,
             'comments_count' => $this->comments->count(),
-            'members' => $this->members->map(function ($member) {
-                $timeEntries = $member->user->timeEntries()
-                    ->where('task_id', $this->id)
-                    ->get();
-
-                $totalTrackedTime = $timeEntries->sum(function ($timeEntry) {
-                    return $this->calculateTrackedTime($timeEntry);
-                });
-
-                return array_merge($member->toArray(), [
-                    'timeEntries' => $timeEntries->map(function ($timeEntry) {
-                        return [
-                            'id' => $timeEntry->id,
-                            'start' => Carbon::parse($timeEntry->start)->format('m/d/Y h:i:s A'),
-                            'end' => $timeEntry->end ? Carbon::parse($timeEntry->end)->format('m/d/Y h:i:s A') : null,
-                            'added_manually' => $timeEntry->added_manually,
-                            'logs' => $timeEntry->logs()->orderBy('created_at', 'ASC')->get()->map(function ($log) {
-                                return [
-                                    'id' => $log->id,
-                                    'entry' => $log->entry,
-                                    'old_entry' => $log->old_entry,
-                                    'field' => $log->field,
-                                    'created_by' => $log->user->full_name,
-                                    'created_at' => $log->created_at->diffForHumans(),
-                                ];
-                            }),
-                        ];
-                    }),
-                    'isTiming' => $this->isMemberTiming($member),
-                    'totalTrackedTime' => $totalTrackedTime,
-                    'totalTrackedTimeDisplay' => $this->formatTime($totalTrackedTime),
-                ]);
-            }),
+            'members' => $this->members,
+            'tracked_time' => $this->tracked_time,
             'created_at' => $this->created_at->diffForHumans(),
         ];
     }
