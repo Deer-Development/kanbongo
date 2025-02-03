@@ -3,6 +3,7 @@
     v-model="timerMenu"
     offset-y
     :close-on-content-click="false"
+    close-on-back
     eager
     persistent
   >

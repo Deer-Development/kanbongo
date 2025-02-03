@@ -1,5 +1,6 @@
 <script setup>
 import { defineProps, ref, watch, computed } from "vue"
+import MemberPaymentDetails from "@/views/projects/components/MemberPaymentDetails.vue"
 
 const props = defineProps({
   boardId: { type: Number, required: true, default: 0 },
@@ -14,6 +15,8 @@ const boardIdLocal = ref(null)
 const isConfirmDialogVisible = ref(false)
 const members = ref([])
 const memberToPay = ref(null)
+const selectedMember = ref(null)
+const totalSelectedPayment = ref(0)
 
 const selectedDateRange = ref("")
 
@@ -37,7 +40,7 @@ watch(() => props.isDialogVisible, value => {
 })
 
 watch(selectedDateRange, () => {
-  if (boardIdLocal.value !== 0) fetchMemberDetails()
+  if (boardIdLocal.value !== 0 && !selectedMember.value) fetchMemberDetails()
 })
 
 const onReset = () => {
@@ -69,8 +72,13 @@ const handlePayment = async () => {
   if (res) fetchMemberDetails()
 }
 
-const handleDetails = member => {
-  console.log("Viewing details for", member)
+const handleDetails = async member => {
+  selectedMember.value = member
+}
+
+const goBack = () => {
+  selectedMember.value = null
+  fetchMemberDetails()
 }
 </script>
 
@@ -85,27 +93,70 @@ const handleDetails = member => {
       class="close-btn"
       @click="onReset"
     />
-    <VCard class="p-4 github-card">
-      <VCardTitle class="text-center text-dark fs-6 fw-bold">
+    <VCard class="github-card">
+      <VCardTitle class="sticky-header">
         Board Payment Details
+        <VRow>
+          <VCol :cols="selectedMember ? 10 : 12">
+            <div class="mb-4">
+              <label
+                for="date-picker"
+                class="form-label text-body-2"
+              >Select Date Range:</label>
+              <AppDateTimePicker
+                v-model="selectedDateRange"
+                :config="{ mode: 'range' }"
+                placeholder="Select date range"
+                clearable
+                class="input-github"
+              />
+            </div>
+          </VCol>
+          <VCol
+            v-if="selectedMember"
+            cols="2"
+          >
+            <VBtn
+              color="info"
+              class="mt-7"
+              @click="goBack"
+            >
+              View Payment Details
+            </VBtn>
+          </VCol>
+        </VRow>
+        <VRow
+          v-if="selectedMember"
+          class="mt-0 pt-0"
+        >
+          <VCol
+            v-if="totalSelectedPayment > 0"
+            cols="2"
+            class="mt-0 pt-0"
+          >
+            <div class="custom-badge">
+              <VIcon class="me-1">
+                tabler-credit-card-pay
+              </VIcon>
+              <span>Selected Payment: <span class="text-success font-weight-bold">${{ totalSelectedPayment.toFixed(2) }}</span></span>
+            </div>
+          </VCol>
+        </VRow>
       </VCardTitle>
 
       <VCardText>
-        <div class="mb-4">
-          <label
-            for="date-picker"
-            class="form-label"
-          >Select Date Range:</label>
-          <AppDateTimePicker
-            v-model="selectedDateRange"
-            :config="{ mode: 'range' }"
-            placeholder="Select date range"
-            class="input-github"
+        <div v-if="selectedMember">
+          <MemberPaymentDetails
+            :member="selectedMember"
+            :date-range="selectedDateRange"
+            :board-id="boardIdLocal"
+            :is-owner="props.isOwner"
+            :is-super-admin="props.isSuperAdmin"
+            @update:selected-payment="totalSelectedPayment = $event"
           />
         </div>
-
         <div
-          v-if="members.length"
+          v-else-if="members.length"
           class="members-container"
         >
           <div
@@ -202,7 +253,10 @@ const handleDetails = member => {
           No payment details available.
         </div>
 
-        <div class="global-stats mt-4">
+        <div
+          v-if="!selectedMember"
+          class="global-stats mt-4"
+        >
           <h4 class="fs-6 fw-bold">
             Summary
           </h4>
@@ -231,6 +285,15 @@ const handleDetails = member => {
 </template>
 
 <style lang="scss" scoped>
+.sticky-header {
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+  padding: 1rem;
+  border-bottom: 1px solid #d0d7de;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 .github-dialog {
   .v-card {
     background-color: #f6f8fa;
@@ -241,7 +304,7 @@ const handleDetails = member => {
 }
 
 .github-card {
-  padding: 1rem;
+  //padding: 1rem;
 }
 
 .members-container {
@@ -276,10 +339,6 @@ const handleDetails = member => {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
-  .d-flex {
-    align-items: center;
-  }
-
   .member-info {
     h3 {
       font-size: 1rem;
@@ -306,10 +365,6 @@ const handleDetails = member => {
       }
       .value {
         font-weight: bold;
-      }
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
       }
     }
   }

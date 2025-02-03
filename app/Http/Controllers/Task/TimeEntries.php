@@ -60,7 +60,7 @@ class TimeEntries extends BaseController
                     'id' => $entry->id,
                     'start' => $entry->start,
                     'end' => $entry->end,
-                    'duration' => gmdate("H:i:s", Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))),
+                    'duration' => $this->formatTime(Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))),
                     'billable_rate' => $entry->billable_rate,
                     'billable' => $entry->billable,
                     'is_paid' => $entry->is_paid,
