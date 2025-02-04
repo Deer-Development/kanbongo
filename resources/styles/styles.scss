@@ -306,6 +306,15 @@ $focus-color: #6366f1;
   color: white;
 }
 
+.no-time-entries {
+  background: #f17d7d;
+  color: white;
+
+  &:hover {
+    background: #f15858;
+  }
+}
+
 //.custom-badge:hover {
 //  background-color: #f3f4f6;
 //  border-color: #d1d5db;

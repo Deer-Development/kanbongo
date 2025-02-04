@@ -47,7 +47,7 @@
       <template v-else>
         <div class="d-flex justify-end">
           <div
-            class="custom-badge mb-2"
+            class="custom-badge mb-2 bg-error"
             @click="timerMenu = false"
           >
             <VIcon left>
@@ -65,8 +65,10 @@
             v-for="entry in allEntries"
             :key="entry.details.user.id"
             class="user-panel"
+            elevation="0"
           >
-            <VExpansionPanelTitle click.stop>
+            <VExpansionPanelTitle class="d-flex gap-1">
+
               <div class="custom-badge border-0 gap-1">
                 <VAvatar
                   size="26"
@@ -83,26 +85,25 @@
                     <span class="text-xs font-weight-medium">{{ entry.details.user.avatar_or_initials }}</span>
                   </template>
                 </VAvatar>
-                <div>
+                <div class="d-flex flex-column">
                   <span class="font-weight-bold">{{ entry.details.user.full_name }}</span>
+                  <div
+                    class="custom-badge mt-1"
+                    style="width: 80px"
+                    :class="entry.details.hasActiveTimer ? 'has-active-timer' : (
+                      entry.time_entries?.length ? 'has-time-entries' : 'no-time-entries'
+                    )"
+                  >
+                    <VIcon
+                      left
+                      size="16"
+                    >
+                      tabler-hourglass
+                    </VIcon>
+                    <span>{{ entry.details.totalWorkedTime }}</span>
+                  </div>
                 </div>
               </div>
-              <template #actions>
-                <div
-                  class="custom-badge"
-                  :class="entry.details.hasActiveTimer ? 'has-active-timer' : (
-                    entry.time_entries?.length ? 'has-time-entries' : ''
-                  )"
-                >
-                  <VIcon
-                    left
-                    size="16"
-                  >
-                    tabler-hourglass
-                  </VIcon>
-                  <span>{{ entry.details.totalWorkedTime }}</span>
-                </div>
-              </template>
             </VExpansionPanelTitle>
 
             <VExpansionPanelText>
@@ -172,7 +173,7 @@
                         variant="underlined"
                         placeholder="Start Time"
                         label="Start Time"
-                        :extended-badge="true"
+                        extended-badge
                         :disabled="timeEntry.deleted || timeEntry.is_paid"
                         :config="datetimeConfig"
                         @update:model-value="updateDuration(timeEntry)"
@@ -183,7 +184,7 @@
                         variant="underlined"
                         placeholder="End Time"
                         label="End Time"
-                        :extended-badge="true"
+                        extended-badge
                         :disabled="timeEntry.deleted || timeEntry.is_paid"
                         :config="datetimeConfig"
                         @update:model-value="updateDuration(timeEntry)"
