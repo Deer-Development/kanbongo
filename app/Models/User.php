@@ -73,4 +73,9 @@ class User extends Authenticatable
     {
         return $this->hasRole('Super-Admin');
     }
+
+    public function paychecks(): HasMany
+    {
+        return $this->hasMany(Paycheck::class);
+    }
 }

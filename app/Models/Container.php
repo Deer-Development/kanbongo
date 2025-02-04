@@ -39,4 +39,9 @@ class Container extends Model
     {
         return $this->hasMany(TimeEntry::class);
     }
+
+    public function paychecks(): HasMany
+    {
+        return $this->hasMany(Paycheck::class);
+    }
 }

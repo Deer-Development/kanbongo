@@ -4,8 +4,10 @@ namespace App\Services\Container;
 
 use App\Http\Resources\Container\ContainerResource;
 use App\Models\Container;
+use App\Models\Paycheck;
 use App\Services\BaseService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ContainerService extends BaseService
@@ -86,42 +88,66 @@ class ContainerService extends BaseService
         ];
     }
 
-    public function processPayment(int $id, int $userId, $dateRange): Container
+    public function processPayment(int $id, int $userId, $dateRange, $selectedEntries = []): Container
     {
-        $startDate = null;
-        $endDate = null;
-        if ($dateRange) {
-            [$start, $end] = array_pad(explode(' to ', $dateRange), 2, null);
-            $startDate = Carbon::parse($start)->startOfDay();
-            $endDate = $end ? Carbon::parse($end)->endOfDay() : now()->endOfDay();
+        if (count($selectedEntries)) {
+            $model = $this->getModelInstance()::with([
+                'boards' => function ($q) use ($selectedEntries) {
+                    $q->orderBy('created_at')->with([
+                        'tasks' => function ($q) use ($selectedEntries) {
+                            $q->with([
+                                'timeEntries' => function ($q) use ($selectedEntries) {
+                                    $q->whereIn('id', $selectedEntries);
+                                },
+                                'members'
+                            ]);
+                        }
+                    ]);
+                },
+                'members' => function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                }
+            ])->findOrFail($id);
+        } else {
+            $startDate = null;
+            $endDate = null;
+            if ($dateRange) {
+                [$start, $end] = array_pad(explode(' to ', $dateRange), 2, null);
+                $startDate = Carbon::parse($start)->startOfDay();
+                $endDate = $end ? Carbon::parse($end)->endOfDay() : now()->endOfDay();
+            }
+
+            $model = $this->getModelInstance()::with([
+                'boards' => function ($q) use ($startDate, $endDate) {
+                    $q->orderBy('created_at')->with([
+                        'tasks' => function ($q) use ($startDate, $endDate) {
+                            $q->with([
+                                'timeEntries' => function ($q) use ($startDate, $endDate) {
+                                    if ($startDate) {
+                                        $q->where('start', '>=', $startDate);
+                                    }
+                                    if ($endDate) {
+                                        $q->where('end', '<=', $endDate);
+                                    }
+                                    $q->where('is_paid', false);
+                                },
+                                'members'
+                            ]);
+                        }
+                    ]);
+                },
+                'members' => function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                }
+            ])->findOrFail($id);
         }
 
-        $model = $this->getModelInstance()::with([
-            'boards' => function ($q) use ($startDate, $endDate) {
-                $q->orderBy('created_at')->with([
-                    'tasks' => function ($q) use ($startDate, $endDate) {
-                        $q->with([
-                            'timeEntries' => function ($q) use ($startDate, $endDate) {
-                                if ($startDate) {
-                                    $q->where('start', '>=', $startDate);
-                                }
-                                if ($endDate) {
-                                    $q->where('end', '<=', $endDate);
-                                }
-                                $q->where('is_paid', false);
-                            },
-                            'members'
-                        ]);
-                    }
-                ]);
-            },
-            'members' => function ($q) use ($userId) {
-                $q->where('user_id', $userId);
-            }
-        ])->findOrFail($id);
-
-        DB::transaction(function () use ($model) {
+        DB::transaction(function () use ($model, $userId) {
             foreach ($model->members as $member) {
+                $totalHours = 0;
+                $totalAmount = 0;
+                $timeEntryIds = [];
+
                 foreach ($model->boards as $board) {
                     foreach ($board->tasks as $task) {
                         foreach ($task->timeEntries as $timeEntry) {
@@ -129,14 +155,36 @@ class ContainerService extends BaseService
                                 $durationInHours = Carbon::parse($timeEntry->start)
                                         ->diffInMinutes(Carbon::parse($timeEntry->end)) / 60;
 
+                                $amountPaid = $durationInHours * $member->billable_rate;
+
                                 $timeEntry->update([
                                     'is_paid' => true,
                                     'paid_rate' => $member->billable_rate,
-                                    'amount_paid' => $durationInHours * $member->billable_rate,
+                                    'amount_paid' => $amountPaid
                                 ]);
+
+                                $totalHours += $durationInHours;
+                                $totalAmount += $amountPaid;
+                                $timeEntryIds[] = $timeEntry->id;
                             }
                         }
                     }
+                }
+
+                if ($totalHours > 0 && $totalAmount > 0) {
+                    $paycheck = Paycheck::create([
+                        'user_id' => $member->user_id,
+                        'container_id' => $model->id,
+                        'project_id' => $model->project_id,
+                        'created_by' => Auth::user()->id,
+                        'total_hours' => $totalHours,
+                        'total_amount' => $totalAmount,
+                        'status' => 'paid',
+                    ]);
+
+                    DB::table('time_entries')
+                        ->whereIn('id', $timeEntryIds)
+                        ->update(['paycheck_id' => $paycheck->id]);
                 }
             }
         });

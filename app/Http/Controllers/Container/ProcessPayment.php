@@ -21,7 +21,8 @@ class ProcessPayment extends BaseController
     public function __invoke(int $id, int $userId, Request $request): JsonResponse
     {
         $dateRange = $request->input('date_range');
-        $model = $this->service->processPayment($id, $userId, $dateRange);
+        $selectedEntries = $request->input('selected_entries');
+        $model = $this->service->processPayment($id, $userId, $dateRange, $selectedEntries);
 
         return $this->successResponse(new ContainerResource($model), 'Payment processed successfully.', Response::HTTP_OK);
     }

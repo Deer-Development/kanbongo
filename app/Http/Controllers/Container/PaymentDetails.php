@@ -48,7 +48,7 @@ class PaymentDetails extends BaseController
                 if (!$isSuperAdmin && !$isOwner) {
                     $q->where('user_id', $authUserId);
                 }
-                $q->with('user');
+                $q->with('user.paychecks');
             }
         ])->findOrFail($id);
 
@@ -85,6 +85,7 @@ class PaymentDetails extends BaseController
                 'member_id' => $member->id,
                 'member_name' => $member->user->full_name ?? 'N/A',
                 'user' => $member->user,
+                'has_paychecks' => $member->user->paychecks->isNotEmpty(),
                 'total_paid_seconds' => $totalPaidSeconds,
                 'total_paid_hours' => round($totalPaidHours, 2),
                 'total_amount_paid' => round($totalAmountPaid, 2),

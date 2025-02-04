@@ -41,7 +41,7 @@
       <VProgressCircular
         v-if="loading"
         indeterminate
-        color="primary"
+        color="secondary"
       />
 
       <template v-else>

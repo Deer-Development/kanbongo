@@ -1,6 +1,7 @@
 <script setup>
 import { defineProps, ref, watch, computed } from "vue"
 import MemberPaymentDetails from "@/views/projects/components/MemberPaymentDetails.vue"
+import PaycheckDetails from "@/views/projects/components/PaycheckDetails.vue"
 
 const props = defineProps({
   boardId: { type: Number, required: true, default: 0 },
@@ -16,7 +17,9 @@ const isConfirmDialogVisible = ref(false)
 const members = ref([])
 const memberToPay = ref(null)
 const selectedMember = ref(null)
+const showPaychecks = ref(false)
 const totalSelectedPayment = ref(0)
+const selectedEntries = ref([])
 
 const selectedDateRange = ref("")
 
@@ -66,18 +69,30 @@ const closeConfirmDialog = () => {
 const handlePayment = async () => {
   const res = await $api(`/container/${boardIdLocal.value}/process-payment/${memberToPay.value}`, {
     method: "POST",
-    body: { date_range: selectedDateRange.value },
+    body: {
+      date_range: selectedDateRange.value,
+      selected_entries: selectedEntries.value,
+    },
   })
 
-  if (res) fetchMemberDetails()
+  if (res) {
+    selectedMember.value = null
+    fetchMemberDetails()
+  }
 }
 
 const handleDetails = async member => {
   selectedMember.value = member
 }
 
+const handlePaychecks = async member => {
+  showPaychecks.value = true
+  selectedMember.value = member
+}
+
 const goBack = () => {
   selectedMember.value = null
+  showPaychecks.value = false
   fetchMemberDetails()
 }
 </script>
@@ -95,7 +110,13 @@ const goBack = () => {
     />
     <VCard class="github-card">
       <VCardTitle class="sticky-header">
-        Board Payment Details
+        <span v-if="showPaychecks">
+          Board Paychecks Details
+        </span>
+        <span v-else>
+          Board Payment Details
+        </span>
+        <span v-if="selectedMember" class="text-primary font-weight-bold">for {{ selectedMember.user.full_name }}</span>
         <VRow>
           <VCol :cols="selectedMember ? 10 : 12">
             <div class="mb-4">
@@ -121,17 +142,16 @@ const goBack = () => {
               class="mt-7"
               @click="goBack"
             >
-              View Payment Details
+              View All
             </VBtn>
           </VCol>
         </VRow>
-        <VRow
+        <div
           v-if="selectedMember"
-          class="mt-0 pt-0"
+          class="d-flex gap-2 mt-0 pt-0"
         >
-          <VCol
-            v-if="totalSelectedPayment > 0"
-            cols="2"
+          <div
+            v-if="totalSelectedPayment > 0 && !showPaychecks"
             class="mt-0 pt-0"
           >
             <div class="custom-badge">
@@ -140,12 +160,35 @@ const goBack = () => {
               </VIcon>
               <span>Selected Payment: <span class="text-success font-weight-bold">${{ totalSelectedPayment.toFixed(2) }}</span></span>
             </div>
-          </VCol>
-        </VRow>
+          </div>
+          <div
+            v-if="totalSelectedPayment > 0 && !showPaychecks"
+            class="mt-0 pt-0"
+          >
+            <div class="custom-badge">
+              <VIcon class="me-1">
+                tabler-brand-cashapp
+              </VIcon>
+              <span>Rate: <span class="text-success font-weight-bold">${{ selectedMember.billable_rate }}</span></span>
+            </div>
+          </div>
+          <div
+            v-if="totalSelectedPayment > 0 && !showPaychecks"
+            class="mt-0 pt-0"
+            @click="confirmPayment(selectedMember.user.id)"
+          >
+            <div class="custom-badge bg-warning">
+              <VIcon>
+                tabler-cash-register
+              </VIcon>
+              <span class="font-weight-bold">Pay Now</span>
+            </div>
+          </div>
+        </div>
       </VCardTitle>
 
       <VCardText>
-        <div v-if="selectedMember">
+        <div v-if="selectedMember && !showPaychecks">
           <MemberPaymentDetails
             :member="selectedMember"
             :date-range="selectedDateRange"
@@ -153,6 +196,18 @@ const goBack = () => {
             :is-owner="props.isOwner"
             :is-super-admin="props.isSuperAdmin"
             @update:selected-payment="totalSelectedPayment = $event"
+            @update:selected-entries="selectedEntries = $event"
+          />
+        </div>
+        <div v-if="selectedMember && showPaychecks">
+          <PaycheckDetails
+            :member="selectedMember"
+            :date-range="selectedDateRange"
+            :board-id="boardIdLocal"
+            :is-owner="props.isOwner"
+            :is-super-admin="props.isSuperAdmin"
+            @update:selected-payment="totalSelectedPayment = $event"
+            @update:selected-entries="selectedEntries = $event"
           />
         </div>
         <div
@@ -225,27 +280,38 @@ const goBack = () => {
             </div>
 
             <div class="card-actions">
-              <VBtn
+              <div
                 v-if="(props.isSuperAdmin || props.isOwner) && member.pending_payment > 0"
-                color="primary"
-                variant="tonal"
-                class="btn-github"
+                class="custom-badge bg-warning"
                 @click="confirmPayment(member.user.id)"
               >
-                Pay Now
-              </VBtn>
-              <VBtn
-                color="secondary"
-                variant="tonal"
-                class="btn-github"
+                <VIcon>
+                  tabler-cash-register
+                </VIcon>
+                <span class="font-weight-bold">Pay Now</span>
+              </div>
+              <div
+                class="custom-badge"
                 @click="handleDetails(member)"
               >
-                View Details
-              </VBtn>
+                <VIcon>
+                  tabler-list-details
+                </VIcon>
+                <span class="font-weight-bold">Details</span>
+              </div>
+              <div
+                v-if="member.has_paychecks"
+                class="custom-badge bg-success"
+                @click="handlePaychecks(member)"
+              >
+                <VIcon>
+                  tabler-list-details
+                </VIcon>
+                <span class="font-weight-bold">Paychecks</span>
+              </div>
             </div>
           </div>
         </div>
-
         <div
           v-else
           class="no-data"

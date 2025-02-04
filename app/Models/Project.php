@@ -23,4 +23,9 @@ class Project extends Model
     {
         return $this->belongsTo(User::class, 'owner_id');
     }
+
+    public function paychecks(): HasMany
+    {
+        return $this->hasMany(Paycheck::class);
+    }
 }

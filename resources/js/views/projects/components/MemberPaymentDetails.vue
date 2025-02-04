@@ -10,7 +10,7 @@ const props = defineProps({
   isSuperAdmin: { type: Boolean, required: false, default: false },
 })
 
-const emit = defineEmits(["update:selectedPayment"])
+const emit = defineEmits(["update:selectedPayment", "update:selectedEntries"])
 
 const paymentDetails = ref(null)
 const loading = ref(false)
@@ -60,12 +60,29 @@ const totalSelectedPayment = () => {
   }, 0)
 }
 
-watch(() => selectedTimeEntries, (newValue, oldValue) => {
-  if (newValue) emit("update:selectedPayment", totalSelectedPayment())
-}, { deep: true, immediate: true })
+const toggleTaskEntries = (taskDetail) => {
+  const entryIds = taskDetail.timeEntries
+    .filter(entry => !entry.is_paid)
+    .map(entry => entry.id)
+
+  const allSelected = entryIds.every(id => selectedTimeEntries.value.includes(id))
+
+  if (allSelected) {
+    selectedTimeEntries.value = selectedTimeEntries.value.filter(id => !entryIds.includes(id))
+  } else {
+    selectedTimeEntries.value = [...new Set([...selectedTimeEntries.value, ...entryIds])]
+  }
+}
+
+watch(() => selectedTimeEntries, (newValue) => {
+  if (newValue) {
+    emit("update:selectedPayment", totalSelectedPayment());
+    emit("update:selectedEntries", selectedTimeEntries.value);
+  }
+}, { deep: true, immediate: true });
 
 watch(() => props.dateRange, (newValue, oldValue) => {
-  if (newValue && newValue !== oldValue) fetchMemberPaymentDetails()
+  if (newValue !== oldValue) fetchMemberPaymentDetails()
 }, { deep: true, immediate: true })
 
 watch(() => props.member, (newValue, oldValue) => {
@@ -76,18 +93,7 @@ watch(() => props.member, (newValue, oldValue) => {
 
 <template>
   <div class="member-payment-details">
-    <h3 class="title">
-      Payment Details for {{ member.member_name }}
-    </h3>
-
-    <div
-      v-if="loading"
-      class="loading"
-    >
-      Loading payment details...
-    </div>
-
-    <div v-else-if="paymentDetails">
+    <div v-if="paymentDetails">
       <div
         v-for="(taskDetail, key) in paymentDetails"
         :key="key"
@@ -115,7 +121,7 @@ watch(() => props.member, (newValue, oldValue) => {
                   v-if="props.isOwner || props.isSuperAdmin"
                   class="center"
                 >
-                  ✔
+                  <VIcon color="success" class="ml-2" @click="toggleTaskEntries(taskDetail)">tabler-checkbox</VIcon>
                 </th>
                 <th>Start</th>
                 <th>End</th>
@@ -169,7 +175,6 @@ watch(() => props.member, (newValue, oldValue) => {
 <style lang="scss" scoped>
 .member-payment-details {
   background: #fff;
-  padding: 1rem;
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
