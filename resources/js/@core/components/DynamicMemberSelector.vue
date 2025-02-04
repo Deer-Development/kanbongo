@@ -84,9 +84,9 @@ watch(() => props.trackedUsers, () => {
       <template #selection="{ item }" style="margin-inline-start: -0.8rem;">
         <VAvatar
           size="26"
-          :color="localActiveUsers.some(user => user.user.id === item.raw.user.id) ? '#38a169' :
+          :color="localActiveUsers.some(user => user.user.id === item.raw.user.id && user.time_entry.task_id === props.taskId) ? '#38a169' :
             localTrackedUsers.some(id => id === item.raw.user.id) ? '#42bc7b' : '#EEEDF0'"
-          :class="localActiveUsers.some(user => user.user.id === item.raw.user.id) ? 'glow' :
+          :class="localActiveUsers.some(user => user.user.id === item.raw.user.id && user.time_entry.task_id === props.taskId) ? 'glow' :
             localTrackedUsers.some(id => id === item.raw.user.id) ? 'worked' : ''"
         >
           <VImg
