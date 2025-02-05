@@ -223,7 +223,10 @@ onBeforeUnmount(() => {
             </VChip>
           </template>
           <div class="p-4">
-            <div v-if="kanban?.active_users?.length" class="d-flex flex-column gap-2 bg-white rounded">
+            <div
+              v-if="kanban?.active_users?.length"
+              class="d-flex flex-column gap-2 bg-white rounded"
+            >
               <div
                 v-for="entry in kanbanData.active_users"
                 :key="entry.user.id"
@@ -256,7 +259,10 @@ onBeforeUnmount(() => {
                 </div>
               </div>
             </div>
-            <div v-else class="d-flex flex-column gap-2 bg-white rounded">
+            <div
+              v-else
+              class="d-flex flex-column gap-2 bg-white rounded"
+            >
               <div class="custom-badge">
                 <span class="text-sm text-danger">
                   No active users

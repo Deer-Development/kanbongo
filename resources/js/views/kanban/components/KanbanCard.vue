@@ -107,7 +107,7 @@ watchDebounced(
   () => isEditingName.value,
   async value => {
     if (!value) {
-      await updateTask({ name:props.item.name })
+      await updateTask({ name: props.item.name })
     }
   },
   { debounce: 100 },
@@ -142,36 +142,45 @@ watchDebounced(
             class="custom-textarea"
           >
             <template #append-inner>
-                <VIcon
-                  size="20"
-                  :key="`icon-${isEditingName}`"
-                  :color="isEditingName ? 'success' : 'info'"
-                  :icon="isEditingName ? 'tabler-circle-check' : 'tabler-edit-circle'"
-                  @click="isEditingName = !isEditingName"
-                />
+              <VIcon
+                :key="`icon-${isEditingName}`"
+                size="20"
+                :color="isEditingName ? 'success' : 'info'"
+                :icon="isEditingName ? 'tabler-circle-check' : 'tabler-edit-circle'"
+                @click="isEditingName = !isEditingName"
+              />
             </template>
           </VTextarea>
-          <div class="d-flex align-center justify-space-between w-100"
-               @mouseenter="isHovered = true"
-               @mouseleave="isHovered = false"
-               v-else>
+          <div
+            v-else
+            v-tooltip="item.name"
+            class="d-flex align-center justify-space-between w-100"
+            @mouseenter="isHovered = true"
+            @mouseleave="isHovered = false"
+          >
             <h3
               v-tooltip="item.name"
               class="card-title cursor-pointer"
             >
               {{ item.name }}
             </h3>
-            <div class="d-flex flex-column gap-1" v-if="isHovered">
+            <div
+              v-if="isHovered"
+              class="d-flex flex-column gap-1"
+            >
               <div class="custom-badge">
                 <VIcon
-                  size="14"
                   :key="`icon-${isEditingName}`"
+                  size="14"
                   :color="isEditingName ? 'success' : 'info'"
                   :icon="isEditingName ? 'tabler-check-circle' : 'tabler-edit-circle'"
                   @click="isEditingName = !isEditingName"
                 />
               </div>
-              <div class="custom-badge" v-if="(isSuperAdmin || isOwner) && !item.tracked_time">
+              <div
+                v-if="(isSuperAdmin || isOwner) && !item.tracked_time"
+                class="custom-badge"
+              >
                 <VIcon
                   size="14"
                   color="error"
@@ -192,9 +201,7 @@ watchDebounced(
           :item-id="item.id"
           @update-priority="setPriority"
         />
-        <div
-          class="custom-badge"
-        >
+        <div class="custom-badge">
           <VIcon
             left
             size="16"
