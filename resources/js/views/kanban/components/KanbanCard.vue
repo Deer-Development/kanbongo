@@ -153,7 +153,6 @@ watchDebounced(
           </VTextarea>
           <div
             v-else
-            v-tooltip="item.name"
             class="d-flex align-center justify-space-between w-100"
             @mouseenter="isHovered = true"
             @mouseleave="isHovered = false"
