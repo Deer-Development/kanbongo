@@ -1,4 +1,6 @@
 <script setup>
+import { useToast } from "vue-toastification"
+
 const props = defineProps({
   confirmationQuestion: {
     type: String,
@@ -34,6 +36,7 @@ const emit = defineEmits([
 
 const unsubscribed = ref(false)
 const cancelled = ref(false)
+const toast = useToast()
 
 const updateModelValue = val => {
   emit('update:isDialogVisible', val)
@@ -42,14 +45,16 @@ const updateModelValue = val => {
 const onConfirmation = () => {
   emit('confirm', true)
   updateModelValue(false)
-  unsubscribed.value = true
+  toast.success(props.confirmMsg)
 }
 
 const onCancel = () => {
   emit('confirm', false)
   emit('close', true)
   emit('update:isDialogVisible', false)
-  cancelled.value = true
+  toast.error(props.cancelMsg, {
+    timeout: 1000,
+  })
 }
 </script>
 

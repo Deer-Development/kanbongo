@@ -203,7 +203,6 @@ onBeforeUnmount(() => {
       </h4>
       <div class="d-flex gap-1 align-content-center">
         <VMenu
-          v-if="kanban?.active_users?.length"
           v-model="activeUsersMenu"
           offset-y
         >
@@ -211,7 +210,7 @@ onBeforeUnmount(() => {
             <VChip
               v-bind="props"
               size="small"
-              color="rgb(56, 161, 105)"
+              :color="kanban?.active_users?.length ? 'rgb(56, 161, 105)' : ''"
               variant="elevated"
               class="cursor-pointer"
             >
@@ -257,8 +256,12 @@ onBeforeUnmount(() => {
                 </div>
               </div>
             </div>
-            <div v-else>
-              <p>No active users found.</p>
+            <div v-else class="d-flex flex-column gap-2 bg-white rounded">
+              <div class="custom-badge">
+                <span class="text-sm text-danger">
+                  No active users
+                </span>
+              </div>
             </div>
           </div>
         </VMenu>

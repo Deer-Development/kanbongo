@@ -15,7 +15,6 @@
         >
           tabler-flag-3-filled
         </VIcon>
-        <span>{{ priority ? Priority.data[priority] : 'Priority' }}</span>
       </div>
     </template>
     <div class="priority-options">

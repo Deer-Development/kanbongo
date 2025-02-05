@@ -12,13 +12,6 @@
         class="custom-badge"
         v-bind="props"
       >
-        <VIcon
-          left
-          size="16"
-          color="warning"
-        >
-          tabler-hourglass
-        </VIcon>
         <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay ? task.tracked_time.trackedTimeDisplay : '00:00:00') }}</span>
         <button
           v-if="member"

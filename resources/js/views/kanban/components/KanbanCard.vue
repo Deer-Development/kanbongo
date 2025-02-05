@@ -3,6 +3,7 @@ import { ref, defineEmits, watch } from 'vue'
 import BadgeDateTimePicker from "@core/components/app-form-elements/BadgeDateTimePicker.vue"
 import PriorityBadge from "@/views/kanban/components/PriorityBadge.vue"
 import TimerBadge from "@/views/kanban/components/TimerBadge.vue"
+import { watchDebounced } from "@vueuse/core"
 
 const props = defineProps({
   item: {
@@ -42,26 +43,12 @@ const emit = defineEmits([
   'addMember',
 ])
 
-const Priority = {
-  URGENT: 1,
-  HIGH: 2,
-  NORMAL: 3,
-  LOW: 4,
-  data: {
-    1: "Urgent",
-    2: "High",
-    3: "Normal",
-    4: "Low",
-  },
-  getName(value) {
-    return this.data[value] || null
-  },
-}
-
 const dueDate = ref(null)
 const hasLocalActiveTimer = ref(props.hasActiveTimer)
 const localAvailableMembers = ref([...props.availableMembers])
 const localActiveUsers = ref([...props.activeUsers])
+const isEditingName = ref(false)
+const isHovered = ref(false)
 
 const toggleTimer = member => {
   emit('toggleTimer', member, props.item.id)
@@ -109,6 +96,22 @@ const setPriority = async data => {
 const updateDueDate = async date => {
   await updateTask({ due_date: date })
 }
+
+const deleteKanbanItem = () => {
+  emit('deleteKanbanItem', {
+    item: props.item,
+  })
+}
+
+watchDebounced(
+  () => isEditingName.value,
+  async value => {
+    if (!value) {
+      await updateTask({ name:props.item.name })
+    }
+  },
+  { debounce: 100 },
+)
 </script>
 
 <template>
@@ -119,20 +122,66 @@ const updateDueDate = async date => {
     class="kanban-card position-relative"
   >
     <div class="card-header">
-      <div class="d-flex align-center">
-        <VIcon
-          class="card-handler"
-          size="20"
-          color="primary"
-          icon="tabler-grip-vertical"
-        />
-        <h3
-          v-tooltip="item.name"
-          class="card-title cursor-pointer"
-          @click="$emit('editKanbanItem', item.id)"
-        >
-          {{ item.name }}
-        </h3>
+      <div class="d-flex align-center pl-0 w-100">
+        <div class="pr-0 mr-2">
+          <VIcon
+            class="card-handler"
+            size="20"
+            color="primary"
+            icon="tabler-grip-vertical"
+          />
+        </div>
+        <div class="px-0 mx-0 w-100">
+          <VTextarea
+            v-if="isEditingName"
+            v-model="item.name"
+            :rules="[requiredValidator, maxLengthValidator(item.name, 255)]"
+            rows="3"
+            dense
+            variant="plain"
+            class="custom-textarea"
+          >
+            <template #append-inner>
+                <VIcon
+                  size="20"
+                  :key="`icon-${isEditingName}`"
+                  :color="isEditingName ? 'success' : 'info'"
+                  :icon="isEditingName ? 'tabler-circle-check' : 'tabler-edit-circle'"
+                  @click="isEditingName = !isEditingName"
+                />
+            </template>
+          </VTextarea>
+          <div class="d-flex align-center justify-space-between w-100"
+               @mouseenter="isHovered = true"
+               @mouseleave="isHovered = false"
+               v-else>
+            <h3
+              v-tooltip="item.name"
+              class="card-title cursor-pointer"
+            >
+              {{ item.name }}
+            </h3>
+            <div class="d-flex flex-column gap-1" v-if="isHovered">
+              <div class="custom-badge">
+                <VIcon
+                  size="14"
+                  :key="`icon-${isEditingName}`"
+                  :color="isEditingName ? 'success' : 'info'"
+                  :icon="isEditingName ? 'tabler-check-circle' : 'tabler-edit-circle'"
+                  @click="isEditingName = !isEditingName"
+                />
+              </div>
+              <div class="custom-badge" v-if="(isSuperAdmin || isOwner) && !item.tracked_time">
+                <VIcon
+                  size="14"
+                  color="error"
+                  icon="tabler-trash"
+                  @click="deleteKanbanItem"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -143,41 +192,38 @@ const updateDueDate = async date => {
           :item-id="item.id"
           @update-priority="setPriority"
         />
+        <div
+          class="custom-badge"
+        >
+          <VIcon
+            left
+            size="16"
+            :color="item.comments_count ? '#FFA533' : '#d2d2d5'"
+            @click="$emit('editKanbanItem', item.id)"
+          >
+            tabler-message-filled
+          </VIcon>
+        </div>
 
         <BadgeDateTimePicker
           v-model="item.due_date"
           density="compact"
           variant="underlined"
           placeholder="Date"
-          clearable
-          :config="{ altFormat: 'M, j Y', altInput: true }"
+          :config="{ altFormat: 'M j', altInput: true }"
           @change="updateDueDate(item.due_date)"
         />
-        <div class="d-flex justify-end">
-          <div
-            class="custom-badge"
-            :class="item.comments_count ? 'has-comments' : ''"
-          >
-            <VIcon
-              left
-              size="16"
-            >
-              tabler-message-2
-            </VIcon>
-            <span>{{ item.comments_count }}</span>
-          </div>
-        </div>
+
+        <TimerBadge
+          :task="item"
+          :auth-id="authId"
+          :has-active-timer="hasLocalActiveTimer"
+          :member="item.members.find(member => authId === member.user_id)"
+          :active-users="localActiveUsers"
+          @toggle-timer="toggleTimer"
+          @refresh-kanban-data="emit('refreshKanbanData')"
+        />
       </div>
-      <VDivider class="my-2" />
-      <TimerBadge
-        :task="item"
-        :auth-id="authId"
-        :has-active-timer="hasLocalActiveTimer"
-        :member="item.members.find(member => authId === member.user_id)"
-        :active-users="localActiveUsers"
-        @toggle-timer="toggleTimer"
-        @refresh-kanban-data="emit('refreshKanbanData')"
-      />
       <VDivider class="my-2" />
       <DynamicMemberSelector
         v-model="item.members"
