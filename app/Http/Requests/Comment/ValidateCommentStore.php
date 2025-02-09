@@ -28,6 +28,8 @@ class ValidateCommentStore extends FormRequest
             'content' => 'required|string',
             'commentable_id' => 'required|integer',
             'commentable_type' => 'required|string',
+            'temporary_uploads' => 'nullable|array',
+            'mentioned_users' => 'nullable|array',
         ];
     }
 

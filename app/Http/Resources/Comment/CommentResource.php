@@ -10,8 +10,27 @@ class CommentResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'createdBy' => $this->createdBy,
+            'content' => $this->content,
             'created_at' => $this->created_at->diffForHumans(),
+            'createdBy' => [
+                'id' => $this->createdBy->id,
+                'full_name' => $this->createdBy->full_name,
+                'avatar' => $this->createdBy->avatar,
+                'avatar_or_initials' => $this->createdBy->avatar_or_initials,
+            ],
+            'attachments' => $this->getMedia('attachments')->map(fn($media) => [
+                'id' => $media->id,
+                'url' => $media->getFullUrl(),
+                'name' => $media->file_name,
+                'size' => $media->human_readable_size,
+            ]),
+            'mentions' => $this->mentions->map(fn($user) => [
+                'id' => $user->id,
+                'name' => $user->full_name,
+                'is_read' => $this->isReadByUser($user->id),
+            ]),
+            'is_read' => $this->isReadByUser(auth()->id()),
+            'replies' => self::collection($this->whenLoaded('replies')),
         ];
     }
 }

@@ -10,6 +10,7 @@ import KanbanItems from './KanbanItems.vue'
 import { useMediaQuery } from "@vueuse/core"
 import { ref, defineExpose, defineProps, defineEmits, watch } from 'vue'
 import EditTimerDialog from "@/views/kanban/components/dialogs/EditTimer.vue"
+import Messenger from "@/views/kanban/components/Messenger.vue"
 
 const props = defineProps({
   kanbanData: {
@@ -309,17 +310,15 @@ defineExpose({
     </div>
   </div>
 
-  <KanbanBoardEditDrawer
+  <Messenger
     ref="editDialog"
     v-model:is-drawer-open="isKanbanBoardEditVisible"
     :kanban-item="editKanbanItem"
     :available-members="localAvailableMembers"
     :is-super-admin="props.kanbanData.auth.is_super_admin"
-    :has-active-timer="props.kanbanData.auth.has_active_time_entries"
     :is-owner="props.kanbanData.auth.is_owner"
     :is-member="props.kanbanData.auth.is_member"
     :auth-id="props.kanbanData.auth.id"
-    :active-users="localActiveUsers"
     @update:kanban-item="emitUpdatedTaskFn"
     @edit-timer="editTimer"
     @delete-kanban-item="deleteKanbanItemFn"

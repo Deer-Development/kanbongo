@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Task;
 
+use App\Http\Resources\Comment\CommentResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 
@@ -18,14 +19,7 @@ class TaskResource extends JsonResource
             'order' => $this->order,
             'priority' => $this->priority,
             'due_date' => $this->due_date,
-            'comments' => $this->comments()->orderBy('created_at', 'ASC')->get()->map(function ($comment) {
-                return [
-                    'id' => $comment->id,
-                    'createdBy' => $comment->createdBy->only(['id', 'full_name', 'email', 'avatar_or_initials', 'avatar']),
-                    'content' => $comment->content,
-                    'created_at' => $comment->created_at->diffForHumans(),
-                ];
-            }),
+            'comments' => CommentResource::collection($this->comments()->with('replies')->orderBy('created_at', 'ASC')->get()),
             'members' => $this->members->map(function ($member) {
                 $timeEntries = $member->user->timeEntries()
                     ->where('task_id', $this->id)

@@ -1,3 +1,5 @@
+@use './editor';
+
 $primary-color: #7b76fb;
 $secondary-color: #f8f9fa;
 $border-color: #d1d5db;
@@ -36,9 +38,10 @@ $focus-color: #6366f1;
   }
 }
 
-.ck.ck-sticky-panel__content{
+.ck.ck-sticky-panel__content {
   border-radius: 12px 12px 0 0 !important;
 }
+
 .ck.ck-toolbar {
   background-color: $secondary-color;
   border-bottom: 1px solid $border-color;
@@ -51,6 +54,20 @@ $focus-color: #6366f1;
     margin: 0 0.2rem !important;
     height: 0.8rem !important;
   }
+}
+
+.custom-badge-toolbar {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .custom-badge {
@@ -110,10 +127,11 @@ $focus-color: #6366f1;
     border-color: #d1d5db;
   }
 
-  .v-input__prepend{
+  .v-input__prepend {
     margin-inline-end: 0 !important;
   }
-  .v-field .v-field__input{
+
+  .v-field .v-field__input {
     cursor: pointer !important;
     outline: none !important;
     border-bottom: 0 !important;
@@ -126,12 +144,12 @@ $focus-color: #6366f1;
     max-width: 2.8rem !important;
   }
 
-  .v-field__outline{
+  .v-field__outline {
     --v-field-border-width: 0 !important;
     --v-field-border-opacity: 0 !important;
   }
 
-  .v-field--variant-filled .v-field__outline::after, .v-field--variant-underlined .v-field__outline::after  {
+  .v-field--variant-filled .v-field__outline::after, .v-field--variant-underlined .v-field__outline::after {
     border-color: transparent !important;
   }
 }
@@ -244,10 +262,11 @@ $focus-color: #6366f1;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 
-  .v-input__prepend{
+  .v-input__prepend {
     margin-inline-end: 0 !important;
   }
-  .v-field .v-field__input{
+
+  .v-field .v-field__input {
     cursor: pointer !important;
     outline: none !important;
     border-bottom: 0 !important;
@@ -260,12 +279,12 @@ $focus-color: #6366f1;
     max-width: 12rem !important;
   }
 
-  .v-field__outline{
+  .v-field__outline {
     --v-field-border-width: 0 !important;
     --v-field-border-opacity: 0 !important;
   }
 
-  .v-field--variant-filled .v-field__outline::after, .v-field--variant-underlined .v-field__outline::after  {
+  .v-field--variant-filled .v-field__outline::after, .v-field--variant-underlined .v-field__outline::after {
     border-color: transparent !important;
   }
 }
@@ -381,7 +400,7 @@ $focus-color: #6366f1;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   }
 
-  .custom-textarea{
+  .custom-textarea {
     .v-field .v-field__input {
       font-size: 12px !important;
       line-height: 14px !important;
@@ -517,3 +536,97 @@ $focus-color: #6366f1;
     transform: scale(1.05);
   }
 }
+
+.chat-log {
+  .chat-avatar {
+    flex: none;
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    line-height: normal;
+    overflow: hidden;
+    position: relative;
+    text-align: center;
+    transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-property: width, height;
+    vertical-align: middle;
+    border-radius: 50%;
+    background-color: rgb(238, 237, 240);
+    color: rgb(0, 0, 0);
+    caret-color: rgb(0, 0, 0);
+  }
+  .chat-body {
+    max-inline-size: calc(100% - 6.75rem);
+
+    .chat-content {
+      border-end-end-radius: 6px;
+      border-end-start-radius: 6px;
+
+      p {
+        overflow-wrap: anywhere;
+      }
+
+      &.chat-left {
+        border-start-end-radius: 6px;
+      }
+
+      &.chat-right {
+        border-start-start-radius: 6px;
+      }
+    }
+  }
+}
+
+@media print {
+  .v-theme--dark {
+    --v-theme-surface: 255, 255, 255;
+    --v-theme-on-surface: 47, 43, 61;
+    --v-theme-on-background: 47, 43, 61;
+  }
+
+  body {
+    background: none !important;
+  }
+}
+
+.attachment-section {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.attachment-link {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+
+  .text-body-2 {
+    font-size: 8px !important;
+  }
+}
+
+.check-animation {
+  animation: checkScale 0.5s ease-in-out;
+}
+
+@keyframes checkScale {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.opacity-0 {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+

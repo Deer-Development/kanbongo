@@ -6,6 +6,7 @@ use App\Http\Controllers\BaseController;
 use App\Http\Requests\Comment\ValidateCommentStore;
 use App\Services\Comment\CommentService;
 use App\Http\Resources\Comment\CommentResource;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\JsonResponse;
 
@@ -20,9 +21,30 @@ class Store extends BaseController
 
     public function __invoke(ValidateCommentStore $request): JsonResponse
     {
-        $this->service->create(array_merge($request->validated(), [
+        $comment = $this->service->create(array_merge($request->validated(), [
             'created_by' => auth()->id(),
         ]));
+
+        if ($request->has('temporary_uploads')) {
+            foreach ($request->temporary_uploads as $temp) {
+                $tempFile = Media::where('id', $temp['id'])->first();
+
+                if ($tempFile) {
+                    $tempFile->move($comment, 'attachments');
+                }
+            }
+        }
+
+        if ($request->has('mentioned_users')) {
+            $mentionedIds = collect(
+                $request->mentioned_users
+            )->map(function ($user) {
+                return $user['id'];
+            })->toArray();
+            $comment->mentions()->sync($mentionedIds);
+        }
+
+        $this->service->markCommentAsRead($comment->id, auth()->id());
 
         $commentableType = $request->get('commentable_type');
         if (!class_exists($commentableType)) {
@@ -35,14 +57,7 @@ class Store extends BaseController
             return $this->errorResponse('Commentable entity not found.', Response::HTTP_NOT_FOUND);
         }
 
-        $comments = $commentable->comments()->orderBy('created_at', 'ASC')->get()->map(function ($comment) {
-            return [
-                'id' => $comment->id,
-                'createdBy' => $comment->createdBy->only(['id', 'full_name', 'email', 'avatar_or_initials', 'avatar']),
-                'content' => $comment->content,
-                'created_at' => $comment->created_at->diffForHumans(),
-            ];
-        });
+        $comments = CommentResource::collection($commentable->comments()->with('replies')->orderBy('created_at', 'ASC')->get());
 
         return $this->successResponse($comments, 'Comment created successfully.', Response::HTTP_CREATED);
     }

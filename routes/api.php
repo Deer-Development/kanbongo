@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\RefreshTokenController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\General\Statuses;
+use App\Http\Controllers\FileUploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'auth'], function () {
@@ -25,6 +26,8 @@ Route::group(['prefix' => 'auth'], function () {
 });
 
 Route::group(['middleware' => 'auth:sanctum'], function() {
+    Route::post('/upload-temp-spatie', [FileUploadController::class, 'uploadTempSpatie']);
+    Route::delete('/delete-temp-spatie/{media}', [FileUploadController::class, 'deleteTempSpatie']);
     require base_path('routes/resources/user.php');
     require base_path('routes/resources/project.php');
     require base_path('routes/resources/container.php');
