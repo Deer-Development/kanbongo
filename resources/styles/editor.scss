@@ -267,8 +267,11 @@
 .send-btn {
   background: #675fc8 !important;
   color: white !important;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 700 !important;
-  cursor: pointer;
+  border-radius: 50% !important;
+}
+
+.message-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }

@@ -30,6 +30,7 @@ class ValidateCommentStore extends FormRequest
             'commentable_type' => 'required|string',
             'temporary_uploads' => 'nullable|array',
             'mentioned_users' => 'nullable|array',
+            'parent_id' => 'nullable|integer',
         ];
     }
 

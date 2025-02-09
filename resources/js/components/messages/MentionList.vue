@@ -85,7 +85,6 @@ export default {
 </script>
 
 <style lang="scss">
-/* Dropdown menu */
 .dropdown-menu {
   background: #FFF;
   border: 1px solid rgba(61, 37, 20, .05);

@@ -200,12 +200,14 @@ watchDebounced(
           :item-id="item.id"
           @update-priority="setPriority"
         />
-        <div class="custom-badge">
+        <div
+          class="custom-badge"
+          @click="$emit('editKanbanItem', item.id)"
+        >
           <VIcon
             left
             size="16"
             :color="item.comments_count ? '#FFA533' : '#d2d2d5'"
-            @click="$emit('editKanbanItem', item.id)"
           >
             tabler-message-filled
           </VIcon>
@@ -216,6 +218,7 @@ watchDebounced(
           density="compact"
           variant="underlined"
           placeholder="Date"
+          extended-badge
           :config="{ altFormat: 'M j', altInput: true }"
           @change="updateDueDate(item.due_date)"
         />

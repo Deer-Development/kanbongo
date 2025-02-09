@@ -29,6 +29,17 @@ class CommentResource extends JsonResource
                 'name' => $user->full_name,
                 'is_read' => $this->isReadByUser($user->id),
             ]),
+            'parent' => $this->parent ? [
+                'id' => $this->parent->id,
+                'content' => $this->parent->content,
+                'created_at' => $this->parent->created_at->diffForHumans(),
+                'createdBy' => [
+                    'id' => $this->parent->createdBy->id,
+                    'full_name' => $this->parent->createdBy->full_name,
+                    'avatar' => $this->parent->createdBy->avatar,
+                    'avatar_or_initials' => $this->parent->createdBy->avatar_or_initials,
+                ],
+            ] : null,
             'is_read' => $this->isReadByUser(auth()->id()),
             'replies' => self::collection($this->whenLoaded('replies')),
         ];

@@ -538,6 +538,9 @@ $focus-color: #6366f1;
 }
 
 .chat-log {
+  font-family: Montserrat, sans-serif;
+  font-size: 14.5px;
+  line-height: 19px;
   .chat-avatar {
     flex: none;
     align-items: center;
@@ -556,7 +559,7 @@ $focus-color: #6366f1;
     caret-color: rgb(0, 0, 0);
   }
   .chat-body {
-    max-inline-size: calc(100% - 6.75rem);
+    max-inline-size: calc(100% - 4.75rem);
 
     .chat-content {
       border-end-end-radius: 6px;

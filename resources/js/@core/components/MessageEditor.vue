@@ -16,8 +16,8 @@ import {
 } from '@tiptap/vue-3'
 import { FileHandler } from '@tiptap-pro/extension-file-handler'
 import { useToast } from 'vue-toastification'
-import suggestion from "@/components/messages/suggestion.js"
-import suggestionEmojis from "@/components/messages/suggestionEmojis.js"
+import suggestion from "@/components/messages/suggestion"
+import suggestionEmojis from "@/components/messages/suggestionEmojis"
 import { watch } from "vue"
 
 const props = defineProps({
@@ -49,16 +49,22 @@ const props = defineProps({
     required: false,
     default: () => [],
   },
+  messageToReply: {
+    type: Object,
+    required: false,
+    default: () => null,
+  },
 })
 
-const emit = defineEmits(['update:modelValue', 'send', 'update:selectedMembers', 'update:uploadedFiles', 'exitEditMode', 'editMessage'])
+const emit = defineEmits(['update:modelValue', 'send', 'update:selectedMembers', 'update:uploadedFiles', 'exitEditMode', 'editMessage', 'exitReplyMode'])
 const toast = useToast()
 const editorRef = ref()
 const uploadedFiles = ref([])
 const uploadingFiles = ref([])
 const selectedMembers = ref([])
 const isEditing = ref(props.isEditMode)
-const localAvailableMembers = ref(props.avaiableMembers)
+const localAvailableMembers = ref(props.availableMembers)
+const localMessageToReply = ref(props.messageToReply)
 
 watch(() => props, () => {
   localAvailableMembers.value = props.availableMembers
@@ -72,8 +78,11 @@ watch(() => props, () => {
   }
 
   if (props.isEditMode) {
-    console.log('isEditMode', props.isEditMode)
     isEditing.value = true
+  }
+
+  if (props.messageToReply) {
+    localMessageToReply.value = props.messageToReply
   }
 }, { deep: true, immediate: true })
 
@@ -326,6 +335,7 @@ const sendMessage = () => {
 
   nextTick(() => {
     exitEditMode()
+    exitReplyMode()
   })
 }
 
@@ -336,6 +346,11 @@ const exitEditMode = () => {
   uploadingFiles.value = []
   uploadedFiles.value = []
   selectedMembers.value = []
+}
+
+const exitReplyMode = () => {
+  localMessageToReply.value = null
+  emit('exitReplyMode')
 }
 
 onUnmounted(() => {
@@ -353,217 +368,267 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="editor-container">
+  <div>
     <div
       v-if="isEditing"
       class="edit-mode-indicator"
     >
-      <VIcon
-        icon="tabler-edit"
-        size="20"
-        class="mr-2"
-      />
       <span class="text-sm">Editing message...</span>
-      <VBtn
-        size="x-small"
+      <VIcon
+        icon="tabler-circle-x"
+        size="16"
         color="error"
-        variant="outlined"
+        class="close-reply-btn"
         @click="exitEditMode"
-      >
-        Cancel Edit
-      </VBtn>
+      />
     </div>
-    <div
-      v-if="uploadedFiles.length || uploadingFiles.length"
-      class="uploaded-files"
-    >
-      <div
-        v-for="file in uploadingFiles"
-        :key="file.name"
-        class="file-item uploading"
-      >
-        <div class="file-info">
-          <VIcon
-            icon="tabler-file"
-            class="file-icon"
-          />
-          <span class="file-name">{{ file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name }}</span>
+    <div class="reply-area" v-if="localMessageToReply">
+      <div class="chat-message-box-reply">
+        <div class="reply-content">
+          <div class="text tiptap" v-html="localMessageToReply.content" />
         </div>
-        <VProgressLinear
-          :value="file.progress"
-          color="primary"
-          height="6"
-          class="progress-bar"
-        />
-        <VIcon
-          v-if="file.error"
-          icon="tabler-alert-circle"
-          color="red"
-          class="error-icon"
-        />
       </div>
-
+      <VIcon
+        icon="tabler-circle-x"
+        size="16"
+        color="error"
+        class="close-reply-btn"
+        @click="exitReplyMode"
+      />
+    </div>
+    <div class="editor-container mx-5">
       <div
-        v-for="(file, index) in uploadedFiles"
-        :key="file.id"
-        class="file-item uploaded"
+        v-if="uploadedFiles.length || uploadingFiles.length"
+        class="uploaded-files"
       >
-        <div class="file-info">
-          <VIcon
-            icon="tabler-file-check"
-            class="file-icon success"
-          />
-          <a
-            :href="file.url"
-            target="_blank"
-            class="file-name"
-          >{{ file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name }}</a>
-        </div>
         <div
-          class="custom-badge delete-btn"
-          @click="deleteFile(file.id, index)"
+          v-for="file in uploadingFiles"
+          :key="file.name"
+          class="file-item uploading"
         >
-          <VIcon icon="tabler-trash" />
+          <div class="file-info">
+            <VIcon
+              icon="tabler-file"
+              class="file-icon"
+            />
+            <span class="file-name">{{ file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name }}</span>
+          </div>
+          <VProgressLinear
+            :value="file.progress"
+            color="primary"
+            height="6"
+            class="progress-bar"
+          />
+          <VIcon
+            v-if="file.error"
+            icon="tabler-alert-circle"
+            color="red"
+            class="error-icon"
+          />
+        </div>
+
+        <div
+          v-for="(file, index) in uploadedFiles"
+          :key="file.id"
+          class="file-item uploaded"
+        >
+          <div class="file-info">
+            <VIcon
+              icon="tabler-file-check"
+              class="file-icon success"
+            />
+            <a
+              :href="file.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="file-name"
+            >{{ file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name }}</a>
+          </div>
+          <div
+            class="custom-badge delete-btn"
+            @click="deleteFile(file.id, index)"
+          >
+            <VIcon icon="tabler-trash" />
+          </div>
         </div>
       </div>
-    </div>
-    <EditorContent
-      ref="editorRef"
-      :editor="editor"
-    />
-    <VDivider />
-    <div
-      v-if="editor"
-      class="d-flex justify-space-between align-center editor"
-    >
-      <div class="d-flex gap-2 py-1 px-2 flex-wrap align-center editor">
-        <IconBtn
-          size="x-small"
-          rounded
-          class="custom-badge-toolbar"
-          @click="$refs.fileInput.click()"
-        >
-          <VIcon icon="tabler-paperclip" />
-        </IconBtn>
-        <input
-          ref="fileInput"
-          type="file"
-          class="hidden"
-          @change="uploadFile"
-        >
-        <IconBtn
-          class="custom-badge-toolbar"
-          size="x-small"
-          rounded
-          :variant="editor.isActive('bold') ? 'tonal' : 'text'"
-          :color="editor.isActive('bold') ? 'primary' : 'default'"
-          @click="editor.chain().focus().toggleBold().run()"
-        >
-          <VIcon icon="tabler-bold" />
-        </IconBtn>
-
-        <IconBtn
-          class="custom-badge-toolbar"
-          size="x-small"
-          rounded
-          :variant="editor.isActive('underline') ? 'tonal' : 'text'"
-          :color="editor.isActive('underline') ? 'primary' : 'default'"
-          @click="editor.commands.toggleUnderline()"
-        >
-          <VIcon icon="tabler-underline" />
-        </IconBtn>
-
-        <IconBtn
-          class="custom-badge-toolbar"
-          size="x-small"
-          rounded
-          :variant="editor.isActive('italic') ? 'tonal' : 'text'"
-          :color="editor.isActive('italic') ? 'primary' : 'default'"
-          @click="editor.chain().focus().toggleItalic().run()"
-        >
-          <VIcon
-            icon="tabler-italic"
-            class="font-weight-medium"
-          />
-        </IconBtn>
-
-        <IconBtn
-          class="custom-badge-toolbar"
-          size="x-small"
-          rounded
-          :variant="editor.isActive('strike') ? 'tonal' : 'text'"
-          :color="editor.isActive('strike') ? 'primary' : 'default'"
-          @click="editor.chain().focus().toggleStrike().run()"
-        >
-          <VIcon icon="tabler-strikethrough" />
-        </IconBtn>
-
-        <IconBtn
-          class="custom-badge-toolbar"
-          size="x-small"
-          rounded
-          :variant="editor.isActive({ textAlign: 'left' }) ? 'tonal' : 'text'"
-          :color="editor.isActive({ textAlign: 'left' }) ? 'primary' : 'default'"
-          @click="editor.chain().focus().setTextAlign('left').run()"
-        >
-          <VIcon icon="tabler-align-left" />
-        </IconBtn>
-
-        <IconBtn
-          class="custom-badge-toolbar"
-          size="x-small"
-          rounded
-          :color="editor.isActive({ textAlign: 'center' }) ? 'primary' : 'default'"
-          :variant="editor.isActive({ textAlign: 'center' }) ? 'tonal' : 'text'"
-          @click="editor.chain().focus().setTextAlign('center').run()"
-        >
-          <VIcon icon="tabler-align-center" />
-        </IconBtn>
-
-        <IconBtn
-          class="custom-badge-toolbar"
-          size="x-small"
-          rounded
-          :variant="editor.isActive({ textAlign: 'right' }) ? 'tonal' : 'text'"
-          :color="editor.isActive({ textAlign: 'right' }) ? 'primary' : 'default'"
-          @click="editor.chain().focus().setTextAlign('right').run()"
-        >
-          <VIcon icon="tabler-align-right" />
-        </IconBtn>
-
-        <IconBtn
-          class="custom-badge-toolbar"
-          size="x-small"
-          rounded
-          :variant="editor.isActive({ textAlign: 'justify' }) ? 'tonal' : 'text'"
-          :color="editor.isActive({ textAlign: 'justify' }) ? 'primary' : 'default'"
-          @click="editor.chain().focus().setTextAlign('justify').run()"
-        >
-          <VIcon icon="tabler-align-justified" />
-        </IconBtn>
-      </div>
+      <EditorContent
+        ref="editorRef"
+        :editor="editor"
+      />
+      <VDivider />
       <div
-        class="custom-badge send-btn"
-        @click="sendMessage"
+        v-if="editor"
+        class="d-flex justify-space-between align-center editor"
       >
-        <VIcon icon="tabler-send" />
-        <span v-if="isEditMode">Update</span>
-        <span v-else>Send</span>
+        <div class="d-flex gap-2 py-1 px-2 flex-wrap align-center editor">
+          <IconBtn
+            size="x-small"
+            rounded
+            class="custom-badge-toolbar"
+            @click="$refs.fileInput.click()"
+          >
+            <VIcon icon="tabler-paperclip" />
+          </IconBtn>
+          <input
+            ref="fileInput"
+            type="file"
+            class="hidden"
+            @change="uploadFile"
+          >
+          <IconBtn
+            class="custom-badge-toolbar"
+            size="x-small"
+            rounded
+            :variant="editor.isActive('bold') ? 'tonal' : 'text'"
+            :color="editor.isActive('bold') ? 'primary' : 'default'"
+            @click="editor.chain().focus().toggleBold().run()"
+          >
+            <VIcon icon="tabler-bold" />
+          </IconBtn>
+
+          <IconBtn
+            class="custom-badge-toolbar"
+            size="x-small"
+            rounded
+            :variant="editor.isActive('underline') ? 'tonal' : 'text'"
+            :color="editor.isActive('underline') ? 'primary' : 'default'"
+            @click="editor.commands.toggleUnderline()"
+          >
+            <VIcon icon="tabler-underline" />
+          </IconBtn>
+
+          <IconBtn
+            class="custom-badge-toolbar"
+            size="x-small"
+            rounded
+            :variant="editor.isActive('italic') ? 'tonal' : 'text'"
+            :color="editor.isActive('italic') ? 'primary' : 'default'"
+            @click="editor.chain().focus().toggleItalic().run()"
+          >
+            <VIcon
+              icon="tabler-italic"
+              class="font-weight-medium"
+            />
+          </IconBtn>
+
+          <IconBtn
+            class="custom-badge-toolbar"
+            size="x-small"
+            rounded
+            :variant="editor.isActive('strike') ? 'tonal' : 'text'"
+            :color="editor.isActive('strike') ? 'primary' : 'default'"
+            @click="editor.chain().focus().toggleStrike().run()"
+          >
+            <VIcon icon="tabler-strikethrough" />
+          </IconBtn>
+
+          <IconBtn
+            class="custom-badge-toolbar"
+            size="x-small"
+            rounded
+            :variant="editor.isActive({ textAlign: 'left' }) ? 'tonal' : 'text'"
+            :color="editor.isActive({ textAlign: 'left' }) ? 'primary' : 'default'"
+            @click="editor.chain().focus().setTextAlign('left').run()"
+          >
+            <VIcon icon="tabler-align-left" />
+          </IconBtn>
+
+          <IconBtn
+            class="custom-badge-toolbar"
+            size="x-small"
+            rounded
+            :color="editor.isActive({ textAlign: 'center' }) ? 'primary' : 'default'"
+            :variant="editor.isActive({ textAlign: 'center' }) ? 'tonal' : 'text'"
+            @click="editor.chain().focus().setTextAlign('center').run()"
+          >
+            <VIcon icon="tabler-align-center" />
+          </IconBtn>
+
+          <IconBtn
+            class="custom-badge-toolbar"
+            size="x-small"
+            rounded
+            :variant="editor.isActive({ textAlign: 'right' }) ? 'tonal' : 'text'"
+            :color="editor.isActive({ textAlign: 'right' }) ? 'primary' : 'default'"
+            @click="editor.chain().focus().setTextAlign('right').run()"
+          >
+            <VIcon icon="tabler-align-right" />
+          </IconBtn>
+
+          <IconBtn
+            class="custom-badge-toolbar"
+            size="x-small"
+            rounded
+            :variant="editor.isActive({ textAlign: 'justify' }) ? 'tonal' : 'text'"
+            :color="editor.isActive({ textAlign: 'justify' }) ? 'primary' : 'default'"
+            @click="editor.chain().focus().setTextAlign('justify').run()"
+          >
+            <VIcon icon="tabler-align-justified" />
+          </IconBtn>
+        </div>
+        <VBtn
+          color="#5062ff"
+          size="small"
+          rounded-full
+          :disabled="!editor || editor.isEmpty"
+          @click="sendMessage"
+        >
+          <VIcon icon="tabler-arrow-up" />
+        </VBtn>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.reply-area{
+  background-color: #f2f3fa;
+  border-bottom: 1px solid #e2e7eb;
+  border-radius: 0;
+  align-items: center;
+  margin-top: 1px;
+  padding-left: 1px;
+  padding-right: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+.chat-message-box-reply {
+  max-width: none;
+  min-height: auto;
+  max-height: 48px;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 4px 8px;
+  font-size: 13.7px;
+  line-height: 19px;
+  overflow: auto;
+  border-left: 4px solid #FFC107;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reply-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.close-reply-btn:hover {
+  color: #d32f2f;
+}
+
 .edit-mode-indicator {
   background: rgba(255, 193, 7, 0.15);
   color: #856404;
   padding: 8px;
-  border-radius: 6px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 10px;
   font-weight: 500;
-  margin-bottom: 8px;
+  width: 100%;
 }
 </style>

@@ -53,6 +53,7 @@ const uploadedFiles = ref([])
 const localAvailableMembers = ref([])
 const message = ref('')
 const currentMessageId = ref(null)
+const messageToReply = ref(null)
 const chatLogPS = ref()
 const previewDialog = ref(false)
 const isEditMode = ref(false)
@@ -106,6 +107,7 @@ const handleAddMessage = async () => {
       commentable_type: 'App\\Models\\Task',
       temporary_uploads: uploadedFiles.value,
       mentioned_users: selectedMembers.value,
+      parent_id: messageToReply.value ? messageToReply.value.id : null,
     },
   })
 
@@ -116,6 +118,14 @@ const handleAddMessage = async () => {
   message.value = ''
   selectedMembers.value = []
   uploadedFiles.value = []
+  messageToReply.value = null
+  currentMessageId.value = null
+  isEditMode.value = false
+
+  await nextTick(() => {
+    exitEditMode()
+    scrollToBottom()
+  })
 
   scrollToBottom()
 }
@@ -150,6 +160,7 @@ const checkCommentsInView = () => {
 
 const editMessage = async messageToEdit => {
   if (messageToEdit) {
+    exitReplyMode()
     message.value = messageToEdit.content
     uploadedFiles.value = messageToEdit.attachments
     selectedMembers.value = messageToEdit.mentioned_users
@@ -161,9 +172,16 @@ const editMessage = async messageToEdit => {
 const exitEditMode = () => {
   currentMessageId.value = null
   isEditMode.value = false
+  messageToReply.value = null
+  messageToReply.value = null
   message.value = ''
   uploadedFiles.value = []
   selectedMembers.value = []
+}
+
+const exitReplyMode = () => {
+  messageToReply.value = null
+  message.value = ''
 }
 
 const submitEditMessage = async messageId => {
@@ -207,6 +225,13 @@ const closeNavigationDrawer = () => {
   emit('refreshKanbanData')
 }
 
+const replyMessage = msg => {
+  exitEditMode()
+
+  messageToReply.value = msg
+  message.value = `<span class="mention" data-type="mention" data-id="${msg.createdBy.id}" data-label="${msg.createdBy.full_name}" contenteditable="false">@${msg.createdBy.full_name}</span> `
+}
+
 const isImage = attachment => /\.(jpg|jpeg|png|gif)$/i.test(attachment.name)
 const isPDF = attachment => attachment.name.endsWith('.pdf')
 const isWord = attachment => attachment.name.endsWith('.docx')
@@ -243,7 +268,7 @@ const getAttachmentStyle = attachment => {
   return `
     background-color: ${backgroundColor};
     border-radius: 8px;
-    padding: 6px 12px;
+    padding: 2px 10px;
     transition: background-color 0.3s ease;
     display: flex;
     align-items: center;
@@ -274,13 +299,15 @@ defineExpose({
 
     <VDivider />
 
-    <PerfectScrollbar
+    <div
       ref="chatLogPS"
-      tag="ul"
-      :options="{ wheelPropagation: false }"
       class="flex-grow-1"
+      style="height: calc(100% - 64px); overflow: auto;"
     >
-      <div class="chat-log pa-6">
+      <div
+        v-if="messages.length"
+        class="chat-log pa-6"
+      >
         <div
           v-for="(msg, index) in messages"
           :id="`comment-${msg.id}`"
@@ -311,35 +338,94 @@ defineExpose({
           </div>
           <div class="chat-body d-inline-flex flex-column align-end w-100">
             <div
-              class="chat-content py-2 px-4 w-100 elevation-10 chat-right"
+              class="chat-content py-2 px-2 w-100 elevation-1 chat-right"
               style="background-color: rgb(var(--v-theme-surface));"
               :class="[
                 msg.createdBy.id !== authId ? 'chat-left' : 'chat-right',
               ]"
             >
-              <div
-                v-if="msg.createdBy.id === authId"
-                class="message-actions text-right"
-              >
-                <VIcon
-                  size="16"
-                  color="primary"
-                  @click="editMessage(msg)"
+              <div class="d-flex justify-space-between gap-1">
+                <div class="d-flex flex-column gap-2 w-100 ">
+                  <div class="chat-parent-message-preview">
+                    <div
+                      v-if="msg.parent"
+                      class="chat-message-box-reply w-100"
+                    >
+                      <div
+                        class="chat-parent-message-text me reply tiptap"
+                        v-html="msg.parent.content"
+                      />
+                    </div>
+                  </div>
+
+                  <p
+                    class="mb-0 text-message-content tiptap"
+                    v-html="msg.content"
+                  />
+                </div>
+                <div
+                  class="message-actions text-right"
+                  style="max-height: 20px !important;"
                 >
-                  tabler-edit
-                </VIcon>
-                <VIcon
-                  size="16"
-                  color="error"
-                  @click="deleteMessage(msg.id)"
-                >
-                  tabler-trash
-                </VIcon>
+                  <VMenu>
+                    <template #activator="{ props }">
+                      <div
+                        class="custom-badge"
+                        v-bind="props"
+                      >
+                        <VIcon
+
+                          size="14"
+                          color="primary"
+                        >
+                          tabler-dots-vertical
+                        </VIcon>
+                      </div>
+                    </template>
+                    <div class="d-flex flex-column dropdown-menu p-2">
+                      <div
+                        v-if="msg.createdBy.id === authId"
+                        class="d-flex gap-2 justify-end"
+                      >
+                        <div
+                          class="custom-badge"
+                          @click="editMessage(msg)"
+                        >
+                          <VIcon
+                            size="16"
+                            color="info"
+                          >
+                            tabler-edit
+                          </VIcon>
+                        </div>
+                        <div
+                          class="custom-badge"
+                          @click="deleteMessage(msg.id)"
+                        >
+                          <VIcon
+                            size="16"
+                            color="error"
+                          >
+                            tabler-trash
+                          </VIcon>
+                        </div>
+                      </div>
+                      <div
+                        class="custom-badge mt-2"
+                        @click="replyMessage(msg)"
+                      >
+                        <VIcon
+                          size="16"
+                          color="primary"
+                        >
+                          tabler-message-reply
+                        </VIcon>
+                        <span class="text-body-2 text-link">Reply</span>
+                      </div>
+                    </div>
+                  </VMenu>
+                </div>
               </div>
-              <p
-                class="mb-0 text-base tiptap"
-                v-html="msg.content"
-              />
               <div
                 v-if="msg.attachments?.length"
                 class="attachment-section"
@@ -415,20 +501,39 @@ defineExpose({
           </div>
         </div>
       </div>
-    </PerfectScrollbar>
-    <VDivider />
-    <div class="chat-log-message-form mb-5 mx-5">
+      <div
+        v-if="messages.length === 0"
+        class="d-flex flex-column align-center justify-center text-center py-10"
+        style="height: 100%;"
+      >
+        <VIcon
+          size="48"
+          color="grey"
+        >
+          tabler-mood-smile-beam
+        </VIcon>
+        <p class="text-body-1 text-disabled mt-3">
+          No messages yet. <br>
+          <strong>Be the first to share your thoughts!</strong> <br>
+          Type "@" to mention team members, add emojis, or upload files
+        </p>
+      </div>
+    </div>
+
+    <div class="chat-log-message-form mb-5">
       <MessageEditor
         v-model="message"
         v-model:pre-uploaded-files="uploadedFiles"
         v-model:is-edit-mode="isEditMode"
         :available-members="localAvailableMembers"
         :pre-selected-members="selectedMembers"
+        :message-to-reply="messageToReply"
         @update:selected-members="selectedMembers = $event"
         @update:uploaded-files="uploadedFiles = $event"
         @send="handleAddMessage"
         @edit-message="submitEditMessage(currentMessageId)"
         @exit-edit-mode="exitEditMode"
+        @exit-reply-mode="exitReplyMode"
       />
     </div>
 
@@ -446,6 +551,7 @@ defineExpose({
           <a
             :href="selectedAttachment.url"
             target="_blank"
+            rel="noopener noreferrer"
             class="custom-badge text-primary"
           >Download File</a>
         </VCardTitle>
@@ -495,6 +601,7 @@ defineExpose({
               <a
                 :href="selectedAttachment.url"
                 target="_blank"
+                rel="noopener noreferrer"
                 class="custom-badge text-primary"
               >Download File</a>
             </p>
@@ -512,3 +619,56 @@ defineExpose({
     </VDialog>
   </VNavigationDrawer>
 </template>
+
+<style scoped>
+.chat-parent-message-preview{
+  border-style: none none none solid;
+  border-width: 1px 1px 1px 3px;
+  border-color: #000 #000 #000 #f6c44c;
+  background-color: #0000;
+  border-radius: 0;
+  align-items: center;
+  min-width: auto;
+  min-height: auto;
+  max-height: 40px;
+  margin-left: 6px;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-right: 15px;
+  display: flex;
+  overflow: hidden;
+}
+.chat-message-box-reply {
+  background-color: #f2f3fa;
+  border-radius: 0 14px 14px 0;
+  max-width: none;
+  min-height: auto;
+  max-height: 48px;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 8px;
+  font-size: 13.7px;
+  line-height: 19px;
+  overflow: auto;
+}
+.chat-parent-message-text.me.reply{
+  opacity: .8;
+  color: #2d2e32;
+  text-align: left;
+  min-height: auto;
+  max-height: none;
+  margin-bottom: 0;
+  font-family: Montserrat, sans-serif;
+  font-size: 13.5px;
+  line-height: 19px;
+  display: inline;
+  overflow: auto;
+}
+.text-message-content{
+  font-family: Montserrat, sans-serif;
+  font-size: 14.5px;
+  line-height: 19px;
+}
+</style>
