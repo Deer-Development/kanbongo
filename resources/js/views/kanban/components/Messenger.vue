@@ -55,6 +55,7 @@ const message = ref('')
 const currentMessageId = ref(null)
 const chatLogPS = ref()
 const previewDialog = ref(false)
+const isEditMode = ref(false)
 const selectedAttachment = ref(null)
 
 const toast = useToast()
@@ -83,7 +84,6 @@ watch(() => props.kanbanItem, async () => {
 
   if (localKanbanItem.value.comments) {
     messages.value = localKanbanItem.value.comments
-    resizeImages()
     scrollToBottom()
     checkCommentsInView()
   }
@@ -148,34 +148,22 @@ const checkCommentsInView = () => {
   })
 }
 
-const resizeImages = () => {
-  nextTick(() => {
-    const messageContainers = document.querySelectorAll(".message-content")
-
-    messageContainers.forEach(container => {
-      const images = container.querySelectorAll("img")
-
-      images.forEach(img => {
-        img.onload = () => {
-          img.style.maxWidth = "100%"
-          img.style.maxHeight = "300px"
-          img.style.objectFit = "contain"
-          img.style.borderRadius = "8px"
-          img.style.margin = "8px auto"
-          img.style.display = "block"
-        }
-      })
-    })
-  })
-}
-
 const editMessage = async messageToEdit => {
   if (messageToEdit) {
     message.value = messageToEdit.content
     uploadedFiles.value = messageToEdit.attachments
     selectedMembers.value = messageToEdit.mentioned_users
-    currentMessageId.value = messageId
+    currentMessageId.value = messageToEdit.id
+    isEditMode.value = true
   }
+}
+
+const exitEditMode = () => {
+  currentMessageId.value = null
+  isEditMode.value = false
+  message.value = ''
+  uploadedFiles.value = []
+  selectedMembers.value = []
 }
 
 const submitEditMessage = async messageId => {
@@ -185,18 +173,18 @@ const submitEditMessage = async messageId => {
       content: message.value,
       commentable_id: localKanbanItem.value.id,
       commentable_type: 'App\\Models\\Task',
+      temporary_uploads: uploadedFiles.value,
+      mentioned_users: selectedMembers.value,
     },
   })
 
   if (res) {
     messages.value = res.data
 
-    currentMessageId.value = null
-    message.value = ''
-
-    resizeImages()
-
-    scrollToBottom()
+    await nextTick(() => {
+      exitEditMode()
+      scrollToBottom()
+    })
   }
 }
 
@@ -433,9 +421,14 @@ defineExpose({
       <MessageEditor
         v-model="message"
         :available-members="localAvailableMembers"
+        :pre-selected-members="selectedMembers"
+        v-model:pre-uploaded-files="uploadedFiles"
+        v-model:is-edit-mode="isEditMode"
         @update:selected-members="selectedMembers = $event"
         @update:uploaded-files="uploadedFiles = $event"
         @send="handleAddMessage"
+        @edit-message="submitEditMessage(currentMessageId)"
+        @exit-edit-mode="exitEditMode"
       />
     </div>
 
@@ -480,7 +473,6 @@ defineExpose({
               height="500px"
             />
 
-            <!-- Dacă fișierul nu este suportat -->
             <p
               v-else
               class="text-center"

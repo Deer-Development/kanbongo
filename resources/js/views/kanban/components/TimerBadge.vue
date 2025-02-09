@@ -12,15 +12,13 @@
         class="custom-badge"
         v-bind="props"
       >
-        <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay ? task.tracked_time.trackedTimeDisplay : '00:00:00') }}</span>
         <button
-          v-if="member"
           class="timer-btn"
           :class="{
             'timer-btn-active': isTiming,
-            'timer-btn-disabled': hasActiveTimer && !isTiming
+            'timer-btn-disabled': hasActiveTimer && !isTiming || !member,
           }"
-          :disabled="hasActiveTimer && !isTiming"
+          :disabled="hasActiveTimer && !isTiming || !member"
           @click.stop="toggleTimer"
         >
           <VIcon
@@ -28,6 +26,7 @@
             size="14"
           />
         </button>
+        <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay ? task.tracked_time.trackedTimeDisplay : '00:00:00') }}</span>
       </div>
     </template>
     <div class="timer-options ">

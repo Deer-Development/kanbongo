@@ -29,24 +29,75 @@ const props = defineProps({
     type: String,
     required: false,
   },
+  isEditMode: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
   availableMembers: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
+  preSelectedMembers: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
+  preUploadedFiles: {
     type: Array,
     required: false,
     default: () => [],
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'send', 'update:selectedMembers', 'update:uploadedFiles'])
+const emit = defineEmits(['update:modelValue', 'send', 'update:selectedMembers', 'update:uploadedFiles', 'exitEditMode', 'editMessage'])
 const toast = useToast()
 const editorRef = ref()
 const uploadedFiles = ref([])
 const uploadingFiles = ref([])
 const selectedMembers = ref([])
+const isEditing = ref(props.isEditMode)
 const localAvailableMembers = ref(props.avaiableMembers)
 
 watch(() => props, () => {
   localAvailableMembers.value = props.availableMembers
+
+  if (props.preSelectedMembers.length) {
+    selectedMembers.value = props.preSelectedMembers
+  }
+
+  if (props.preUploadedFiles.length) {
+    uploadedFiles.value = props.preUploadedFiles
+  }
+
+  if (props.isEditMode) {
+    console.log('isEditMode', props.isEditMode)
+    isEditing.value = true
+  }
 }, { deep: true, immediate: true })
+
+const remapMentions = (content) => {
+  if (!content) return content;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, "text/html");
+
+  doc.querySelectorAll('.mention').forEach(mention => {
+    const userId = mention.getAttribute('data-id');
+    const foundUser = localAvailableMembers.value.find(member => member.user.id == userId);
+
+    if (foundUser) {
+      mention.innerText = `@${foundUser.user.full_name}`;
+      mention.setAttribute('data-label', foundUser.user.full_name);
+    } else {
+      mention.innerText = `@Unknown`;
+      mention.setAttribute('data-label', 'Unknown');
+    }
+  });
+
+  return doc.body.innerHTML;
+};
 
 const editor = useEditor({
   content: props.modelValue,
@@ -76,7 +127,9 @@ const editor = useEditor({
     TaskItem.configure({
       nested: true,
     }),
-    Image,
+    Image.configure({
+      allowBase64: true,
+    }),
     FileHandler.configure({
       allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
       onDrop: (currentEditor, files, pos) => {
@@ -133,9 +186,10 @@ const editor = useEditor({
             class: 'mention',
             'data-type': 'mention',
             'data-id': node.attrs.id,
+            'data-label': node.attrs.label || 'Unknown',
           },
-          `@${node.attrs.label}`,
-        ]
+          `@${node.attrs.label || 'Unknown'}`,
+        ];
       },
       parseHTML: [
         {
@@ -154,6 +208,7 @@ const editor = useEditor({
         ...suggestionEmojis,
       },
     }),
+
   ],
   onUpdate() {
     if (!editor.value)
@@ -246,15 +301,37 @@ watch(() => props.modelValue, () => {
   emit('update:selectedMembers', mentions)
   if (isSame)
     return
-  editor.value?.commands.setContent(props.modelValue)
+
+  const fixedContent = remapMentions(props.modelValue);
+
+  if (fixedContent) {
+    setTimeout(() => {
+      editor.value.commands.setContent(fixedContent, true);
+      editor.value.commands.focus('end');
+    }, 0)
+  }
 })
 
 const sendMessage = () => {
-  emit('send')
+  if(isEditing.value) {
+    emit('editMessage')
+  }else{
+    emit('send')
+  }
+
+  nextTick(() => {
+    exitEditMode()
+  })
+}
+
+const exitEditMode = () => {
+  isEditing.value = false
+  emit('exitEditMode')
+  editor.value.commands.setContent('', true)
   uploadingFiles.value = []
   uploadedFiles.value = []
   selectedMembers.value = []
-}
+};
 
 onUnmounted(() => {
   uploadingFiles.value.forEach(file => {
@@ -272,6 +349,13 @@ onUnmounted(() => {
 
 <template>
   <div class="editor-container">
+    <div v-if="isEditing" class="edit-mode-indicator">
+      <VIcon icon="tabler-edit" size="20" class="mr-2"/>
+      <span class="text-sm">Editing message...</span>
+      <VBtn size="x-small" color="error" variant="outlined" @click="exitEditMode">
+        Cancel Edit
+      </VBtn>
+    </div>
     <div v-if="uploadedFiles.length || uploadingFiles.length" class="uploaded-files">
       <div v-for="file in uploadingFiles" :key="file.name" class="file-item uploading">
         <div class="file-info">
@@ -402,8 +486,23 @@ onUnmounted(() => {
         @click="sendMessage()"
       >
         <VIcon icon="tabler-send"/>
-        <span>Send</span>
+        <span v-if="isEditMode">Update</span>
+        <span v-else>Send</span>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.edit-mode-indicator {
+  background: rgba(255, 193, 7, 0.15);
+  color: #856404;
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+</style>

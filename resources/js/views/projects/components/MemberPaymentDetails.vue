@@ -102,7 +102,7 @@ watch(() => props.member, (newValue, oldValue) => {
         <VRow>
           <VCol cols="9">
             <h4 class="task-title">
-              {{ taskDetail.task.name }}
+              {{ taskDetail.task?.name }}
             </h4>
           </VCol>
           <VCol

@@ -26,6 +26,8 @@ class ValidateCommentUpdate extends FormRequest
     {
         return [
             'content' => 'required|string',
+            'temporary_uploads' => 'nullable|array',
+            'mentioned_users' => 'nullable|array',
         ];
     }
 

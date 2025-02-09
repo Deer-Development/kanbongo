@@ -211,7 +211,7 @@ const goBack = () => {
           />
         </div>
         <div
-          v-else-if="members.length"
+          v-else-if="members.length && !selectedMember && !showPaychecks"
           class="members-container"
         >
           <div
@@ -313,7 +313,7 @@ const goBack = () => {
           </div>
         </div>
         <div
-          v-else
+          v-if="!members.length && !selectedMember && !showPaychecks"
           class="no-data"
         >
           No payment details available.
