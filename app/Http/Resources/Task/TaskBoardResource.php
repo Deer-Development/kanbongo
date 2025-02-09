@@ -9,6 +9,8 @@ class TaskBoardResource extends JsonResource
 {
     public function toArray($request)
     {
+        $user = auth()->user();
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -19,6 +21,11 @@ class TaskBoardResource extends JsonResource
             'priority' => $this->priority,
             'due_date' => $this->due_date,
             'comments_count' => $this->comments->count(),
+            'has_unread_comments' => $this->comments()
+                ->whereDoesntHave('readByUsers', function ($query) use ($user) {
+                    $query->where('users.id', $user->id);
+                })
+                ->exists(),
             'members' => $this->members,
             'tracked_time' => $this->tracked_time,
             'created_at' => $this->created_at->diffForHumans(),

@@ -122,6 +122,9 @@ watchDebounced(
     class="kanban-card position-relative"
   >
     <div class="card-header">
+      <div class="custom-badge pl-0 pt-0">
+        <span>#{{ item.id }}</span>
+      </div>
       <div class="d-flex align-center pl-0 w-100">
         <div class="pr-0 mr-2">
           <VIcon
@@ -207,7 +210,7 @@ watchDebounced(
           <VIcon
             left
             size="16"
-            :color="item.comments_count ? '#FFA533' : '#d2d2d5'"
+            :color="item.has_unread_comments ? '#FFA533' : (item.comments_count ? '#6C757D' : '#d2d2d5')"
           >
             tabler-message-filled
           </VIcon>
@@ -218,7 +221,6 @@ watchDebounced(
           density="compact"
           variant="underlined"
           placeholder="Date"
-          extended-badge
           :config="{ altFormat: 'M j', altInput: true }"
           @change="updateDueDate(item.due_date)"
         />

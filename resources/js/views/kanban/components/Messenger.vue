@@ -293,7 +293,8 @@ defineExpose({
     @update:model-value="handleDrawerModelValueUpdate"
   >
     <AppDrawerHeaderSection
-      title="Messages"
+      :title="`Task #${localKanbanItem.id}`"
+      class="py-3"
       @cancel="closeNavigationDrawer"
     />
 
@@ -551,7 +552,6 @@ defineExpose({
           <a
             :href="selectedAttachment.url"
             target="_blank"
-            rel="noopener noreferrer"
             class="custom-badge text-primary"
           >Download File</a>
         </VCardTitle>
@@ -601,7 +601,6 @@ defineExpose({
               <a
                 :href="selectedAttachment.url"
                 target="_blank"
-                rel="noopener noreferrer"
                 class="custom-badge text-primary"
               >Download File</a>
             </p>
