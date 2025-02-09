@@ -420,10 +420,10 @@ defineExpose({
     <div class="chat-log-message-form mb-5 mx-5">
       <MessageEditor
         v-model="message"
-        :available-members="localAvailableMembers"
-        :pre-selected-members="selectedMembers"
         v-model:pre-uploaded-files="uploadedFiles"
         v-model:is-edit-mode="isEditMode"
+        :available-members="localAvailableMembers"
+        :pre-selected-members="selectedMembers"
         @update:selected-members="selectedMembers = $event"
         @update:uploaded-files="uploadedFiles = $event"
         @send="handleAddMessage"

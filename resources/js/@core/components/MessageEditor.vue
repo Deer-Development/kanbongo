@@ -77,27 +77,27 @@ watch(() => props, () => {
   }
 }, { deep: true, immediate: true })
 
-const remapMentions = (content) => {
-  if (!content) return content;
+const remapMentions = content => {
+  if (!content) return content
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(content, "text/html");
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(content, "text/html")
 
   doc.querySelectorAll('.mention').forEach(mention => {
-    const userId = mention.getAttribute('data-id');
-    const foundUser = localAvailableMembers.value.find(member => member.user.id == userId);
+    const userId = mention.getAttribute('data-id')
+    const foundUser = localAvailableMembers.value.find(member => member.user.id == userId)
 
     if (foundUser) {
-      mention.innerText = `@${foundUser.user.full_name}`;
-      mention.setAttribute('data-label', foundUser.user.full_name);
+      mention.innerText = `@${foundUser.user.full_name}`
+      mention.setAttribute('data-label', foundUser.user.full_name)
     } else {
-      mention.innerText = `@Unknown`;
-      mention.setAttribute('data-label', 'Unknown');
+      mention.innerText = `@Unknown`
+      mention.setAttribute('data-label', 'Unknown')
     }
-  });
+  })
 
-  return doc.body.innerHTML;
-};
+  return doc.body.innerHTML
+}
 
 const editor = useEditor({
   content: props.modelValue,
@@ -189,7 +189,7 @@ const editor = useEditor({
             'data-label': node.attrs.label || 'Unknown',
           },
           `@${node.attrs.label || 'Unknown'}`,
-        ];
+        ]
       },
       parseHTML: [
         {
@@ -217,8 +217,9 @@ const editor = useEditor({
   },
 })
 
-const simulateProgress = (fileData) => {
+const simulateProgress = fileData => {
   fileData.progress = 0
+
   const interval = setInterval(() => {
     if (fileData.progress >= 90) {
       clearInterval(interval)
@@ -226,17 +227,21 @@ const simulateProgress = (fileData) => {
       fileData.progress += Math.random() * 10
     }
   }, 300)
+
+  
   return interval
 }
 
-const uploadFile = async (event) => {
+const uploadFile = async event => {
   const file = event.target.files[0]
   if (!file) return
 
   const fileData = { name: file.name, progress: 0, error: false }
+
   uploadingFiles.value.push(fileData)
 
   const formData = new FormData()
+
   formData.append('file', file)
 
   const progressInterval = simulateProgress(fileData)
@@ -302,12 +307,12 @@ watch(() => props.modelValue, () => {
   if (isSame)
     return
 
-  const fixedContent = remapMentions(props.modelValue);
+  const fixedContent = remapMentions(props.modelValue)
 
   if (fixedContent) {
     setTimeout(() => {
-      editor.value.commands.setContent(fixedContent, true);
-      editor.value.commands.focus('end');
+      editor.value.commands.setContent(fixedContent, true)
+      editor.value.commands.focus('end')
     }, 0)
   }
 })
@@ -331,7 +336,7 @@ const exitEditMode = () => {
   uploadingFiles.value = []
   uploadedFiles.value = []
   selectedMembers.value = []
-};
+}
 
 onUnmounted(() => {
   uploadingFiles.value.forEach(file => {
@@ -349,31 +354,76 @@ onUnmounted(() => {
 
 <template>
   <div class="editor-container">
-    <div v-if="isEditing" class="edit-mode-indicator">
-      <VIcon icon="tabler-edit" size="20" class="mr-2"/>
+    <div
+      v-if="isEditing"
+      class="edit-mode-indicator"
+    >
+      <VIcon
+        icon="tabler-edit"
+        size="20"
+        class="mr-2"
+      />
       <span class="text-sm">Editing message...</span>
-      <VBtn size="x-small" color="error" variant="outlined" @click="exitEditMode">
+      <VBtn
+        size="x-small"
+        color="error"
+        variant="outlined"
+        @click="exitEditMode"
+      >
         Cancel Edit
       </VBtn>
     </div>
-    <div v-if="uploadedFiles.length || uploadingFiles.length" class="uploaded-files">
-      <div v-for="file in uploadingFiles" :key="file.name" class="file-item uploading">
+    <div
+      v-if="uploadedFiles.length || uploadingFiles.length"
+      class="uploaded-files"
+    >
+      <div
+        v-for="file in uploadingFiles"
+        :key="file.name"
+        class="file-item uploading"
+      >
         <div class="file-info">
-          <VIcon icon="tabler-file" class="file-icon"/>
+          <VIcon
+            icon="tabler-file"
+            class="file-icon"
+          />
           <span class="file-name">{{ file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name }}</span>
         </div>
-        <VProgressLinear :value="file.progress" color="primary" height="6" class="progress-bar"></VProgressLinear>
-        <VIcon v-if="file.error" icon="tabler-alert-circle" color="red" class="error-icon"/>
+        <VProgressLinear
+          :value="file.progress"
+          color="primary"
+          height="6"
+          class="progress-bar"
+        />
+        <VIcon
+          v-if="file.error"
+          icon="tabler-alert-circle"
+          color="red"
+          class="error-icon"
+        />
       </div>
 
-      <div v-for="(file, index) in uploadedFiles" :key="file.id" class="file-item uploaded">
+      <div
+        v-for="(file, index) in uploadedFiles"
+        :key="file.id"
+        class="file-item uploaded"
+      >
         <div class="file-info">
-          <VIcon icon="tabler-file-check" class="file-icon success"/>
-          <a :href="file.url" target="_blank" class="file-name"
+          <VIcon
+            icon="tabler-file-check"
+            class="file-icon success"
+          />
+          <a
+            :href="file.url"
+            target="_blank"
+            class="file-name"
           >{{ file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name }}</a>
         </div>
-        <div @click="deleteFile(file.id, index)" class="custom-badge delete-btn">
-          <VIcon icon="tabler-trash"/>
+        <div
+          class="custom-badge delete-btn"
+          @click="deleteFile(file.id, index)"
+        >
+          <VIcon icon="tabler-trash" />
         </div>
       </div>
     </div>
@@ -381,16 +431,26 @@ onUnmounted(() => {
       ref="editorRef"
       :editor="editor"
     />
-    <VDivider/>
+    <VDivider />
     <div
       v-if="editor"
       class="d-flex justify-space-between align-center editor"
     >
       <div class="d-flex gap-2 py-1 px-2 flex-wrap align-center editor">
-        <IconBtn size="x-small" rounded @click="$refs.fileInput.click()" class="custom-badge-toolbar">
-          <VIcon icon="tabler-paperclip"/>
+        <IconBtn
+          size="x-small"
+          rounded
+          class="custom-badge-toolbar"
+          @click="$refs.fileInput.click()"
+        >
+          <VIcon icon="tabler-paperclip" />
         </IconBtn>
-        <input type="file" ref="fileInput" class="hidden" @change="uploadFile"/>
+        <input
+          ref="fileInput"
+          type="file"
+          class="hidden"
+          @change="uploadFile"
+        >
         <IconBtn
           class="custom-badge-toolbar"
           size="x-small"
@@ -399,7 +459,7 @@ onUnmounted(() => {
           :color="editor.isActive('bold') ? 'primary' : 'default'"
           @click="editor.chain().focus().toggleBold().run()"
         >
-          <VIcon icon="tabler-bold"/>
+          <VIcon icon="tabler-bold" />
         </IconBtn>
 
         <IconBtn
@@ -410,7 +470,7 @@ onUnmounted(() => {
           :color="editor.isActive('underline') ? 'primary' : 'default'"
           @click="editor.commands.toggleUnderline()"
         >
-          <VIcon icon="tabler-underline"/>
+          <VIcon icon="tabler-underline" />
         </IconBtn>
 
         <IconBtn
@@ -435,7 +495,7 @@ onUnmounted(() => {
           :color="editor.isActive('strike') ? 'primary' : 'default'"
           @click="editor.chain().focus().toggleStrike().run()"
         >
-          <VIcon icon="tabler-strikethrough"/>
+          <VIcon icon="tabler-strikethrough" />
         </IconBtn>
 
         <IconBtn
@@ -446,7 +506,7 @@ onUnmounted(() => {
           :color="editor.isActive({ textAlign: 'left' }) ? 'primary' : 'default'"
           @click="editor.chain().focus().setTextAlign('left').run()"
         >
-          <VIcon icon="tabler-align-left"/>
+          <VIcon icon="tabler-align-left" />
         </IconBtn>
 
         <IconBtn
@@ -457,7 +517,7 @@ onUnmounted(() => {
           :variant="editor.isActive({ textAlign: 'center' }) ? 'tonal' : 'text'"
           @click="editor.chain().focus().setTextAlign('center').run()"
         >
-          <VIcon icon="tabler-align-center"/>
+          <VIcon icon="tabler-align-center" />
         </IconBtn>
 
         <IconBtn
@@ -468,7 +528,7 @@ onUnmounted(() => {
           :color="editor.isActive({ textAlign: 'right' }) ? 'primary' : 'default'"
           @click="editor.chain().focus().setTextAlign('right').run()"
         >
-          <VIcon icon="tabler-align-right"/>
+          <VIcon icon="tabler-align-right" />
         </IconBtn>
 
         <IconBtn
@@ -479,13 +539,14 @@ onUnmounted(() => {
           :color="editor.isActive({ textAlign: 'justify' }) ? 'primary' : 'default'"
           @click="editor.chain().focus().setTextAlign('justify').run()"
         >
-          <VIcon icon="tabler-align-justified"/>
+          <VIcon icon="tabler-align-justified" />
         </IconBtn>
       </div>
-      <div class="custom-badge send-btn"
-        @click="sendMessage()"
+      <div
+        class="custom-badge send-btn"
+        @click="sendMessage"
       >
-        <VIcon icon="tabler-send"/>
+        <VIcon icon="tabler-send" />
         <span v-if="isEditMode">Update</span>
         <span v-else>Send</span>
       </div>
