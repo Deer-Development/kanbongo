@@ -221,6 +221,7 @@ const closeNavigationDrawer = () => {
   emit('update:isDrawerOpen', false)
   messages.value = []
   message.value = ''
+  exitEditMode()
 
   emit('refreshKanbanData')
 }
