@@ -376,13 +376,14 @@ defineExpose({
 
 .kanban-main-wrapper {
   overflow: auto hidden;
+  margin-bottom: 0 !important;
   margin-inline-start: -0.6rem;
   min-block-size: calc(100vh - 17rem);
   max-height: calc(100vh - 10rem);
   padding-inline-start: 0.6rem;
+  position: relative;
 
   .kanban-board {
-    overflow: auto;
     inline-size: 17.875rem;
     min-inline-size: 17.875rem;
     padding: 0 0.1rem;
@@ -398,11 +399,8 @@ defineExpose({
     }
 
     .kanban-board-drop-zone {
-      overflow: hidden;
       padding: 0.2rem 0.1rem 0.1rem 0.1rem;
-      min-block-size: 50%;
       background-color: #fbf8f8;
-      scroll-behavior: smooth;
     }
   }
 

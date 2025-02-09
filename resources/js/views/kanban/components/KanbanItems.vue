@@ -1,4 +1,5 @@
 <script setup>
+import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import {
   animations,
   handleEnd,
@@ -87,6 +88,14 @@ const isBoardNameEditing = ref(false)
 const refForm = ref()
 const newTaskTitle = ref('')
 const refKanbanBoardTitle = ref()
+
+const chatLogPS = ref()
+
+const scrollToBottomInChatLog = () => {
+  const scrollEl = chatLogPS.value.$el || chatLogPS.value
+
+  scrollEl.scrollTop = scrollEl.scrollHeight
+}
 
 const renameBoard = () => {
   refKanbanBoardTitle.value?.validate().then(valid => {
@@ -241,7 +250,7 @@ const adjustBrightness = (hex, amount) => {
 </script>
 
 <template>
-  <div class="kanban-board">
+  <div class="kanban-board d-flex flex-column h-100">
     <div
       class="kanban-board-header"
       :style="{
@@ -392,42 +401,47 @@ const adjustBrightness = (hex, amount) => {
         </VForm>
       </div>
     </div>
-
-    <div
-      v-if="localIds"
-      ref="refKanbanBoard"
-      class="kanban-board-drop-zone d-flex flex-column gap-2"
-      :style="{
-        backgroundColor: props.boardColor
-          // ? lightenColor(props.boardColor, 20)
-          ? `${props.boardColor}13`
-          : '#f1f1f3'
-      }"
-      :class="localIds.length ? 'mb-4' : ''"
+    <PerfectScrollbar
+      ref="chatLogPS"
+      tag="ul"
+      :options="{ wheelPropagation: false }"
+      class="flex-grow-1"
     >
-      <template
-        v-for="id in localIds.filter(id => resolveItemUsingId(id))"
-        :key="id"
+      <div
+        v-if="localIds"
+        ref="refKanbanBoard"
+        class="kanban-board-drop-zone d-flex flex-column gap-2"
+        :style="{
+          backgroundColor: props.boardColor
+            ? `${props.boardColor}13`
+            : '#f1f1f3'
+        }"
+        :class="localIds.length ? 'mb-4' : ''"
       >
-        <KanbanCard
-          :item="resolveItemUsingId(id)"
-          :board-id="props.boardId"
-          :board-name="props.boardName"
-          :is-super-admin="props.isSuperAdmin"
-          :has-active-timer="props.hasActiveTimer"
-          :is-owner="props.isOwner"
-          :is-member="props.isMember"
-          :auth-id="props.authId"
-          :available-members="localAvailableMembers"
-          :active-users="localActiveUsers"
-          @delete-kanban-item="deleteItem"
-          @toggle-timer="toggleTimer"
-          @edit-timer="editTimerFn"
-          @refresh-kanban-data="refreshData"
-          @edit-kanban-item="emit('editItem', { item: resolveItemUsingId(id), boardId: props.boardId, boardName: props.boardName })"
-        />
-      </template>
-    </div>
+        <template
+          v-for="id in localIds.filter(id => resolveItemUsingId(id))"
+          :key="id"
+        >
+          <KanbanCard
+            :item="resolveItemUsingId(id)"
+            :board-id="props.boardId"
+            :board-name="props.boardName"
+            :is-super-admin="props.isSuperAdmin"
+            :has-active-timer="props.hasActiveTimer"
+            :is-owner="props.isOwner"
+            :is-member="props.isMember"
+            :auth-id="props.authId"
+            :available-members="localAvailableMembers"
+            :active-users="localActiveUsers"
+            @delete-kanban-item="deleteItem"
+            @toggle-timer="toggleTimer"
+            @edit-timer="editTimerFn"
+            @refresh-kanban-data="refreshData"
+            @edit-kanban-item="emit('editItem', { item: resolveItemUsingId(id), boardId: props.boardId, boardName: props.boardName })"
+          />
+        </template>
+      </div>
+    </PerfectScrollbar>
   </div>
 </template>
 

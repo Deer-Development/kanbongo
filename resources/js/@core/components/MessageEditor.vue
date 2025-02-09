@@ -3,7 +3,7 @@ import { Placeholder } from '@tiptap/extension-placeholder'
 import { TextAlign } from '@tiptap/extension-text-align'
 import { Underline } from '@tiptap/extension-underline'
 import { StarterKit } from '@tiptap/starter-kit'
-import { Image } from '@tiptap/extension-image'
+import { ImageResize } from 'tiptap-extension-resize-image'
 import { Document } from '@tiptap/extension-document'
 import { Mention } from '@tiptap/extension-mention'
 import { Text } from '@tiptap/extension-text'
@@ -136,7 +136,7 @@ const editor = useEditor({
     TaskItem.configure({
       nested: true,
     }),
-    Image.configure({
+    ImageResize.configure({
       allowBase64: true,
     }),
     FileHandler.configure({
@@ -454,9 +454,9 @@ onUnmounted(() => {
       </div>
       <EditorContent
         ref="editorRef"
+        class="this-editor"
         :editor="editor"
       />
-      <VDivider />
       <div
         v-if="editor"
         class="d-flex justify-space-between align-center editor"

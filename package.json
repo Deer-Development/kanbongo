@@ -57,6 +57,7 @@
     "shepherd.js": "13.0.1",
     "swiper": "11.1.9",
     "tippy.js": "^6.3.7",
+    "tiptap-extension-resize-image": "^1.2.1",
     "ufo": "1.5.4",
     "unplugin-vue-define-options": "1.4.6",
     "vue": "3.5",

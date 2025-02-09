@@ -188,7 +188,7 @@ onBeforeUnmount(() => {
   <section>
     <div
       v-if="kanban"
-      class="d-flex justify-space-between align-center mb-2"
+      class="d-flex justify-space-between align-center"
     >
       <h4 class="text-h4 mb-1">
         <VChip color="primary">
