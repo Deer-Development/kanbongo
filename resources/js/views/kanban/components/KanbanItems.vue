@@ -1,5 +1,4 @@
 <script setup>
-import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import {
   animations,
   handleEnd,
@@ -69,13 +68,6 @@ const emit = defineEmits([
   'refreshKanbanData',
 ])
 
-// const KanbanCard = defineAsyncComponent({
-//   loader: () => import('./KanbanCard.vue'),
-//   loadingComponent: VProgressCircular,
-//   delay: 200,
-//   errorComponent: VSkeletonLoader,
-// })
-
 const refKanbanBoard = ref()
 const localBoardName = ref(props.boardName)
 const localBoardColor = ref(props.boardColor)
@@ -89,10 +81,10 @@ const refForm = ref()
 const newTaskTitle = ref('')
 const refKanbanBoardTitle = ref()
 
-const chatLogPS = ref()
+const itemsContainer = ref()
 
 const scrollToBottomInChatLog = () => {
-  const scrollEl = chatLogPS.value.$el || chatLogPS.value
+  const scrollEl = itemsContainer.value.$el || itemsContainer.value
 
   scrollEl.scrollTop = scrollEl.scrollHeight
 }
@@ -254,12 +246,9 @@ const adjustBrightness = (hex, amount) => {
     <div
       class="kanban-board-header"
       :style="{
-        backgroundColor: props.boardColor
-          // ? hexToRgba(props.boardColor, 0.9)
-          // ? `${props.boardColor}33`
-          ? lightenColor(props.boardColor, 20)
-          // ? adjustBrightness(props.boardColor, 99)
-          : '#f1f1f3'
+        backgroundColor: props.boardColor && !isBoardNameEditing
+          ? `${props.boardColor}93`
+          : '#fff'
       }"
     >
       <VForm
@@ -401,10 +390,9 @@ const adjustBrightness = (hex, amount) => {
         </VForm>
       </div>
     </div>
-    <PerfectScrollbar
-      ref="chatLogPS"
-      tag="ul"
-      :options="{ wheelPropagation: false }"
+    <div
+      ref="itemsContainer"
+      style="height: 100%; overflow-y: auto;"
       class="flex-grow-1"
     >
       <div
@@ -413,7 +401,7 @@ const adjustBrightness = (hex, amount) => {
         class="kanban-board-drop-zone d-flex flex-column gap-2"
         :style="{
           backgroundColor: props.boardColor
-            ? `${props.boardColor}13`
+            ? `${props.boardColor}33`
             : '#f1f1f3'
         }"
         :class="localIds.length ? 'mb-4' : ''"
@@ -441,7 +429,7 @@ const adjustBrightness = (hex, amount) => {
           />
         </template>
       </div>
-    </PerfectScrollbar>
+    </div>
   </div>
 </template>
 
@@ -449,26 +437,56 @@ const adjustBrightness = (hex, amount) => {
 .kanban-board-header {
   .drag-handler {
     cursor: grab;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
 
     &:active {
       cursor: grabbing;
     }
-  }
 
-  &:hover {
-    .drag-handler {
+    &:hover {
       opacity: 1;
     }
   }
 }
+
 .dragging {
-  transform: scale(1.2);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 8px;
 }
-.drop-zone:hover, .drop-zone.over {
-  background-color: rgba(0, 128, 255, 0.2);
-  border: 2px dashed rgba(0, 128, 255, 0.5);
+
+.drop-zone:hover,
+.drop-zone.over {
+  background-color: rgba(0, 128, 255, 0.15);
+  border: 2px dashed rgba(0, 128, 255, 0.4);
   transition: background-color 0.3s ease, border 0.3s ease;
 }
+
+.kanban-board .flex-grow-1 {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(191, 191, 191, 0.5) rgba(240, 240, 240, 0.5);
+}
+
+.kanban-board .flex-grow-1::-webkit-scrollbar {
+  width: 8px;
+  border-radius: 10px;
+}
+
+.kanban-board .flex-grow-1::-webkit-scrollbar-track {
+  background: rgba(191, 191, 191, 0.5);
+  border-radius: 10px;
+}
+
+.kanban-board .flex-grow-1::-webkit-scrollbar-thumb {
+  background: rgba(191, 191, 191, 0.5);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.kanban-board .flex-grow-1::-webkit-scrollbar-thumb:hover {
+  background: rgba(191, 191, 191, 0.5);
+}
+
 </style>

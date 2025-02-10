@@ -209,7 +209,7 @@ watchDebounced(
         >
           <VIcon
             left
-            size="16"
+            size="14"
             :color="item.has_unread_comments ? '#FFA533' : (item.comments_count ? '#6C757D' : '#d2d2d5')"
           >
             tabler-message-filled

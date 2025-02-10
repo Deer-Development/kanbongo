@@ -34,7 +34,7 @@ class MemberPaymentDetails extends BaseController
                 }
                 $q->with('user:id,first_name,last_name,email');
                 $q->with('task:id,name');
-                $q->with('logs');
+
             },
         ])->findOrFail($id);
 
@@ -45,9 +45,9 @@ class MemberPaymentDetails extends BaseController
                 $trackedTime = $entries->sum(fn($entry) => $entry->end
                     ? Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))
                     : 0);
-
+                $task = $entries->first()->task;
                 return [
-                    'task' => $entries->first()->task,
+                    'task' => $task,
                     'trackedTime' => $trackedTime,
                     'trackedTimeDisplay' => $this->formatTime($trackedTime),
                     'timeEntries' => $entries
@@ -62,6 +62,9 @@ class MemberPaymentDetails extends BaseController
                             'paid_rate' => $entry->paid_rate,
                             'added_manually' => $entry->added_manually,
                         ])->values(),
+                    'entries_logs' => $task ? $task->logs()
+                        ->where('loggable_type', 'App\Models\TimeEntry')
+                        ->with('user')->get() : [],
                 ];
             });
 

@@ -22,11 +22,12 @@
           @click.stop="toggleTimer"
         >
           <VIcon
-            :icon="isTiming ? 'tabler-pause' : 'tabler-play'"
-            size="14"
+            :icon="isTiming ? 'tabler-pause' : (member ? 'tabler-play' : (task.tracked_time?.trackedTimeDisplay ? 'tabler-hourglass' :'tabler-hourglass-empty'))"
+            :color="isTiming ? '#fff' : (member ? '#fff' : (task.tracked_time?.trackedTimeDisplay ? '#38a169' :'#6C757D'))"
+            size="10"
           />
         </button>
-        <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay ? task.tracked_time.trackedTimeDisplay : '00:00:00') }}</span>
+        <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay ? task.tracked_time.trackedTimeDisplay : '0h 0m 0s') }}</span>
       </div>
     </template>
     <div class="timer-options ">

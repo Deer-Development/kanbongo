@@ -230,25 +230,40 @@ onBeforeUnmount(() => {
               <div
                 v-for="entry in kanbanData.active_users"
                 :key="entry.user.id"
-                class="d-flex gap-2 custom-badge mt-1"
+                class="d-flex gap-2 custom-badge mt-1 pt-0 pl-0"
               >
-                <div v-if="entry.user.id === userData.id">
-                  <button
-                    class="timer-btn"
-                    :class="{
+                <div class="d-flex flex-column mt-0 pt-0 ml-0 pt-0">
+                  <div
+                    class="custom-badge pl-0 pt-0"
+                    style="
+                    padding: 0 4px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    border-top: 0;
+                    border-left: 0;
+                    border-radius: 6px 0 6px 0;"
+                  >
+                    <span>#{{ entry.time_entry.task_id }}</span>
+                  </div>
+                  <div v-if="entry.user.id === userData.id" class="mt-1 pl-1 mb-1">
+                    <button
+                      class="timer-btn"
+                      :class="{
                       'timer-btn-active': entry.time_entry?.start,
                     }"
-                    @click="toggleTimerFn({
+                      @click="toggleTimerFn({
                       user_id: entry.user.id,
                       task_id: entry.time_entry.task_id,
                     }, entry.time_entry.task_id)"
-                  >
-                    <VIcon
-                      :icon="entry.time_entry?.start ? 'tabler-pause' : 'tabler-play'"
-                      size="14"
-                    />
-                  </button>
+                    >
+                      <VIcon
+                        :icon="entry.time_entry?.start ? 'tabler-pause' : 'tabler-play'"
+                        size="14"
+                      />
+                    </button>
+                  </div>
                 </div>
+
                 <div class="d-flex flex-column">
                   <span class="font-weight-bold">
                     {{ entry.user.full_name }}

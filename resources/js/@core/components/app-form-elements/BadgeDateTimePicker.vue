@@ -158,9 +158,9 @@ const elementId = computed(() => {
       <template #prepend>
         <VIcon
           class="v-text-field__prepend"
-          :size="18"
+          size="14"
         >
-          tabler-calendar
+          tabler-calendar-filled
         </VIcon>
       </template>
       <template #default="{ id, isDirty, isValid, isDisabled, isReadonly, validate }">
@@ -205,8 +205,9 @@ const elementId = computed(() => {
           <template #clear>
             <VIcon
               left
-              size="18"
+              size="14"
               color="warning"
+              class="mt-1"
               @click.stop="onClear"
             >
               tabler-square-x

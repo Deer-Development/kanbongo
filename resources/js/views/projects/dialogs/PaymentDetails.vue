@@ -51,6 +51,10 @@ const onReset = () => {
   members.value = []
   boardIdLocal.value = null
   selectedDateRange.value = ""
+  selectedMember.value = null
+  showPaychecks.value = false
+  totalSelectedPayment.value = 0
+  selectedEntries.value = []
 }
 
 const totalPaid = computed(() => members.value.reduce((sum, member) => sum + member.total_amount_paid, 0))

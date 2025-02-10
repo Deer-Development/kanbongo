@@ -122,6 +122,16 @@ $focus-color: #6366f1;
     cursor: not-allowed;
   }
 
+  .timer-btn-disabled {
+    background: #cbd5e0;
+    cursor: not-allowed;
+
+    &:hover {
+      background-color: #f3f4f6;
+      border-color: #d1d5db;
+    }
+  }
+
   &:hover {
     background-color: #f3f4f6;
     border-color: #d1d5db;
@@ -141,7 +151,7 @@ $focus-color: #6366f1;
     --v-field-padding-end: 0 !important;
     --v-input-control-height: 18px !important;
     padding-top: 0 !important;
-    max-width: 3.5rem !important;
+    max-width: 2.5rem !important;
   }
 
   .v-field__outline {

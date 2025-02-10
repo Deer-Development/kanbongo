@@ -49,9 +49,9 @@ class Task extends Model
         return $this->morphMany(Comment::class, 'commentable');
     }
 
-    public function logs(): MorphMany
+    public function logs(): HasMany
     {
-        return $this->morphMany(Log::class, 'loggable');
+        return $this->hasMany(Log::class, 'task_id');
     }
 
     public function timeEntries(): HasMany

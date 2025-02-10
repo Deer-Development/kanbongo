@@ -10,7 +10,7 @@
       >
         <VIcon
           left
-          size="16"
+          size="14"
           :color="getPriorityColor(priority)"
         >
           tabler-flag-3-filled
