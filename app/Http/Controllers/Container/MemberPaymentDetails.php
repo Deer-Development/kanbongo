@@ -34,14 +34,13 @@ class MemberPaymentDetails extends BaseController
                 }
                 $q->with('user:id,first_name,last_name,email');
                 $q->with('task:id,name');
-
             },
         ])->findOrFail($id);
 
         $paymentDetails = $model->timeEntries
             ->whereNotNull('end')
             ->groupBy('task_id')
-            ->map(function ($entries) {
+            ->map(function ($entries) use ($userId) {
                 $trackedTime = $entries->sum(fn($entry) => $entry->end
                     ? Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))
                     : 0);
@@ -56,7 +55,7 @@ class MemberPaymentDetails extends BaseController
                             'id' => $entry->id,
                             'start' => $entry->start,
                             'end' => $entry->end,
-                            'duration' => $this->formatTime(Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))),
+                            'duration' => $entry->end ? $this->formatTime(Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))) : null,
                             'is_paid' => $entry->is_paid,
                             'amount_paid' => $entry->amount_paid,
                             'paid_rate' => $entry->paid_rate,
@@ -64,7 +63,22 @@ class MemberPaymentDetails extends BaseController
                         ])->values(),
                     'entries_logs' => $task ? $task->logs()
                         ->where('loggable_type', 'App\Models\TimeEntry')
-                        ->with('user')->get() : [],
+                        ->whereHas('loggable', function ($q) use ($userId) {
+                            $q->where('user_id', $userId);
+                        })
+                        ->orderBy('created_at', 'desc')
+                        ->with('user')->get()->map(function ($log) {
+                            return [
+                                'id' => $log->id,
+                                'action' => $log->action,
+                                'user' => $log->user,
+                                'old_data' => $log->old_data,
+                                'new_data' => collect($log->new_data)->map(function ($value, $key) {
+                                    return in_array($key, ['start', 'end']) && $value ? Carbon::parse($value)->toIso8601String() : $value;
+                                })->toArray(),
+                                'created_at' => Carbon::parse($log->created_at)->toIso8601String(),
+                            ];
+                        }) : [],
                 ];
             });
 
