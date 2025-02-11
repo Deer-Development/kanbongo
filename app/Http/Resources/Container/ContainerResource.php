@@ -72,6 +72,7 @@ class ContainerResource extends JsonResource
         return [
             'id' => $this->id,
             'project_id' => $this->project_id,
+            'project_name' => $this->project->name,
             'name' => $this->name,
             'is_active' => $this->is_active,
             'owner_id' => $this->owner_id,
