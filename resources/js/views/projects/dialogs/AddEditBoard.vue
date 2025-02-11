@@ -76,6 +76,7 @@ const openInviteDialog = () => {
 
 watch(() => props.isDialogVisible, value => {
   const data = JSON.parse(JSON.stringify(props.boardDetails))
+
   boardDataLocal.value = data
 
   name.value = data.name
@@ -91,6 +92,8 @@ watch(() => props.isDialogVisible, value => {
     can_timing: member.can_timing,
     billable: member.billable,
     rate: member.billable_rate,
+    weekly_limit_enabled: member.weekly_limit_enabled,
+    weekly_limit_hours: member.weekly_limit_hours,
   }))
 
   fetchUsersOptions()
@@ -103,11 +106,6 @@ const addUser = userId => {
     return
   }
 
-  // const exists = members.value.some(member => member.id === user.id)
-  // if (exists) {
-  //   return
-  // }
-
   members.value.push({
     user_id: user.id,
     avatarOrInitials: user.avatarOrInitials,
@@ -118,6 +116,8 @@ const addUser = userId => {
     can_timing: false,
     billable: false,
     rate: 0,
+    weekly_limit_enabled: false,
+    weekly_limit_hours: null,
   })
 
   excludedUsers.value.push({
@@ -155,6 +155,8 @@ const onSubmit = async () => {
           can_timing: member.can_timing,
           billable: member.billable,
           billable_rate: member.rate,
+          weekly_limit_enabled: member.weekly_limit_enabled,
+          weekly_limit_hours: member.weekly_limit_enabled ? Number(member.weekly_limit_hours) : null,
         })),
         project_id: props.projectId,
       },
@@ -249,7 +251,7 @@ onMounted(() => {
 <template>
   <div>
     <VDialog
-      :width="$vuetify.display.smAndDown ? 'auto' : 900"
+      :width="$vuetify.display.smAndDown ? 'auto' : 1200"
       :model-value="props.isDialogVisible"
       @update:model-value="onReset"
     >
@@ -423,6 +425,27 @@ onMounted(() => {
                     </div>
                   </td>
                   <td>
+                    <div class="d-flex justify-end">
+                      <VCheckbox
+                        v-model="member.weekly_limit_enabled"
+                        label="Weekly Limit"
+                      />
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex justify-end">
+                      <VTextField
+                        v-model="member.weekly_limit_hours"
+                        label="Limit"
+                        type="number"
+                        :rules="[member.weekly_limit_enabled ? requiredValidator : () => true]"
+                        step="0.01"
+                        min="0"
+                        :disabled="!member.weekly_limit_enabled"
+                      />
+                    </div>
+                  </td>
+                  <td>
                     <div
                       v-if="(!boardDataLocal && userData.id === member.user_id) || (boardDataLocal && boardDataLocal.owner_id === member.user_id)"
                       class="d-flex justify-end"
@@ -455,6 +478,7 @@ onMounted(() => {
                       </VBtn>
                     </div>
                   </td>
+
                 </tr>
               </template>
             </VTable>

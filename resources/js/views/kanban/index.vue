@@ -27,6 +27,26 @@ const isOwner = computed(() => kanbanData.value?.owner_id === userData.value.id)
 const boardId = computed(() => kanban.value?.id)
 const isSuperAdmin = computed(() => kanbanData.value?.auth.is_super_admin)
 
+const breadcumItems = computed(() => {
+  return [
+    {
+      title: 'Projects',
+      disabled: false,
+      href: '/projects',
+    },
+    {
+      title: 'Containers',
+      disabled: false,
+      href: `/projects/${ kanbanData.value?.project_id }`,
+    },
+    {
+      title: `${ kanbanData.value?.name }`,
+      disabled: true,
+      href: `/projects/${ kanbanData.value?.project_id }/container/${ kanbanData.value?.id }`,
+    },
+  ]
+})
+
 const addNewBoard = async (newBoardName, newBoardColor) => {
   await $api('/board', {
     method: 'POST',
@@ -190,17 +210,13 @@ onBeforeUnmount(() => {
       v-if="kanban"
       class="d-flex justify-space-between align-center"
     >
-      <h4 class="text-h4 mb-1">
-        <VChip color="primary">
-          Board: {{ kanban?.name }}
-        </VChip>
-        <VChip
-          color="warning"
-          class="ml-2"
-        >
-          <span class="font-weight-bold mr-1"> Owner: </span> {{ kanban?.owner?.full_name }}
-        </VChip>
-      </h4>
+      <VBreadcrumbs :items="breadcumItems">
+        <template #divider>
+          <VIcon>
+            tabler-chevron-right
+          </VIcon>
+        </template>
+      </VBreadcrumbs>
       <div class="d-flex gap-1 align-content-center">
         <VMenu
           v-model="activeUsersMenu"

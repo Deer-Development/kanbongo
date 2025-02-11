@@ -104,12 +104,11 @@ const goBack = () => {
 <template>
   <VDialog
     persistent
-    max-width="80%"
+    fullscreen
     :model-value="props.isDialogVisible"
-    class="github-dialog"
   >
     <DialogCloseBtn
-      class="close-btn"
+      class="mt-4 mr-4"
       @click="onReset"
     />
     <VCard class="github-card">
@@ -120,9 +119,12 @@ const goBack = () => {
         <span v-else>
           Board Payment Details
         </span>
-        <span v-if="selectedMember" class="text-primary font-weight-bold">for {{ selectedMember.user.full_name }}</span>
+        <span
+          v-if="selectedMember"
+          class="text-primary font-weight-bold"
+        >for {{ selectedMember.user.full_name }}</span>
         <VRow>
-          <VCol :cols="selectedMember ? 10 : 12">
+          <VCol :cols="selectedMember ? 11 : 12">
             <div class="mb-4">
               <label
                 for="date-picker"
@@ -139,7 +141,7 @@ const goBack = () => {
           </VCol>
           <VCol
             v-if="selectedMember"
-            cols="2"
+            cols="1"
           >
             <VBtn
               color="info"
