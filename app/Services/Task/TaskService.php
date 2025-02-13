@@ -55,8 +55,12 @@ class TaskService extends BaseService
                 ->first();
 
             if ($timeEntry) {
-                $timeEntry->update(['end' => now()]);
+                $timeEntry->update(['end' => now(), 'stopped_by_system' => $data['stopped_by_system'] ?? false]);
             } else {
+                if (isset($data['stopped_by_system']) && $data['stopped_by_system']) {
+                    DB::rollBack();
+                    return $task;
+                }
                 $task->timeEntries()->create([
                     'start' => now(),
                     'user_id' => $data['user_id'],

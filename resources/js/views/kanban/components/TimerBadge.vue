@@ -16,14 +16,16 @@
           class="timer-btn"
           :class="{
             'timer-btn-active': isTiming,
-            'timer-btn-disabled': hasActiveTimer && !isTiming || !member,
+            'timer-btn-disabled': hasActiveTimer && !isTiming || !member || (authDetails.has_weekly_limit && authDetails.weekly_limit_seconds <= authDetails.weekly_tracked.total_seconds),
           }"
-          :disabled="hasActiveTimer && !isTiming || !member"
+          :disabled="hasActiveTimer && !isTiming || !member || (authDetails.has_weekly_limit && authDetails.weekly_limit_seconds <= authDetails.weekly_tracked.total_seconds)"
           @click.stop="toggleTimer"
         >
           <VIcon
             :icon="isTiming ? 'tabler-pause' : (member ? 'tabler-play' : (task.tracked_time?.trackedTimeDisplay ? 'tabler-hourglass' :'tabler-hourglass-empty'))"
-            :color="isTiming ? '#fff' : (member ? '#fff' : (task.tracked_time?.trackedTimeDisplay ? '#38a169' :'#6C757D'))"
+            :color="isTiming ? '#fff' : (member && !(authDetails.has_weekly_limit && authDetails.weekly_limit_seconds <= authDetails.weekly_tracked.total_seconds) ? '#fff' :
+            (task.tracked_time?.trackedTimeDisplay ? '#6C757D' :'#6C757D')
+            )"
             size="10"
           />
         </button>
@@ -230,7 +232,7 @@ import { differenceInSeconds, parseISO, format, parse } from "date-fns"
 
 const props = defineProps({
   task: { type: Object, required: true },
-  authId: { type: Number, required: true },
+  auth: { type: Object, required: true },
   member: { type: Object, required: false },
   hasActiveTimer: { type: Boolean, required: false, default: false },
   activeUsers: {
@@ -255,6 +257,7 @@ const isTiming = ref(false)
 const loading = ref(false)
 const activeTimer = ref(null)
 const allEntries = ref([])
+const authDetails = ref(props.auth)
 
 const calculateTrackedTime = start => {
   try {
@@ -286,12 +289,12 @@ watch(
     }
 
     isTiming.value = newValue.some(
-      user => user.user.id === props.authId && user.time_entry?.task_id === props.task.id,
+      user => user.user.id === props.auth.id && user.time_entry?.task_id === props.task.id,
     )
 
     if (isTiming.value && !activeTimer.value) {
       const trackedTime = newValue.find(
-        user => user.user.id === props.authId && user.time_entry?.task_id === props.task.id,
+        user => user.user.id === props.auth.id && user.time_entry?.task_id === props.task.id,
       )
 
       activeTimer.value = calculateTrackedTime(trackedTime.time_entry.start)
@@ -301,6 +304,16 @@ watch(
       }, 1000)
 
       trackedTime.user.intervalId = intervalId
+    }
+  },
+  { deep: true, immediate: true },
+)
+
+watch(
+  () => props.auth,
+  (newValue, oldValue) => {
+    if(newValue) {
+      authDetails.value = newValue
     }
   },
   { deep: true, immediate: true },

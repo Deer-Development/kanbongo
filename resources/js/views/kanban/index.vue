@@ -4,6 +4,7 @@ import { differenceInSeconds, format, formatDistanceToNow, parse, parseISO } fro
 import { watch } from "vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
+import { useToast } from "vue-toastification"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -151,30 +152,83 @@ const calculateTrackedTime = start => {
   }
 }
 
+const userToggleStatus = reactive({})
+const toast = useToast()
+
+const checkWeeklyLimitAndToggle = entry => {
+  if (!entry.has_weekly_limit || entry.user.id !== userData.value.id || !entry.time_entry?.start) return
+
+  const startDate = parseISO(entry.time_entry.start)
+  const now = new Date()
+  const elapsedSeconds = differenceInSeconds(now, startDate)
+
+  const totalTracked = entry.weekly_tracked.total_seconds + elapsedSeconds
+  const remainingSeconds = entry.weekly_limit_seconds - totalTracked
+
+  console.log('Remaining seconds:', remainingSeconds)
+  if (remainingSeconds <= 0 && !userToggleStatus[entry.user.id]) {
+    userToggleStatus[entry.user.id] = true
+    toggleTimerFn({
+      user_id: entry.user.id,
+      task_id: entry.time_entry.task_id,
+      stopped_by_system: true,
+    }, entry.time_entry.task_id)
+    toast.error('Weekly limit reached. Timer stopped.')
+    clearUserTimers()
+  } else if (remainingSeconds > 0) {
+    setTimeout(() => {
+      if (!userToggleStatus[entry.user.id]) {
+        userToggleStatus[entry.user.id] = true
+        toggleTimerFn({
+          user_id: entry.user.id,
+          task_id: entry.time_entry.task_id,
+          stopped_by_system: true,
+        }, entry.time_entry.task_id)
+        toast.error('Weekly limit reached. Timer stopped.')
+        clearUserTimers()
+      }
+    }, remainingSeconds * 1000)
+  }
+}
+
+
 const updateUserTimers = () => {
   kanbanData.value?.active_users?.forEach(entry => {
-    if (entry.time_entry?.start) {
-      if (!userTimers[entry.user.id]) {
-        userTimers[entry.user.id] = calculateTrackedTime(entry.time_entry.start)
-
-        const intervalId = setInterval(() => {
-          userTimers[entry.user.id] = calculateTrackedTime(entry.time_entry.start)
-        }, 1000)
-
-        entry.user.intervalId = intervalId
-      }
+    if (!entry.time_entry?.start) {
+      return
     }
+
+    // Ștergem orice interval anterior
+    if (userTimers[entry.user.id]?.intervalId) {
+      clearInterval(userTimers[entry.user.id].intervalId)
+    }
+
+    // Calculăm timpul inițial
+    userTimers[entry.user.id] = {
+      time: calculateTrackedTime(entry.time_entry.start),
+      intervalId: null,
+    }
+
+    // Creăm noul interval
+    const intervalId = setInterval(() => {
+      userTimers[entry.user.id].time = calculateTrackedTime(entry.time_entry.start)
+      checkWeeklyLimitAndToggle(entry)
+    }, 1000)
+
+    // Salvăm intervalId
+    userTimers[entry.user.id].intervalId = intervalId
   })
 }
 
+
 const clearUserTimers = () => {
-  kanbanData.value?.active_users?.forEach(entry => {
-    if (entry.user.intervalId) {
-      clearInterval(entry.user.intervalId)
-      entry.user.intervalId = null
+  Object.keys(userTimers).forEach(userId => {
+    if (userTimers[userId]?.intervalId) {
+      clearInterval(userTimers[userId].intervalId)
     }
+    delete userTimers[userId]
+    delete userToggleStatus[userId]
   })
-  Object.keys(userTimers).forEach(key => delete userTimers[key])
 }
 
 watch(
@@ -188,11 +242,11 @@ watch(
   },
 )
 
-onMounted(() => {
-  if (kanbanData.value?.active_users) {
+watch(
+  () => kanbanData.value,
+  () => {
     updateUserTimers()
-  }
-})
+  }, { deep: true, immediate: true })
 
 onBeforeUnmount(() => {
   clearUserTimers()
@@ -233,39 +287,36 @@ onBeforeUnmount(() => {
               </VIcon>
             </VChip>
           </template>
-          <div class="p-4">
+
+          <div class="users-box">
+            <!-- Active Users -->
             <div
               v-if="kanban?.active_users?.length"
-              class="d-flex flex-column gap-2 bg-white rounded"
+              class="users-section active-users"
             >
+              <h4>Active Users</h4>
               <div
                 v-for="entry in kanbanData.active_users"
                 :key="entry.user.id"
-                class="d-flex gap-2 custom-badge mt-1 pt-0 pl-0"
+                class="user-item"
               >
-                <div class="d-flex flex-column mt-0 pt-0 ml-0 pt-0">
+                <div class="d-flex flex-column">
+                  <VAvatar size="24" class="avatar">
+                    {{ entry.user.avatar_or_initials }}
+                  </VAvatar>
                   <div
-                    class="custom-badge pl-0 pt-0"
-                    style="
-                    padding: 0 4px;
-                    font-size: 10px;
-                    font-weight: 700;
-                    border-top: 0;
-                    border-left: 0;
-                    border-radius: 6px 0 6px 0;"
+                    v-if="entry.user.id === userData.id"
+                    class="mt-1 pl-1 mb-1"
                   >
-                    <span>#{{ entry.time_entry.task_id }}</span>
-                  </div>
-                  <div v-if="entry.user.id === userData.id" class="mt-1 pl-1 mb-1">
                     <button
                       class="timer-btn"
                       :class="{
-                      'timer-btn-active': entry.time_entry?.start,
-                    }"
+                        'timer-btn-active': entry.time_entry?.start,
+                      }"
                       @click="toggleTimerFn({
-                      user_id: entry.user.id,
-                      task_id: entry.time_entry.task_id,
-                    }, entry.time_entry.task_id)"
+                        user_id: entry.user.id,
+                        task_id: entry.time_entry.task_id,
+                      }, entry.time_entry.task_id)"
                     >
                       <VIcon
                         :icon="entry.time_entry?.start ? 'tabler-pause' : 'tabler-play'"
@@ -274,29 +325,86 @@ onBeforeUnmount(() => {
                     </button>
                   </div>
                 </div>
-
-                <div class="d-flex flex-column">
-                  <span class="font-weight-bold">
-                    {{ entry.user.full_name }}
+                <div class="user-details">
+                  <span class="user-name">{{ entry.user.full_name }}</span>
+                  <span class="user-time">{{ userTimers[entry.user.id]?.time || 'Loading...' }}</span>
+                  <span
+                    v-if="entry.time_entry"
+                    class="user-task"
+                  >Task #{{ entry.time_entry.task_id }}</span>
+                  <span v-if="!entry.has_weekly_limit" class="progress-text">
+                    Worked this week: {{ entry.weekly_tracked.total_display }}
                   </span>
-                  <span class="text-sm text-success">
-                    {{ userTimers[entry.user.id] || 'Loading...' }}
-                  </span>
+                  <div
+                    v-if="entry.has_weekly_limit"
+                    class="weekly-limit"
+                  >
+                    <span class="weekly-limit-label">Weekly limit active</span>
+                    <VProgressLinear
+                      :model-value="(entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100"
+                      height="4"
+                      color="success"
+                      class="progress-bar"
+                    />
+                    <span class="progress-text">
+                      {{ entry.weekly_tracked.total_display }} / {{ entry.weekly_limit_hours }}h
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- Inactive Users -->
             <div
-              v-else
-              class="d-flex flex-column gap-2 bg-white rounded"
+              v-if="kanban?.inactive_users?.length"
+              class="users-section inactive-users"
             >
-              <div class="custom-badge">
-                <span class="text-sm text-danger">
-                  No active users
-                </span>
+              <h4>Inactive Users</h4>
+              <div
+                v-for="entry in kanbanData.inactive_users"
+                :key="entry.user.id"
+                class="user-item"
+              >
+                <VAvatar size="24" class="avatar">
+                  {{ entry.user.avatar_or_initials }}
+                </VAvatar>
+                <div class="user-details">
+                  <span class="user-name">{{ entry.user.full_name }}</span>
+                  <span class="user-email">{{ entry.user.email }}</span>
+                  <span
+                    v-if="entry.last_time_entry"
+                    class="user-task"
+                  >
+                    Last Task #{{ entry.last_time_entry.task_id }}
+                    <span v-if="entry.last_time_entry.end">
+                      (Ended {{ formatDistanceToNow(parseISO(entry.last_time_entry.end)) }} ago)
+                      {{ format(new Date(entry.last_time_entry.end), "MMM d, yyyy h:mm:ss a") }}
+                    </span>
+                  </span>
+                  <span v-if="!entry.has_weekly_limit" class="progress-text">
+                    Worked this week: {{ entry.weekly_tracked.total_display }}
+                  </span>
+                  <div
+                    v-if="entry.has_weekly_limit"
+                    class="weekly-limit"
+                  >
+                    <span class="weekly-limit-label">Weekly limit active</span>
+                    <VProgressLinear
+                      :model-value="(entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100"
+                      height="4"
+                      color="info"
+                      class="progress-bar"
+                    />
+                    <span class="progress-text">
+                      {{ entry.weekly_tracked.total_display }} / {{ entry.weekly_limit_hours }}h
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </VMenu>
+
         <VChip
           v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id"
           size="small"
@@ -365,3 +473,93 @@ onBeforeUnmount(() => {
     </div>
   </section>
 </template>
+
+<style lang="scss" scoped>
+.users-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f6f8fa;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.users-box {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  min-width: 300px;
+}
+
+.users-section {
+  margin-bottom: 1rem;
+}
+
+h4 {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #f0f0f0;
+  }
+}
+
+.user-details {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+.user-name {
+  font-weight: bold;
+}
+
+.user-time {
+  color: #28a745;
+  font-size: 12px;
+}
+
+.user-email {
+  color: #777;
+  font-size: 12px;
+}
+
+.user-task {
+  color: #999;
+  font-size: 11px;
+}
+
+.weekly-limit {
+  margin-top: 6px;
+}
+
+.weekly-limit-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.progress-bar {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: #555;
+}
+</style>

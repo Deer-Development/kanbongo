@@ -294,8 +294,8 @@ defineExpose({
     @update:model-value="handleDrawerModelValueUpdate"
   >
     <AppDrawerHeaderSection
-      :title="`Task #${localKanbanItem.id}`"
-      class="py-3"
+      :title="`#${localKanbanItem.id}) ${localKanbanItem.name}`"
+      class="py-2 px-2"
       @cancel="closeNavigationDrawer"
     />
 
@@ -346,6 +346,64 @@ defineExpose({
                 msg.createdBy.id !== authId ? 'chat-left' : 'chat-right',
               ]"
             >
+              <div
+                v-if="msg.attachments?.length"
+                class="attachment-section"
+              >
+                <div
+                  v-for="attachment in msg.attachments"
+                  :key="attachment.id"
+                  class="attachment-item"
+                >
+                  <a
+                    class="attachment-link cursor-pointer d-flex flex-column align-items-center justify-center"
+                    :style="getAttachmentStyle(attachment)"
+                    @click.prevent="openPreview(attachment)"
+                  >
+                    <VIcon
+                      v-if="isImage(attachment)"
+                      size="16"
+                      style="color: #00A5E0;"
+                    >
+                      tabler-photo
+                    </VIcon>
+
+                    <VIcon
+                      v-else-if="isPDF(attachment)"
+                      size="24"
+                      style="color: #E74C3C;"
+                    >
+                      tabler-file-type-pdf
+                    </VIcon>
+
+                    <VIcon
+                      v-else-if="isWord(attachment)"
+                      size="24"
+                      style="color: #2B579A;"
+                    >
+                      tabler-file-word
+                    </VIcon>
+
+                    <VIcon
+                      v-else-if="isExcel(attachment)"
+                      size="24"
+                      style="color: #217346;"
+                    >
+                      tabler-file-excel
+                    </VIcon>
+
+                    <VIcon
+                      v-else
+                      size="24"
+                      style="color: #636E72;"
+                    >
+                      tabler-file-check
+                    </VIcon>
+
+                    <span class="text-body-2 text-link">{{ attachment.size }}</span>
+                  </a>
+                </div>
+              </div>
               <div class="d-flex justify-space-between gap-1">
                 <div class="d-flex flex-column gap-2 w-100 ">
                   <div class="chat-parent-message-preview">
@@ -428,64 +486,7 @@ defineExpose({
                   </VMenu>
                 </div>
               </div>
-              <div
-                v-if="msg.attachments?.length"
-                class="attachment-section"
-              >
-                <div
-                  v-for="attachment in msg.attachments"
-                  :key="attachment.id"
-                  class="attachment-item"
-                >
-                  <a
-                    class="attachment-link cursor-pointer d-flex flex-column align-items-center justify-center"
-                    :style="getAttachmentStyle(attachment)"
-                    @click.prevent="openPreview(attachment)"
-                  >
-                    <VIcon
-                      v-if="isImage(attachment)"
-                      size="24"
-                      style="color: #00A5E0;"
-                    >
-                      tabler-photo
-                    </VIcon>
 
-                    <VIcon
-                      v-else-if="isPDF(attachment)"
-                      size="24"
-                      style="color: #E74C3C;"
-                    >
-                      tabler-file-type-pdf
-                    </VIcon>
-
-                    <VIcon
-                      v-else-if="isWord(attachment)"
-                      size="24"
-                      style="color: #2B579A;"
-                    >
-                      tabler-file-word
-                    </VIcon>
-
-                    <VIcon
-                      v-else-if="isExcel(attachment)"
-                      size="24"
-                      style="color: #217346;"
-                    >
-                      tabler-file-excel
-                    </VIcon>
-
-                    <VIcon
-                      v-else
-                      size="24"
-                      style="color: #636E72;"
-                    >
-                      tabler-file-check
-                    </VIcon>
-
-                    <span class="text-body-2 text-link">{{ attachment.size }}</span>
-                  </a>
-                </div>
-              </div>
             </div>
 
             <div :class="[ msg.createdBy.id === authId ? 'text-right' : 'text-left align-self-start' ]">

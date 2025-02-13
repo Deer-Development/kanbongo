@@ -58,7 +58,9 @@ const onReset = () => {
 }
 
 const totalPaid = computed(() => members.value.reduce((sum, member) => sum + member.total_amount_paid, 0))
+const totalPaidHours = computed(() => members.value.reduce((sum, member) => sum + member.total_paid_hours, 0))
 const totalPending = computed(() => members.value.reduce((sum, member) => sum + member.pending_payment, 0))
+const totalUnpaidHours = computed(() => members.value.reduce((sum, member) => sum + member.total_unpaid_hours, 0))
 
 const confirmPayment = member => {
   memberToPay.value = member
@@ -81,7 +83,10 @@ const handlePayment = async () => {
 
   if (res) {
     selectedMember.value = null
-    fetchMemberDetails()
+
+    await nextTick(() => {
+      fetchMemberDetails()
+    })
   }
 }
 
@@ -148,7 +153,7 @@ const goBack = () => {
               class="mt-7"
               @click="goBack"
             >
-              View All
+              Back
             </VBtn>
           </VCol>
         </VRow>
@@ -325,20 +330,57 @@ const goBack = () => {
           No payment details available.
         </div>
 
-        <div
-          v-if="!selectedMember"
-          class="global-stats mt-4"
-        >
-          <h4 class="fs-6 fw-bold">
-            Summary
-          </h4>
-          <div class="d-flex justify-content-between">
-            <span class="text-muted">Total Paid Amount:</span>
-            <span class="text-success fw-bold">${{ totalPaid.toFixed(2) }}</span>
-          </div>
-          <div class="d-flex justify-content-between">
-            <span class="text-muted">Total Pending Amount:</span>
-            <span class="text-danger fw-bold">${{ totalPending.toFixed(2) }}</span>
+        <div class="summary-container" v-if="!selectedMember">
+          <h4 class="summary-title">Payment Summary</h4>
+
+          <div class="summary-content">
+            <div class="summary-item">
+              <span class="label">Total Paid Amount:</span>
+              <span class="value text-success">${{ totalPaid.toFixed(2) }}</span>
+            </div>
+
+            <div class="summary-item">
+              <span class="label">Total Pending Amount:</span>
+              <span class="value text-danger">${{ totalPending.toFixed(2) }}</span>
+            </div>
+
+            <div class="progress-bar-container">
+              <VProgressLinear
+                :model-value="(totalPaid / (totalPaid + totalPending)) * 100"
+                color="#0969da"
+                height="12"
+                rounded
+              >
+              </VProgressLinear>
+              <div class="progress-text">
+                {{ ((totalPaid / (totalPaid + totalPending)) * 100).toFixed(1) }}% Paid
+              </div>
+            </div>
+
+            <div class="summary-row">
+              <div class="summary-item flex-column">
+                <span class="label">Total Paid Hours:</span>
+                <span class="value text-success">{{ totalPaidHours.toFixed(2) }} hrs</span>
+              </div>
+              <div class="summary-item flex-column">
+                <span class="label">Total Unpaid Hours:</span>
+                <span class="value text-danger">{{ totalUnpaidHours.toFixed(2) }} hrs</span>
+              </div>
+            </div>
+
+            <div class="summary-status">
+              <VChip
+                :color="totalPending > 0 ? 'warning' : 'success'"
+                variant="elevated"
+                class="status-chip"
+              >
+                {{
+                  totalPending > 0
+                    ? `⚠️ Pending Payments: $${totalPending.toFixed(2)}`
+                    : "✅ All Payments Cleared"
+                }}
+              </VChip>
+            </div>
           </div>
         </div>
       </VCardText>
@@ -495,6 +537,72 @@ const goBack = () => {
       color: #0969da;
     }
   }
+}
+
+.summary-container {
+  padding: 1.5rem;
+  border-radius: 10px;
+  margin-top: 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-left: 6px solid #1466d4;
+  width: 50%;
+}
+
+.summary-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #24292e;
+  margin-bottom: 1rem;
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 500;
+
+  .label {
+    color: #6c757d;
+  }
+
+  .value {
+    font-weight: 700;
+  }
+}
+
+.progress-bar-container {
+  position: relative;
+  margin: 1rem 0;
+
+  .progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #b1b0b0;
+  }
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.status-chip {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+  text-align: center;
 }
 
 .no-data {

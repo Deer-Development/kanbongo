@@ -32,7 +32,7 @@ const props = defineProps({
   hasActiveTimer: { type: Boolean, required: false, default: false },
   isOwner: { type: Boolean, required: false, default: false },
   isMember: { type: Boolean, required: false, default: false },
-  authId: { type: Number, required: false },
+  auth: { type: Object, required: false },
 })
 
 const emit = defineEmits([
@@ -45,6 +45,7 @@ const emit = defineEmits([
 
 const dueDate = ref(null)
 const hasLocalActiveTimer = ref(props.hasActiveTimer)
+const authDetails = ref(props.auth)
 const localAvailableMembers = ref([...props.availableMembers])
 const localActiveUsers = ref([...props.activeUsers])
 const isEditingName = ref(false)
@@ -65,6 +66,14 @@ watch(() => props.availableMembers, () => {
 watch(() => props.activeUsers, () => {
   localActiveUsers.value = [...props.activeUsers]
 }, { deep: true })
+
+watch(
+  () => props.auth,
+  () => {
+      authDetails.value = props.auth
+  },
+  { deep: true, immediate: true },
+)
 
 const updateTask = async updates => {
   const res = await $api(`/task/${props.item.id}`, {
@@ -122,11 +131,50 @@ watchDebounced(
     class="kanban-card position-relative"
   >
     <div class="card-header">
-      <div class="custom-badge pl-0 pt-0">
-        <span>#{{ item.id }}</span>
-      </div>
+      <VMenu offset-y>
+        <template #activator="{ props }">
+          <div
+            v-bind="props"
+            class="custom-badge pl-0 pt-0 align-self-end">
+            <span class="pr-1">#{{ item.id }}</span>
+            <VIcon
+              size="14"
+              :color="'#374151'"
+              icon="tabler-dots-circle-horizontal"
+            />
+          </div>
+        </template>
+
+        <div class="d-flex flex-column dropdown-menu p-2 mt-0 pt-0">
+          <div
+            class="custom-badge mt-2"
+            @click="isEditingName = true"
+          >
+            <VIcon
+              size="16"
+              color="primary"
+            >
+              tabler-edit
+            </VIcon>
+            <span class="text-body-5 text-link">Edit Title</span>
+          </div>
+          <div
+            v-if="(isSuperAdmin || isOwner) && !item.tracked_time"
+            @click="deleteKanbanItem"
+            class="custom-badge mt-2"
+          >
+            <VIcon
+              size="16"
+              color="error"
+            >
+              tabler-trash
+            </VIcon>
+            <span class="text-body-2 text-link">Delete Task</span>
+          </div>
+        </div>
+      </VMenu>
       <div class="d-flex align-center pl-0 w-100">
-        <div class="pr-0 mr-2">
+        <div class="pr-0">
           <VIcon
             class="card-handler"
             size="20"
@@ -134,7 +182,7 @@ watchDebounced(
             icon="tabler-grip-vertical"
           />
         </div>
-        <div class="px-0 mx-0 w-100">
+        <div class="pl-0 pr-1 mx-0 w-100">
           <VTextarea
             v-if="isEditingName"
             v-model="item.name"
@@ -160,36 +208,13 @@ watchDebounced(
             @mouseenter="isHovered = true"
             @mouseleave="isHovered = false"
           >
-            <h3
-              v-tooltip="item.name"
-              class="card-title cursor-pointer"
-            >
-              {{ item.name }}
-            </h3>
-            <div
-              v-if="isHovered"
-              class="d-flex flex-column gap-1"
-            >
-              <div class="custom-badge">
-                <VIcon
-                  :key="`icon-${isEditingName}`"
-                  size="14"
-                  :color="isEditingName ? 'success' : 'info'"
-                  :icon="isEditingName ? 'tabler-check-circle' : 'tabler-edit-circle'"
-                  @click="isEditingName = !isEditingName"
-                />
-              </div>
-              <div
-                v-if="(isSuperAdmin || isOwner) && !item.tracked_time"
-                class="custom-badge"
+            <div class="d-flex align-center justify-space-between w-100">
+              <h3
+                v-tooltip="item.name"
+                class="card-title"
               >
-                <VIcon
-                  size="14"
-                  color="error"
-                  icon="tabler-trash"
-                  @click="deleteKanbanItem"
-                />
-              </div>
+                {{ item.name }}
+              </h3>
             </div>
           </div>
         </div>
@@ -227,9 +252,9 @@ watchDebounced(
 
         <TimerBadge
           :task="item"
-          :auth-id="authId"
+          :auth="authDetails"
           :has-active-timer="hasLocalActiveTimer"
-          :member="item.members.find(member => authId === member.user_id)"
+          :member="item.members.find(member => auth.id === member.user_id)"
           :active-users="localActiveUsers"
           @toggle-timer="toggleTimer"
           @refresh-kanban-data="emit('refreshKanbanData')"

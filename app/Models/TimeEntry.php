@@ -28,11 +28,24 @@ class TimeEntry extends Model
     {
         parent::boot();
 
+        static::created(function ($entry) {
+            Log::create([
+                'loggable_type' => self::class,
+                'loggable_id' => $entry->id,
+                'user_id' => Auth::user() ? Auth::user()->id : null,
+                'action' => LogAction::CREATE,
+                'old_data' => null,
+                'new_data' => $entry->toArray(),
+                'task_id' => $entry->task_id,
+                'container_id' => $entry->container_id,
+            ]);
+        });
+
         static::updated(function ($entry) {
             Log::create([
                 'loggable_type' => self::class,
                 'loggable_id' => $entry->id,
-                'user_id' => Auth::user()->id,
+                'user_id' => Auth::user() ? Auth::user()->id : null,
                 'action' => LogAction::UPDATE,
                 'old_data' => $entry->getOriginal(),
                 'new_data' => $entry->getChanges(),
@@ -45,7 +58,7 @@ class TimeEntry extends Model
             Log::create([
                 'loggable_type' => self::class,
                 'loggable_id' => $entry->id,
-                'user_id' => Auth::user()->id,
+                'user_id' => Auth::user() ? Auth::user()->id : null,
                 'action' => LogAction::DELETE,
                 'task_id' => $entry->task_id,
                 'container_id' => $entry->container_id,

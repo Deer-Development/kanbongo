@@ -70,6 +70,40 @@ $focus-color: #6366f1;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+.timer-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  //width: 28px;
+  //height: 24px;
+  background: #38a169;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  color: white;
+  font-size: 14px;
+  margin-right: 4px;
+  padding: 2px;
+}
+
+.timer-btn:hover {
+  background: #2f855a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.timer-btn:active {
+  transform: scale(0.95);
+}
+
+.timer-btn-active {
+  background: #e53e3e;
+}
+
+.timer-btn-active:hover {
+  background: #c53030;
+}
+
 .custom-badge {
   display: inline-flex;
   align-items: center;
@@ -118,12 +152,7 @@ $focus-color: #6366f1;
   }
 
   .timer-btn-disabled {
-    background: #cbd5e0;
-    cursor: not-allowed;
-  }
-
-  .timer-btn-disabled {
-    background: #cbd5e0;
+    background: #edf0f3;
     cursor: not-allowed;
 
     &:hover {
@@ -412,8 +441,8 @@ $focus-color: #6366f1;
 
   .custom-textarea {
     .v-field .v-field__input {
-      font-size: 12px !important;
-      line-height: 14px !important;
+      font-size: 9px !important;
+      line-height: 12px !important;
       font-weight: 600;
       color: #1f2937;
       --v-field-padding-start: 0px !important;
@@ -427,7 +456,7 @@ $focus-color: #6366f1;
     flex-direction: column;
     align-items: start;
     justify-content: center;
-    padding: 0 4px 12px 0;
+    padding: 0 0 6px 0;
     background-color: #f3f4f6;
     border-bottom: 1px solid #e5e7eb;
 
@@ -440,7 +469,7 @@ $focus-color: #6366f1;
     }
 
     .card-title {
-      font-size: 12px;
+      font-size: 11px;
       line-height: 14px;
       font-weight: 600;
       color: #1f2937;
@@ -457,8 +486,8 @@ $focus-color: #6366f1;
       padding: 0 4px;
       background-color: #f9fafb;
       border: 1px solid #e5e7eb;
-      border-radius: 6px 0 6px 0;
-      font-size: 8px;
+      border-radius: 0 6px 0 6px;
+      font-size: 10px;
       font-weight: 700;
       color: #374151;
       cursor: pointer;

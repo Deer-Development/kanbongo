@@ -222,7 +222,7 @@ defineExpose({
           :is-owner="props.kanbanData.auth.is_owner"
           :is-member="props.kanbanData.auth.is_member"
           :is-mobile="isMobile"
-          :auth-id="props.kanbanData.auth.id"
+          :auth="props.kanbanData.auth"
           :available-members="localAvailableMembers"
           :active-users="localActiveUsers"
           :colors="colors"

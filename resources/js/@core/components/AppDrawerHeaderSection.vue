@@ -11,7 +11,7 @@ const emit = defineEmits(['cancel'])
 
 <template>
   <div class="pa-6 d-flex align-center">
-    <h5 class="text-h6">
+    <h5 class="text-body-3">
       {{ props.title }}
     </h5>
     <VSpacer />

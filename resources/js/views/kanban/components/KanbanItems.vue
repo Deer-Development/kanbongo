@@ -53,7 +53,11 @@ const props = defineProps({
   hasActiveTimer: { type: Boolean, required: false, default: false },
   isOwner: { type: Boolean, required: false, default: false },
   isMember: { type: Boolean, required: false, default: false },
-  authId: { type: Number, required: false },
+  auth: {
+    type: Object,
+    required: false,
+    default: () => ({}),
+  },
 })
 
 const emit = defineEmits([
@@ -74,6 +78,7 @@ const localBoardColor = ref(props.boardColor)
 const hasLocalActiveTimer = ref(false)
 const localAvailableMembers = ref(props.availableMembers)
 const localActiveUsers = ref(props.activeUsers)
+const localAuthDetails = ref(props.auth)
 const localIds = ref(props.kanbanIds)
 const isAddNewFormVisible = ref(false)
 const isBoardNameEditing = ref(false)
@@ -137,6 +142,12 @@ watch(() => props.availableMembers, (newValue, oldValue) => {
 watch(() => props.activeUsers, (newValue, oldValue) => {
   if (newValue !== oldValue) {
     localActiveUsers.value = [...props.activeUsers]
+  }
+}, { deep: true, immediate: true })
+
+watch(() => props.auth, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    localAuthDetails.value = props.auth
   }
 }, { deep: true, immediate: true })
 
@@ -418,7 +429,7 @@ const adjustBrightness = (hex, amount) => {
             :has-active-timer="props.hasActiveTimer"
             :is-owner="props.isOwner"
             :is-member="props.isMember"
-            :auth-id="props.authId"
+            :auth="localAuthDetails"
             :available-members="localAvailableMembers"
             :active-users="localActiveUsers"
             @delete-kanban-item="deleteItem"

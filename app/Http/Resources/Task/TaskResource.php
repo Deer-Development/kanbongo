@@ -45,7 +45,7 @@ class TaskResource extends JsonResource
                                     'entry' => $log->entry,
                                     'old_entry' => $log->old_entry,
                                     'field' => $log->field,
-                                    'created_by' => $log->user->full_name,
+                                    'created_by' => $log->user?->full_name,
                                     'created_at' => $log->created_at->diffForHumans(),
                                 ];
                             }),
