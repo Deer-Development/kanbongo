@@ -40,6 +40,11 @@ class Container extends Model
         return $this->hasMany(TimeEntry::class);
     }
 
+    public function tags(): HasMany
+    {
+        return $this->hasMany(Tag::class);
+    }
+
     public function paychecks(): HasMany
     {
         return $this->hasMany(Paycheck::class);

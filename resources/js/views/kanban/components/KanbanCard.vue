@@ -1,6 +1,5 @@
 <script setup>
 import { ref, defineEmits, watch } from 'vue'
-import BadgeDateTimePicker from "@core/components/app-form-elements/BadgeDateTimePicker.vue"
 import PriorityBadge from "@/views/kanban/components/PriorityBadge.vue"
 import TimerBadge from "@/views/kanban/components/TimerBadge.vue"
 import { watchDebounced } from "@vueuse/core"
@@ -50,6 +49,16 @@ const localAvailableMembers = ref([...props.availableMembers])
 const localActiveUsers = ref([...props.activeUsers])
 const isEditingName = ref(false)
 const isHovered = ref(false)
+const tags = [
+  { id: 1, name: 'Programming', color: '#66bb6a' },
+  { id: 2, name: 'Design', color: '#ff7043' },
+  { id: 3, name: 'Vue', color: '#5c6bc0' },
+  { id: 4, name: 'Vuetify', color: '#8d6e63' },
+  { id: 5, name: 'JavaScript', color: '#29b6f6' },
+  { id: 6, name: 'UI/UX', color: '#303f9f' },
+];
+
+const selectedTags = ref([])
 
 const toggleTimer = member => {
   emit('toggleTimer', member, props.item.id)
@@ -241,14 +250,14 @@ watchDebounced(
           </VIcon>
         </div>
 
-        <BadgeDateTimePicker
-          v-model="item.due_date"
-          density="compact"
-          variant="underlined"
-          placeholder="Date"
-          :config="{ altFormat: 'M j', altInput: true }"
-          @change="updateDueDate(item.due_date)"
-        />
+<!--        <BadgeDateTimePicker-->
+<!--          v-model="item.due_date"-->
+<!--          density="compact"-->
+<!--          variant="underlined"-->
+<!--          placeholder="Date"-->
+<!--          :config="{ altFormat: 'M j', altInput: true }"-->
+<!--          @change="updateDueDate(item.due_date)"-->
+<!--        />-->
 
         <TimerBadge
           :task="item"
@@ -260,6 +269,29 @@ watchDebounced(
           @refresh-kanban-data="emit('refreshKanbanData')"
         />
       </div>
+      <VDivider class="my-2" />
+      <TagsComponent
+        v-model="selectedTags"
+        :available-tags="tags"
+        placeholder="Tags"
+        multiple
+      >
+        <template #selection="{ item }">
+          <VChip size="small">
+            <template #prepend>
+              <VAvatar
+                start
+                color="primary"
+                size="16"
+              >
+                {{ String(item.title).charAt(0).toUpperCase() }}
+              </VAvatar>
+            </template>
+
+            {{ item.title }}
+          </VChip>
+        </template>
+      </TagsComponent>
       <VDivider class="my-2" />
       <DynamicMemberSelector
         v-model="item.members"

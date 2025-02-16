@@ -27,7 +27,7 @@ class FileUploadController extends Controller
     public function deleteTempSpatie(Media $media)
     {
         $media->delete();
-        return response()->json(['message' => 'Fișier șters din temporar.']);
+        return response()->json(['message' => 'File deleted.']);
     }
 }
 

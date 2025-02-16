@@ -49,6 +49,11 @@ class Task extends Model
         return $this->morphMany(Comment::class, 'commentable');
     }
 
+    public function tags(): MorphMany
+    {
+        return $this->morphMany(Tag::class, 'taggable');
+    }
+
     public function logs(): HasMany
     {
         return $this->hasMany(Log::class, 'task_id');

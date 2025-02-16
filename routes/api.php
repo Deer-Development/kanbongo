@@ -33,6 +33,7 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
     require base_path('routes/resources/container.php');
     require base_path('routes/resources/board.php');
     require base_path('routes/resources/task.php');
+    require base_path('routes/resources/tag.php');
     require base_path('routes/resources/member.php');
     require base_path('routes/resources/comment.php');
     require base_path('routes/resources/time_entry.php');
