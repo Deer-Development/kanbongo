@@ -5,6 +5,7 @@ import { watch } from "vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 import { useToast } from "vue-toastification"
+import PriorityBadge from "@/views/kanban/components/PriorityBadge.vue"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -13,6 +14,7 @@ const isEditContainerDialogVisible = ref(false)
 const activeUsersMenu = ref(false)
 const deleteItem = ref(null)
 const kanbanBoard = ref(null)
+const priorityFilter = ref(0)
 const userData = computed(() => useCookie('userData', { default: null }).value)
 const userTimers = reactive({})
 
@@ -203,24 +205,20 @@ const updateUserTimers = () => {
       return
     }
 
-    // Ștergem orice interval anterior
     if (userTimers[entry.user.id]?.intervalId) {
       clearInterval(userTimers[entry.user.id].intervalId)
     }
 
-    // Calculăm timpul inițial
     userTimers[entry.user.id] = {
       time: calculateTrackedTime(entry.time_entry.start),
       intervalId: null,
     }
 
-    // Creăm noul interval
     const intervalId = setInterval(() => {
       userTimers[entry.user.id].time = calculateTrackedTime(entry.time_entry.start)
       checkWeeklyLimitAndToggle(entry)
     }, 1000)
 
-    // Salvăm intervalId
     userTimers[entry.user.id].intervalId = intervalId
   })
 }
@@ -234,6 +232,10 @@ const clearUserTimers = () => {
     delete userTimers[userId]
     delete userToggleStatus[userId]
   })
+}
+
+const setPriority = data => {
+  priorityFilter.value = Number(data.priority)
 }
 
 watch(
@@ -271,7 +273,44 @@ onBeforeUnmount(() => {
           </VIcon>
         </template>
       </VBreadcrumbs>
-      <div class="d-flex gap-1 align-content-center">
+      <div class="d-flex gap-1 align-center">
+        <VBadge location="top start" bordered color="secondary" >
+          <template #badge>
+            <VIcon icon="tabler-filter" size="12" />
+          </template>
+
+          <div class="d-flex align-center gap-2 filters-container">
+            <VChip
+              size="small"
+              variant="elevated"
+              class="filter-chip"
+            >
+              <PriorityBadge
+                :priority="priorityFilter"
+                @update-priority="setPriority"
+              />
+            </VChip>
+
+            <VChip
+              size="small"
+              variant="elevated"
+              class="filter-chip"
+              @click="toggleUserFilter"
+            >
+              <VIcon left size="16">tabler-users</VIcon>
+            </VChip>
+
+            <VChip
+              size="small"
+              variant="elevated"
+              class="filter-chip"
+              @click="toggleStatusFilter"
+            >
+              <VIcon left size="16">tabler-tag</VIcon>
+            </VChip>
+          </div>
+        </VBadge>
+
         <VMenu
           v-model="activeUsersMenu"
           offset-y
@@ -480,6 +519,29 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" scoped>
+.filters-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.filter-chip {
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.3s;
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.filter-icon {
+  color: #6c757d;
+}
+
+
 .users-container {
   display: flex;
   justify-content: space-between;

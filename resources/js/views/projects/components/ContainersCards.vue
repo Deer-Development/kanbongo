@@ -1,7 +1,7 @@
 <script setup>
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
-import { router } from "@/plugins/1.router/index.js"
+import { router } from "@/plugins/1.router/index"
 
 const props = defineProps({
   projectData: {
@@ -49,8 +49,8 @@ const paymentBoard = board => {
   isPaymentDetailsDialogVisible.value = true
 }
 
-const goToBoard = (board) => {
-  router.push({ name: 'container-view', params: { id: projectDataLocal.id, containerId: board.id } })
+const goToBoard = board => {
+  router.push({ name: 'container-view', params: { id: projectDataLocal.value.id, containerId: board.id } })
 }
 
 watch(() => isPaymentDetailsDialogVisible.value, value => {
@@ -70,9 +70,7 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
         sm="6"
         lg="4"
       >
-        <VCard
-          @click="goToBoard(item)"
-        >
+        <VCard @click="goToBoard(item)">
           <VCardTitle>
             <VChip color="info">
               Owner: {{ item.owner.full_name }}

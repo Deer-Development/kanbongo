@@ -70,7 +70,7 @@ watch(() => props.activeUsers, () => {
 watch(
   () => props.auth,
   () => {
-      authDetails.value = props.auth
+    authDetails.value = props.auth
   },
   { deep: true, immediate: true },
 )
@@ -152,11 +152,12 @@ watchDebounced(
         <template #activator="{ props }">
           <div
             v-bind="props"
-            class="custom-badge pl-0 pt-0 align-self-end">
+            class="custom-badge pl-0 pt-0 align-self-end"
+          >
             <span class="pr-1">{{ item.id }}</span>
             <VIcon
               size="14"
-              :color="'#374151'"
+              color="#374151"
               icon="tabler-dots-circle-horizontal"
             />
           </div>
@@ -177,8 +178,8 @@ watchDebounced(
           </div>
           <div
             v-if="(isSuperAdmin || isOwner) && !item.tracked_time"
-            @click="deleteKanbanItem"
             class="custom-badge mt-2"
+            @click="deleteKanbanItem"
           >
             <VIcon
               size="16"
@@ -226,9 +227,7 @@ watchDebounced(
             @mouseleave="isHovered = false"
           >
             <div class="d-flex align-center justify-space-between w-100">
-              <h3
-                class="card-title"
-              >
+              <h3 class="card-title">
                 {{ item.name }}
               </h3>
             </div>
@@ -238,33 +237,33 @@ watchDebounced(
     </div>
 
     <VCardText class="card-body">
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 align-center">
         <PriorityBadge
           :priority="item.priority"
           :item-id="item.id"
           @update-priority="setPriority"
         />
         <div
-          class="custom-badge"
+          class="cursor-pointer"
           @click="$emit('editKanbanItem', item.id)"
         >
           <VIcon
             left
-            size="14"
+            size="16"
             :color="item.has_unread_comments ? '#FFA533' : (item.comments_count ? '#6C757D' : '#d2d2d5')"
           >
             tabler-message-filled
           </VIcon>
         </div>
 
-<!--        <BadgeDateTimePicker-->
-<!--          v-model="item.due_date"-->
-<!--          density="compact"-->
-<!--          variant="underlined"-->
-<!--          placeholder="Date"-->
-<!--          :config="{ altFormat: 'M j', altInput: true }"-->
-<!--          @change="updateDueDate(item.due_date)"-->
-<!--        />-->
+        <!--        <BadgeDateTimePicker -->
+        <!--          v-model="item.due_date" -->
+        <!--          density="compact" -->
+        <!--          variant="underlined" -->
+        <!--          placeholder="Date" -->
+        <!--          :config="{ altFormat: 'M j', altInput: true }" -->
+        <!--          @change="updateDueDate(item.due_date)" -->
+        <!--        /> -->
 
         <TimerBadge
           :task="item"

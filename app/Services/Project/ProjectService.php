@@ -67,6 +67,6 @@ class ProjectService extends BaseService
             $query->orderBy('id', 'asc');
         }
 
-        return $query->paginate($itemsPerPage, ['*'], 'page', $page);
+        return $query->get();
     }
 }

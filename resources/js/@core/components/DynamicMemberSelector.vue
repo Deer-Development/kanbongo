@@ -132,8 +132,8 @@ watch(() => props.trackedUsers, () => {
   display: inline-flex;
   align-items: center;
   padding: 2px 4px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
+  //background-color: #f9fafb;
+  //border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;

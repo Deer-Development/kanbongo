@@ -23,10 +23,10 @@
         >
           <VIcon
             :icon="isTiming ? 'tabler-pause' : (member ? 'tabler-play' : (task.tracked_time?.trackedTimeDisplay ? 'tabler-hourglass' :'tabler-hourglass-empty'))"
-            :color="isTiming ? '#fff' : (member && !(authDetails.has_weekly_limit && authDetails.weekly_limit_seconds <= authDetails.weekly_tracked.total_seconds) ? '#fff' :
-            (task.tracked_time?.trackedTimeDisplay ? '#6C757D' :'#6C757D')
+            :color="(hasActiveTimer && !isTiming) ? '#6C757D' : isTiming ? '#fff' : (member && !(authDetails.has_weekly_limit && authDetails.weekly_limit_seconds <= authDetails.weekly_tracked.total_seconds) ? '#fff' :
+              (task.tracked_time?.trackedTimeDisplay ? '#6C757D' :'#6C757D')
             )"
-            size="10"
+            size="11"
           />
         </button>
         <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay ? task.tracked_time.trackedTimeDisplay : '0h 0m 0s') }}</span>
@@ -63,7 +63,6 @@
             elevation="0"
           >
             <VExpansionPanelTitle class="d-flex gap-1">
-
               <div class="custom-badge border-0 gap-1">
                 <VAvatar
                   size="26"

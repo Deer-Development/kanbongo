@@ -41,7 +41,7 @@ const colors = [
   { name: 'Dark Blue', value: '#303f9f' },
 ]
 
-watch(() => isOpen.value, async (value) => {
+watch(() => isOpen.value, async value => {
   if (value) {
     await fetchContainerTags()
   }
@@ -58,7 +58,7 @@ const fetchContainerTags = async () => {
 const filteredTags = computed(() => {
   return tags.value.filter(tag =>
     tag.name.toLowerCase().includes(search.value.toLowerCase()) &&
-    !props.modelValue.some(selectedTag => selectedTag.id === tag.id)
+    !props.modelValue.some(selectedTag => selectedTag.id === tag.id),
   )
 })
 
@@ -82,7 +82,7 @@ const createTag = async () => {
     const newTag = {
       name: search.value.trim(),
       color: colors[Math.floor(Math.random() * colors.length)].value,
-      container_id: route.params.containerId
+      container_id: route.params.containerId,
     }
 
     try {
@@ -109,11 +109,11 @@ const renameTag = tag => {
 
 const updateTag = async (event, tag) => {
   const newName = event.target.value.trim()
-  if (newName && newName !== tag.name) {
+  if (newName) {
     try {
       await $api(`/tag/${tag.id}`, {
         method: "PUT",
-        body: JSON.stringify({ name: newName }),
+        body: JSON.stringify({ name: newName, color: tag.color, container_id: tag.container_id }),
       })
       tag.name = newName
     } catch (error) {
@@ -128,7 +128,7 @@ const updateTag = async (event, tag) => {
   })
 }
 
-const deleteTag = async (tag) => {
+const deleteTag = async tag => {
   try {
     await $api(`/tag/${tag.id}`, {
       method: "DELETE",
@@ -146,18 +146,22 @@ const deleteTag = async (tag) => {
   })
 }
 
-const changeTagColor = async (tag) => {
+const changeTagColor = async tag => {
   const newColor = colors[Math.floor(Math.random() * colors.length)].value
   try {
     await $api(`/tag/${tag.id}`, {
       method: "PUT",
-      body: JSON.stringify({ color: newColor }),
+      body: JSON.stringify({ color: newColor, name: tag.name, container_id: tag.container_id }),
     })
     tag.color = newColor
   } catch (error) {
     console.error("Error changing tag color", error)
   }
   isOpen.value = true
+
+  await nextTick(() => {
+    emit('refreshKanbanData')
+  })
 }
 
 const isPersistent = computed(() => {
@@ -180,12 +184,18 @@ const isPersistent = computed(() => {
       >
         <span
           v-if="modelValue.length === 0"
-          class="tag"
-        >Tags</span>
+          class="cursor-pointer"
+        >
+          <VIcon
+            size="14"
+            color="#374151"
+            icon="tabler-tag"
+          />
+        </span>
         <span
           v-for="(tag, index) in modelValue.slice(0, 2)"
           :key="tag.id"
-          class="tag"
+          class="tag py-0 my-0 px-1"
           :style="{ backgroundColor: `${tag.color}73` }"
         >
           <span>{{ tag.name }}</span>

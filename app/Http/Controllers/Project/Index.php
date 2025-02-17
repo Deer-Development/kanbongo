@@ -24,10 +24,10 @@ class Index extends BaseController
         $isSuperAdmin = Auth::user()->hasRole('Super-Admin');
 
         return $this->successResponse([
-            'items' => ProjectResource::collection($items->items()),
-            'totalPages' => $items->lastPage(),
-            'totalItems' => $items->total(),
-            'page' => $items->currentPage(),
+            'items' => ProjectResource::collection($items),
+            'totalPages' => null,
+            'totalItems' => null,
+            'page' => null,
             'isSuperAdmin' => $isSuperAdmin,
         ], 'Project list retrieved successfully.');
     }

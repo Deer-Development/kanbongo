@@ -5,12 +5,12 @@
   >
     <template #activator="{ props }">
       <div
-        class="custom-badge"
+        class="cursor-pointer"
         v-bind="props"
       >
         <VIcon
           left
-          size="14"
+          size="16"
           :color="getPriorityColor(priority)"
         >
           tabler-flag-3-filled
@@ -55,7 +55,7 @@ import { ref, defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
   priority: { type: Number, required: true },
-  itemId: { type: Number, required: true },
+  itemId: { type: Number, required: false },
 })
 
 const emit = defineEmits(['updatePriority'])
