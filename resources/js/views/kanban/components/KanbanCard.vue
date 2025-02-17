@@ -49,15 +49,6 @@ const localAvailableMembers = ref([...props.availableMembers])
 const localActiveUsers = ref([...props.activeUsers])
 const isEditingName = ref(false)
 const isHovered = ref(false)
-const tags = [
-  { id: 1, name: 'Programming', color: '#66bb6a' },
-  { id: 2, name: 'Design', color: '#ff7043' },
-  { id: 3, name: 'Vue', color: '#5c6bc0' },
-  { id: 4, name: 'Vuetify', color: '#8d6e63' },
-  { id: 5, name: 'JavaScript', color: '#29b6f6' },
-  { id: 6, name: 'UI/UX', color: '#303f9f' },
-];
-
 const selectedTags = ref([])
 
 const toggleTimer = member => {
@@ -84,6 +75,14 @@ watch(
   { deep: true, immediate: true },
 )
 
+watch(
+  () => props.item,
+  () => {
+    selectedTags.value = props.item.tags
+  },
+  { deep: true, immediate: true },
+)
+
 const updateTask = async updates => {
   const res = await $api(`/task/${props.item.id}`, {
     method: 'PUT',
@@ -99,6 +98,15 @@ const updateTask = async updates => {
   if (res) {
     emit('refreshKanbanData')
   }
+}
+
+const updateTags = async () => {
+  await $api(`/task/attach-tags/${props.item.id}`, {
+    method: 'POST',
+    body: {
+      tags: selectedTags.value.map(tag => tag.id),
+    },
+  })
 }
 
 watch(() => props.item.members, (value, oldValue) => {
@@ -145,7 +153,7 @@ watchDebounced(
           <div
             v-bind="props"
             class="custom-badge pl-0 pt-0 align-self-end">
-            <span class="pr-1">#{{ item.id }}</span>
+            <span class="pr-1">{{ item.id }}</span>
             <VIcon
               size="14"
               :color="'#374151'"
@@ -198,7 +206,7 @@ watchDebounced(
             :rules="[requiredValidator, maxLengthValidator(item.name, 255)]"
             rows="3"
             dense
-            variant="plain"
+            variant="underlined"
             class="custom-textarea"
           >
             <template #append-inner>
@@ -219,7 +227,6 @@ watchDebounced(
           >
             <div class="d-flex align-center justify-space-between w-100">
               <h3
-                v-tooltip="item.name"
                 class="card-title"
               >
                 {{ item.name }}
@@ -272,26 +279,10 @@ watchDebounced(
       <VDivider class="my-2" />
       <TagsComponent
         v-model="selectedTags"
-        :available-tags="tags"
         placeholder="Tags"
-        multiple
-      >
-        <template #selection="{ item }">
-          <VChip size="small">
-            <template #prepend>
-              <VAvatar
-                start
-                color="primary"
-                size="16"
-              >
-                {{ String(item.title).charAt(0).toUpperCase() }}
-              </VAvatar>
-            </template>
-
-            {{ item.title }}
-          </VChip>
-        </template>
-      </TagsComponent>
+        @update:model-value="updateTags"
+        @refresh-kanban-data="emit('refreshKanbanData')"
+      />
       <VDivider class="my-2" />
       <DynamicMemberSelector
         v-model="item.members"

@@ -14,6 +14,20 @@ const fetchContainer = async () => {
   isSuperAdmin.value = data.isSuperAdmin
 }
 
+const breadcumItems = computed(() => {
+  return [
+    {
+      title: 'Projects',
+      disabled: false,
+      href: '/projects',
+    },
+    {
+      title: `${ projectData.value?.name }`,
+      disabled: true,
+    },
+  ]
+})
+
 const userData = computed(() => useCookie('userData', { default: null }).value)
 
 const isAddBoardDialogVisible = ref(false)
@@ -30,22 +44,14 @@ onMounted(() => {
         v-if="projectData"
         class="d-flex justify-space-between align-center"
       >
+        <VBreadcrumbs :items="breadcumItems">
+          <template #divider>
+            <VIcon>
+              tabler-chevron-right
+            </VIcon>
+          </template>
+        </VBreadcrumbs>
         <h4 class="text-h4 mb-1">
-          <VChip color="primary">
-            Project: {{ projectData?.name }}
-          </VChip>
-          <VChip
-            color="secondary"
-            class="ml-2"
-          >
-            Boards List
-          </VChip>
-          <VChip
-            color="warning"
-            class="ml-2"
-          >
-            <span class="font-weight-bold mr-1"> Owner: </span> {{ projectData?.owner?.full_name }}
-          </VChip>
           <VBtn
             class="ml-2"
             size="small"
@@ -54,21 +60,18 @@ onMounted(() => {
             Add New Board
           </VBtn>
         </h4>
-
-
-
-        <AddEditBoard
-          v-model:is-dialog-visible="isAddBoardDialogVisible"
-          v-model:board-details="boardDetails"
-          v-model:project-id="projectData.id"
-          @form-submitted="fetchContainer"
-        />
       </div>
 
       <VCol
         v-if="projectData"
         cols="12"
       >
+        <AddEditBoard
+          v-model:is-dialog-visible="isAddBoardDialogVisible"
+          v-model:board-details="boardDetails"
+          v-model:project-id="projectData.id"
+          @form-submitted="fetchContainer"
+        />
         <ContainersCards
           :project-data="projectData"
           :is-super-admin="isSuperAdmin"

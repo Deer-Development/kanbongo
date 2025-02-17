@@ -469,15 +469,15 @@ $focus-color: #6366f1;
     }
 
     .card-title {
-      font-size: 11px;
-      line-height: 14px;
+      font-size: 10px;
+      line-height: 13px;
       font-weight: 600;
       color: #1f2937;
       overflow: hidden;
       text-overflow: ellipsis;
       display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
+      //-webkit-line-clamp: 3;
+      //-webkit-box-orient: vertical;
     }
 
     .custom-badge {

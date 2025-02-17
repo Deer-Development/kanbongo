@@ -31,7 +31,7 @@ class Show extends BaseController
                     ->with([
                     'tasks' => function ($q) use ($id) {
                         $q->orderBy('order');
-                        $q->with(['members.user:id,first_name,last_name,email']);
+                        $q->with(['members.user:id,first_name,last_name,email', 'tags']);
                     },
                 ]);
             },

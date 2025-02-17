@@ -2,8 +2,7 @@
 
 namespace App\Models;
 use App\Traits\Filterable;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
@@ -14,9 +13,14 @@ class Tag extends Model
 
     protected $guarded = ['id'];
 
-    public function taggables(): MorphTo
+    public function container(): BelongsTo
     {
-        return $this->morphTo();
+        return $this->belongsTo(Container::class);
+    }
+
+    public function tasks()
+    {
+        return $this->morphedByMany(Task::class, 'taggable', 'taggables', 'tag_id', 'taggable_id');
     }
 
     public static function getAvailableColors(): array

@@ -3,15 +3,16 @@ import { ref, computed } from 'vue'
 
 const props = defineProps({
   modelValue: Array,
-  availableTags: Array,
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'refreshKanbanData'])
 
 const isOpen = ref(false)
 const activeMenuTag = ref({})
 const search = ref('')
+const tags = ref([])
 const editingTag = ref(null)
+const route = useRoute()
 
 const colors = [
   { name: 'Red', value: '#ef5350' },
@@ -40,10 +41,24 @@ const colors = [
   { name: 'Dark Blue', value: '#303f9f' },
 ]
 
+watch(() => isOpen.value, async (value) => {
+  if (value) {
+    await fetchContainerTags()
+  }
+}, { immediate: true, deep: true })
+
+const fetchContainerTags = async () => {
+  const res = await $api(`/container/tags/${route.params.containerId}`, {
+    method: "GET",
+  })
+
+  tags.value = res.data
+}
+
 const filteredTags = computed(() => {
-  return props.availableTags.filter(tag =>
+  return tags.value.filter(tag =>
     tag.name.toLowerCase().includes(search.value.toLowerCase()) &&
-    !props.modelValue.some(selectedTag => selectedTag.id === tag.id),
+    !props.modelValue.some(selectedTag => selectedTag.id === tag.id)
   )
 })
 
@@ -53,6 +68,7 @@ const selectTag = tag => {
   }
 
   const exists = props.modelValue.some(t => t.id === tag.id)
+
   if (!exists) {
     emit('update:modelValue', [...props.modelValue, tag])
   } else {
@@ -61,16 +77,25 @@ const selectTag = tag => {
   search.value = ''
 }
 
-const createTag = () => {
+const createTag = async () => {
   if (search.value.trim().length > 0) {
     const newTag = {
-      id: Date.now(),
       name: search.value.trim(),
       color: colors[Math.floor(Math.random() * colors.length)].value,
+      container_id: route.params.containerId
     }
 
-    props.availableTags.push(newTag)
-    selectTag(newTag)
+    try {
+      const res = await $api(`/tag`, {
+        method: "POST",
+        body: JSON.stringify(newTag),
+      })
+
+      tags.value.push(res.data)
+      selectTag(res.data)
+    } catch (error) {
+      console.error("Error creating tag", error)
+    }
   }
   search.value = ''
   isOpen.value = true
@@ -82,25 +107,56 @@ const renameTag = tag => {
   editingTag.value = tag
 }
 
-const updateTag = (event, tag) => {
+const updateTag = async (event, tag) => {
   const newName = event.target.value.trim()
   if (newName && newName !== tag.name) {
-    tag.name = newName
+    try {
+      await $api(`/tag/${tag.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: newName }),
+      })
+      tag.name = newName
+    } catch (error) {
+      console.error("Error updating tag", error)
+    }
   }
   editingTag.value = null
   isOpen.value = true
+
+  await nextTick(() => {
+    emit('refreshKanbanData')
+  })
 }
 
-const deleteTag = tag => {
-  emit('update:modelValue', props.modelValue.filter(t => t.id !== tag.id))
+const deleteTag = async (tag) => {
+  try {
+    await $api(`/tag/${tag.id}`, {
+      method: "DELETE",
+    })
 
-  const index = props.availableTags.findIndex(t => t.id === tag.id)
-  if (index !== -1) props.availableTags.splice(index, 1)
+    emit('update:modelValue', props.modelValue.filter(t => t.id !== tag.id))
+    tags.value = tags.value.filter(t => t.id !== tag.id)
+  } catch (error) {
+    console.error("Error deleting tag", error)
+  }
   isOpen.value = true
+
+  await nextTick(() => {
+    emit('refreshKanbanData')
+  })
 }
 
-const changeTagColor = tag => {
-  tag.color = colors[Math.floor(Math.random() * colors.length)].value
+const changeTagColor = async (tag) => {
+  const newColor = colors[Math.floor(Math.random() * colors.length)].value
+  try {
+    await $api(`/tag/${tag.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ color: newColor }),
+    })
+    tag.color = newColor
+  } catch (error) {
+    console.error("Error changing tag color", error)
+  }
   isOpen.value = true
 }
 
@@ -172,7 +228,7 @@ const isPersistent = computed(() => {
         @keyup.enter="createTag"
       >
       <div
-        v-if="search.length > 0 && !availableTags.some(t => t.name === search)"
+        v-if="search.length > 0 && !tags.some(t => t.name === search)"
         class="tag-create"
         @click="createTag"
       >

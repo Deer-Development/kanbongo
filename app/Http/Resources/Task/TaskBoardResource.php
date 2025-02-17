@@ -27,6 +27,7 @@ class TaskBoardResource extends JsonResource
                 })
                 ->exists(),
             'members' => $this->members,
+            'tags' => $this->tags,
             'tracked_time' => $this->tracked_time,
             'created_at' => $this->created_at->diffForHumans(),
         ];

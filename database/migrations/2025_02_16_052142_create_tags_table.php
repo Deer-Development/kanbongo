@@ -16,15 +16,19 @@ class CreateTagsTable extends Migration
     {
         Schema::create('tags', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('name')->index();
             $table->string('color')->default('#42a5f5');
-            $table->morphs('taggable');
-            $table->foreignId('container_id')->nullable()->constrained('containers')->onDelete('set null');
+            $table->foreignId('container_id')->constrained('containers')->onDelete('cascade');
             $table->timestamps();
             $table->softDeletes();
         });
 
-        Permission::addPermissions('Tag');
+        Schema::create('taggables', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('tag_id')->constrained('tags')->onDelete('cascade');
+            $table->morphs('taggable');
+            $table->timestamps();
+        });
     }
 
     /**
@@ -34,6 +38,8 @@ class CreateTagsTable extends Migration
      */
     public function down()
     {
+        Schema::dropIfExists('taggables');
         Schema::dropIfExists('tags');
     }
 }
+

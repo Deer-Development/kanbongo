@@ -25,9 +25,9 @@ class ValidateTagStore extends FormRequest
     public function rules()
     {
         return [
-            // Define validation rules for storing Tag resource
-            // Example:
-            // 'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
+            'color' => 'required|string|max:255',
+            'container_id' => 'required|integer|exists:containers,id',
         ];
     }
 
@@ -39,8 +39,15 @@ class ValidateTagStore extends FormRequest
     public function messages()
     {
         return [
-            // Custom error messages (optional)
-            // 'name.required' => 'The name field is required.',
+            'name.required' => 'The name field is required.',
+            'name.string' => 'The name field must be a string.',
+            'name.max' => 'The name field must not exceed 255 characters.',
+            'color.required' => 'The color field is required.',
+            'color.string' => 'The color field must be a string.',
+            'color.max' => 'The color field must not exceed 255 characters.',
+            'container_id.required' => 'The container_id field is required.',
+            'container_id.integer' => 'The container_id field must be an integer.',
+            'container_id.exists' => 'The selected container_id is invalid.',
         ];
     }
 }

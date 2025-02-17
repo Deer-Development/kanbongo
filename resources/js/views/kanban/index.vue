@@ -31,6 +31,11 @@ const isSuperAdmin = computed(() => kanbanData.value?.auth.is_super_admin)
 const breadcumItems = computed(() => {
   return [
     {
+      title: 'Projects',
+      disabled: false,
+      href: '/projects',
+    },
+    {
       title: `${ kanbanData.value?.project_name }`,
       disabled: false,
       href: `/projects/${ kanbanData.value?.project_id }`,

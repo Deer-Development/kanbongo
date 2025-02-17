@@ -294,7 +294,7 @@ defineExpose({
     @update:model-value="handleDrawerModelValueUpdate"
   >
     <AppDrawerHeaderSection
-      :title="`#${localKanbanItem.id}) ${localKanbanItem.name}`"
+      :title="`${localKanbanItem.id}) ${localKanbanItem.name}`"
       class="py-2 px-2"
       @cancel="closeNavigationDrawer"
     />
