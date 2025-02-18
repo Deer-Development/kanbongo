@@ -300,7 +300,7 @@ onBeforeUnmount(() => {
   <section>
     <div
       v-if="kanban"
-      class="d-flex justify-space-between align-center"
+      class="d-flex justify-md-space-between flex-column flex-md-row align-center mb-1 mb-md-0"
     >
       <VBreadcrumbs :items="breadcumItems">
         <template #divider>
