@@ -34,12 +34,12 @@ class Show extends BaseController
         if ($request->has('filters')) {
             $newFilters = $request->input('filters');
 
-            if (!empty($savedFilter) && $newFilters === ['priority' => 0, 'users' => [], 'tags' => []]) {
+            if (!empty($savedFilter) && !$request->boolean('save')) {
                 $filters = $savedFilter->filters;
             } else {
                 $filters = array_merge($filters, $newFilters);
 
-                if ($request->boolean('save') && $filters !== ['priority' => 0, 'users' => [], 'tags' => []]) {
+                if ($request->boolean('save')) {
                     ContainerFilter::updateOrCreate(
                         ['user_id' => $user->id, 'container_id' => $id],
                         ['filters' => $filters]
