@@ -5,7 +5,7 @@
   >
     <template #activator="{ props }">
       <div
-        class="cursor-pointer"
+        class="custom-badge"
         v-bind="props"
       >
         <VIcon
@@ -54,7 +54,7 @@
 import { ref, defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
-  priority: { type: Number, required: true },
+  priority: { type: [Number, null], required: false },
   itemId: { type: Number, required: false },
 })
 

@@ -14,16 +14,35 @@ const isEditContainerDialogVisible = ref(false)
 const activeUsersMenu = ref(false)
 const deleteItem = ref(null)
 const kanbanBoard = ref(null)
+const kanban = ref(null)
 const priorityFilter = ref(0)
+const usersFilter = ref([])
+const tagsFilter = ref([])
+const saveFilters = ref(false)
 const userData = computed(() => useCookie('userData', { default: null }).value)
 const userTimers = reactive({})
 
-const {
-  data: kanban,
-  execute: refetchKanban,
-} = useApi(createUrl(`/container/${ route.params.containerId }`, {
-  method: 'GET',
-}))
+const refetchKanban = async () => {
+  const res = await $api(`/container/${ route.params.containerId }`, {
+    method: 'POST',
+    body: {
+      filters: {
+        priority: priorityFilter.value,
+        users: usersFilter.value,
+        tags: tagsFilter.value,
+      },
+      save: saveFilters.value,
+    },
+  })
+
+  kanban.value = res.data.container
+
+  if(res.data.filters) {
+    priorityFilter.value = res.data.filters.priority
+    usersFilter.value = res.data.filters.users
+    tagsFilter.value = res.data.filters.tags
+  }
+}
 
 const kanbanData = computed(() => kanban.value)
 const isOwner = computed(() => kanbanData.value?.owner_id === userData.value.id)
@@ -198,7 +217,6 @@ const checkWeeklyLimitAndToggle = entry => {
   }
 }
 
-
 const updateUserTimers = () => {
   kanbanData.value?.active_users?.forEach(entry => {
     if (!entry.time_entry?.start) {
@@ -235,7 +253,21 @@ const clearUserTimers = () => {
 }
 
 const setPriority = data => {
-  priorityFilter.value = Number(data.priority)
+  priorityFilter.value = data.priority !== 0 ? Number(data.priority) : null
+  saveFilters.value = true
+  refetchKanban()
+}
+
+const setUsersFilter = users => {
+  usersFilter.value = users
+  saveFilters.value = true
+  refetchKanban()
+}
+
+const setTagsFilter = tags => {
+  tagsFilter.value = tags
+  saveFilters.value = true
+  refetchKanban()
 }
 
 watch(
@@ -254,6 +286,10 @@ watch(
   () => {
     updateUserTimers()
   }, { deep: true, immediate: true })
+
+onMounted(() => {
+  refetchKanban()
+})
 
 onBeforeUnmount(() => {
   clearUserTimers()
@@ -274,40 +310,32 @@ onBeforeUnmount(() => {
         </template>
       </VBreadcrumbs>
       <div class="d-flex gap-1 align-center">
-        <VBadge location="top start" bordered color="secondary" >
+        <VBadge
+          location="top start"
+          bordered
+          :color="priorityFilter || usersFilter.length || tagsFilter.length ? 'primary' : ''"
+        >
           <template #badge>
-            <VIcon icon="tabler-filter" size="12" />
+            <VIcon
+              icon="tabler-filter"
+              size="12"
+            />
           </template>
 
           <div class="d-flex align-center gap-2 filters-container">
-            <VChip
-              size="small"
-              variant="elevated"
-              class="filter-chip"
-            >
-              <PriorityBadge
-                :priority="priorityFilter"
-                @update-priority="setPriority"
-              />
-            </VChip>
+            <PriorityBadge
+              :priority="priorityFilter"
+              @update-priority="setPriority"
+            />
 
-            <VChip
-              size="small"
-              variant="elevated"
-              class="filter-chip"
-              @click="toggleUserFilter"
-            >
-              <VIcon left size="16">tabler-users</VIcon>
-            </VChip>
-
-            <VChip
-              size="small"
-              variant="elevated"
-              class="filter-chip"
-              @click="toggleStatusFilter"
-            >
-              <VIcon left size="16">tabler-tag</VIcon>
-            </VChip>
+            <UserFilterDropdown
+              :model-value="usersFilter"
+              @update:model-value="setUsersFilter($event)"
+            />
+            <TagsFilterDropdown
+              :model-value="tagsFilter"
+              @update:model-value="setTagsFilter($event)"
+            />
           </div>
         </VBadge>
 
@@ -345,7 +373,10 @@ onBeforeUnmount(() => {
                 class="user-item"
               >
                 <div class="d-flex flex-column">
-                  <VAvatar size="24" class="avatar">
+                  <VAvatar
+                    size="24"
+                    class="avatar"
+                  >
                     {{ entry.user.avatar_or_initials }}
                   </VAvatar>
                   <div
@@ -376,7 +407,10 @@ onBeforeUnmount(() => {
                     v-if="entry.time_entry"
                     class="user-task"
                   >Task #{{ entry.time_entry.task_id }}</span>
-                  <span v-if="!entry.has_weekly_limit" class="progress-text">
+                  <span
+                    v-if="!entry.has_weekly_limit"
+                    class="progress-text"
+                  >
                     Worked this week: {{ entry.weekly_tracked.total_display }}
                   </span>
                   <div
@@ -409,7 +443,10 @@ onBeforeUnmount(() => {
                 :key="entry.user.id"
                 class="user-item"
               >
-                <VAvatar size="24" class="avatar">
+                <VAvatar
+                  size="24"
+                  class="avatar"
+                >
                   {{ entry.user.avatar_or_initials }}
                 </VAvatar>
                 <div class="user-details">
@@ -425,7 +462,10 @@ onBeforeUnmount(() => {
                       {{ format(new Date(entry.last_time_entry.end), "MMM d, yyyy h:mm:ss a") }}
                     </span>
                   </span>
-                  <span v-if="!entry.has_weekly_limit" class="progress-text">
+                  <span
+                    v-if="!entry.has_weekly_limit"
+                    class="progress-text"
+                  >
                     Worked this week: {{ entry.weekly_tracked.total_display }}
                   </span>
                   <div
