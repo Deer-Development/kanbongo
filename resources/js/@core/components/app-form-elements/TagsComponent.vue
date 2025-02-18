@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
+import tippy from "tippy.js"
+import "tippy.js/animations/shift-away.css"
 
 const props = defineProps({
   modelValue: Array,
@@ -8,10 +10,13 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'refreshKanbanData'])
 
 const isOpen = ref(false)
-const activeMenuTag = ref({})
-const search = ref('')
+const btn = ref(null)
+const dropdown = ref(null)
+const search = ref("")
 const tags = ref([])
 const editingTag = ref(null)
+const activeMenuTag = ref({})
+const activeOption = ref(null)
 const route = useRoute()
 
 const colors = [
@@ -40,12 +45,6 @@ const colors = [
   { name: 'Bright Orange', value: '#ff5722' },
   { name: 'Dark Blue', value: '#303f9f' },
 ]
-
-watch(() => isOpen.value, async value => {
-  if (value) {
-    await fetchContainerTags()
-  }
-}, { immediate: true, deep: true })
 
 const fetchContainerTags = async () => {
   const res = await $api(`/container/tags/${route.params.containerId}`, {
@@ -101,8 +100,8 @@ const createTag = async () => {
   isOpen.value = true
 }
 
-const renameTag = tag => {
-  isOpen.value = true
+const renameTag = (tag, option) => {
+  activeOption.value = option
 
   editingTag.value = tag
 }
@@ -128,7 +127,8 @@ const updateTag = async (event, tag) => {
   })
 }
 
-const deleteTag = async tag => {
+const deleteTag = async (tag, option) => {
+  activeOption.value = option
   try {
     await $api(`/tag/${tag.id}`, {
       method: "DELETE",
@@ -146,7 +146,9 @@ const deleteTag = async tag => {
   })
 }
 
-const changeTagColor = async tag => {
+const changeTagColor = async (tag, option) => {
+  activeOption.value = option
+
   const newColor = colors[Math.floor(Math.random() * colors.length)].value
   try {
     await $api(`/tag/${tag.id}`, {
@@ -164,56 +166,80 @@ const changeTagColor = async tag => {
   })
 }
 
-const isPersistent = computed(() => {
-  return editingTag.value !== null
+const toggleTagMenu = tagId => {
+  activeMenuTag.value = { [tagId]: !activeMenuTag.value[tagId] }
+}
+
+onMounted(async () => {
+  tippy(btn.value, {
+    content: dropdown.value,
+    interactive: true,
+    placement: "bottom-start",
+    animation: "shift-away",
+    trigger: "click",
+    appendTo: document.body,
+    popperOptions: {
+      modifiers: [
+        {
+          name: "preventOverflow",
+          options: {
+            boundary: "window",
+          },
+        },
+      ],
+    },
+    onShow() {
+      fetchContainerTags()
+    },
+  })
+})
+
+onUnmounted(() => {
+  activeMenuTag.value = {}
 })
 </script>
 
 <template>
-  <VMenu
-    v-model="isOpen"
-    :close-on-content-click="false"
-    transition="scale-transition"
-    offset-y
-    :persistent="isPersistent"
-  >
-    <template #activator="{ props }">
-      <div
-        v-bind="props"
-        class="tags-container"
+  <div class="relative inline-block text-left">
+    <button
+      ref="btn"
+      class="tags-container w-100"
+    >
+      <span
+        v-if="modelValue.length === 0"
+        class="cursor-pointer"
       >
-        <span
-          v-if="modelValue.length === 0"
-          class="cursor-pointer"
-        >
-          <VIcon
-            size="14"
-            color="#374151"
-            icon="tabler-tag"
-          />
-        </span>
-        <span
-          v-for="(tag, index) in modelValue.slice(0, 2)"
-          :key="tag.id"
-          class="tag py-0 my-0 px-1"
-          :style="{ backgroundColor: `${tag.color}73` }"
-        >
-          <span>{{ tag.name }}</span>
-          <VIcon
-            size="14"
-            color="#374151"
-            icon="tabler-circle-minus"
-            @click.stop="selectTag(tag)"
-          />
-        </span>
-        <span
-          v-if="modelValue.length > 2"
-          class="tag-extra"
-        >+{{ modelValue.length - 2 }}</span>
-      </div>
-    </template>
+        <VIcon
+          size="14"
+          color="#374151"
+          icon="tabler-tag"
+        />
+      </span>
+      <span
+        v-for="(tag, index) in modelValue.slice(0, 2)"
+        :key="tag.id"
+        class="tag py-0 my-0 px-1"
+        :style="{ backgroundColor: `${tag.color}73` }"
+      >
+        <span>{{ tag.name }}</span>
+        <VIcon
+          size="14"
+          color="#374151"
+          icon="tabler-circle-minus"
+          @click.stop="selectTag(tag)"
+        />
+      </span>
+      <span
+        v-if="modelValue.length > 2"
+        class="tag-extra"
+      >+{{ modelValue.length - 2 }}</span>
+    </button>
 
-    <div class="dropdown-menu-custom">
+    <!-- Dropdown-ul de tag-uri -->
+    <div
+      ref="dropdown"
+      class="dropdown-menu hidden"
+    >
       <div class="selected-tags">
         <span
           v-for="tag in modelValue"
@@ -230,6 +256,7 @@ const isPersistent = computed(() => {
           />
         </span>
       </div>
+
       <input
         v-model="search"
         type="text"
@@ -237,6 +264,7 @@ const isPersistent = computed(() => {
         class="search-input"
         @keyup.enter="createTag"
       >
+
       <div
         v-if="search.length > 0 && !tags.some(t => t.name === search)"
         class="tag-create"
@@ -250,7 +278,7 @@ const isPersistent = computed(() => {
           v-for="tag in filteredTags"
           :key="tag.id"
           class="selectable"
-          @click="selectTag(tag)"
+          @click.stop="selectTag(tag)"
         >
           <span
             class="tag"
@@ -262,79 +290,73 @@ const isPersistent = computed(() => {
               class="tag-input"
               autofocus
               @blur="(e) => updateTag(e, tag)"
+              @keyup.enter="(e) => updateTag(e, tag)"
             >
-            <span v-else>{{ tag.name }}</span>
+            <span
+              v-else
+              class="d-flex justify-space-between gap-2"
+            >
+              {{ tag.name }}
+              <button
+                class="tag-menu-btn"
+                @click.stop="toggleTagMenu(tag.id)"
+              >
+                <VIcon
+                  size="14"
+                  color="primary"
+                > tabler-dots-circle-horizontal </VIcon>
+              </button>
+            </span>
           </span>
-          <VMenu
-            v-model="activeMenuTag[tag.id]"
-            activator="parent"
-            offset-y
+
+          <div
+            v-if="activeMenuTag[tag.id]"
+            class="tag-options"
           >
-            <template #activator>
-              <div
-                class="custom-badge"
-                @click.stop="activeMenuTag[tag.id] = !activeMenuTag[tag.id]"
+            <div
+              class="tag-option"
+              @click.stop="renameTag(tag, 'rename')"
+            >
+              <VIcon
+                size="14"
+                color="primary"
               >
-                <VIcon
-                  size="14"
-                  color="primary"
-                >
-                  tabler-dots-circle-horizontal
-                </VIcon>
-              </div>
-            </template>
-            <div class="d-flex flex-column dropdown-menu gap-2">
-              <div
-                class="custom-badge"
-                @click.stop="renameTag(tag)"
-              >
-                <VIcon
-                  size="14"
-                  color="primary"
-                >
-                  tabler-edit
-                </VIcon>
-                <span class="text-body-5 text-link">Rename</span>
-              </div>
-              <div
-                class="custom-badge"
-                @click="deleteTag(tag)"
-              >
-                <VIcon
-                  size="14"
-                  color="error"
-                >
-                  tabler-trash
-                </VIcon>
-                <span class="text-body-5 text-link">Delete</span>
-              </div>
-              <div
-                class="custom-badge"
-                @click="changeTagColor(tag)"
-              >
-                <VIcon
-                  size="14"
-                  color="primary"
-                >
-                  tabler-palette
-                </VIcon>
-                <span class="text-body-5 text-link">Change Color</span>
-              </div>
+                tabler-edit
+              </VIcon>
             </div>
-          </VMenu>
+            <div
+              class="tag-option"
+              @click.stop="deleteTag(tag, 'delete')"
+            >
+              <VIcon
+                size="14"
+                color="error"
+              >
+                tabler-trash
+              </VIcon>
+            </div>
+            <div
+              class="tag-option"
+              @click.stop="changeTagColor(tag, 'changeColor')"
+            >
+              <VIcon
+                size="14"
+                color="primary"
+              >
+                tabler-palette
+              </VIcon>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </VMenu>
+  </div>
 </template>
 
 <style lang="scss" scoped>
 .tags-container {
   display: flex;
   gap: 2px;
-  flex-wrap: wrap;
-  align-items: center;
-  border-radius: 4px;
   cursor: pointer;
 }
 
@@ -353,9 +375,26 @@ const isPersistent = computed(() => {
   cursor: pointer;
 }
 
+.dropdown-menu {
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(27, 31, 36, 0.15);
+  border: 1px solid #d0d7de;
+  overflow: hidden;
+  z-index: 999;
+  min-width: 220px;
+}
+
+.tag-menu-item {
+  padding: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
 .selectable {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: start;
   justify-content: space-between;
   padding: 6px 2px;
   cursor: pointer;
@@ -475,5 +514,56 @@ const isPersistent = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 8px;
+}
+
+.tag-options {
+  display: flex;
+  gap: 8px;
+  border-radius: 4px;
+}
+
+.tag-options {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 6px;
+  background: rgba(240, 240, 240, 0.9);
+  transition: all 0.2s ease-in-out;
+  justify-content: center;
+}
+
+.tag-option {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: background 0.2s ease-in-out;
+
+  &:hover {
+    background: rgba(220, 220, 220, 0.8);
+  }
+}
+
+.tag-option-delete:hover {
+  background: rgba(255, 0, 0, 0.1);
+}
+
+.active-option {
+  background: #007aff !important;
+  color: white !important;
+  font-weight: bold;
+}
+
+.tag-menu-btn {
+  width: fit-content;
 }
 </style>
