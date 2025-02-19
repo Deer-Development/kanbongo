@@ -38,6 +38,7 @@ const isPaymentDetailsDialogVisible = ref(false)
 const boardDetails = ref()
 const boardId = ref(0)
 const isOwner = computed(() => projectDataLocal.value.owner.id === props.userData.id)
+const isAdmin = ref(false)
 
 const editBoard = board => {
   boardDetails.value = board
@@ -46,6 +47,7 @@ const editBoard = board => {
 
 const paymentBoard = board => {
   boardId.value = board.id
+  isAdmin.value = board.members.some(member => member.user.id === props.userData.id && member.is_admin)
   isPaymentDetailsDialogVisible.value = true
 }
 
@@ -158,7 +160,7 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
                   <VIcon icon="tabler-credit-card" />
                 </VBtn>
                 <VBtn
-                  v-if="props.isSuperAdmin || projectDataLocal.owner.id === props.userData.id"
+                  v-if="props.isSuperAdmin || projectDataLocal.owner.id === props.userData.id || item.members.find(member => member.user.id === props.userData.id && member.is_admin)"
                   icon
                   @click.stop="editBoard(item)"
                 >
@@ -182,6 +184,7 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
       v-model:board-id="boardId"
       v-model:is-super-admin="props.isSuperAdmin"
       v-model:is-owner="isOwner"
+      v-model:is-admin="isAdmin"
       v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
       @form-submitted="handleFormSubmitted"
     />

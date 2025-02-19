@@ -18,6 +18,7 @@ class UserResource extends JsonResource
             'avatarOrInitials' => $this->avatar_or_initials,
             'role' => $this->roles->first()?->name,
             'invited_at' => $this->invited_at,
+            'is_temporary' => $this->is_temporary,
             'created_at' => $this->created_at->diffForHumans(),
         ];
     }

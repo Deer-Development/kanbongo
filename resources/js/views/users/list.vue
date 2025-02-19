@@ -154,15 +154,6 @@ const confirmDelete = async id => {
               placeholder="Search..."
             />
           </VCol>
-          <VCol
-            cols="6"
-            sm="1"
-            class="d-flex justify-end"
-          >
-            <VBtn @click="isAddNewUserDrawerVisible = true">
-              Invite
-            </VBtn>
-          </VCol>
         </VRow>
       </VCardText>
 

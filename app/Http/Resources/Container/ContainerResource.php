@@ -155,6 +155,7 @@ class ContainerResource extends JsonResource
             'auth' => [
                 'id' => $authUser->id,
                 'is_owner' => $isOwner,
+                'is_admin' => $this->members->where('user_id', $authUser->id)->first()?->is_admin,
                 'is_member' => $isMember,
                 'has_active_time_entries' => $hasActiveTimeEntries,
                 'is_super_admin' => $isSuperAdmin,

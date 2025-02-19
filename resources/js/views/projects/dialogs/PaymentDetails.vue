@@ -6,6 +6,7 @@ import PaycheckDetails from "@/views/projects/components/PaycheckDetails.vue"
 const props = defineProps({
   boardId: { type: Number, required: true, default: 0 },
   isOwner: { type: Boolean, required: false, default: false },
+  isAdmin: { type: Boolean, required: false, default: false },
   isSuperAdmin: { type: Boolean, required: false, default: false },
   isDialogVisible: { type: Boolean, required: true, default: false },
 })
@@ -26,7 +27,7 @@ const selectedDateRange = ref("")
 const fetchMemberDetails = async () => {
   const res = await $api(`/board/payment-details/${boardIdLocal.value}`, {
     method: "GET",
-    params: { date_range: selectedDateRange.value, is_super_admin: props.isSuperAdmin, is_owner: props.isOwner },
+    params: { date_range: selectedDateRange.value, is_super_admin: props.isSuperAdmin, is_owner: props.isOwner, is_admin: props.isAdmin },
   })
 
   members.value = res.data

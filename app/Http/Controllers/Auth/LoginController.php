@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserToken;
 use App\Notifications\LoginTokenNotification;
+use App\Rules\EmailExistsAndNotTemporary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ class LoginController extends Controller
     public function sendLoginToken(Request $request)
     {
         $request->validate([
-            'email' => 'required|email|exists:users,email',
+            'email' => ['required', 'email', new EmailExistsAndNotTemporary()],
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -29,7 +30,7 @@ class LoginController extends Controller
 
         return response()->json(['message' => 'Login token sent to your email.']);
     }
-
+// test23@gmail.com
     public function verifyLoginToken(Request $request)
     {
         $request->validate([

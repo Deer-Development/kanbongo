@@ -39,6 +39,8 @@ const email = ref('')
 const emailError = ref('')
 const selectedUser = ref(null)
 const boardDataLocal = ref(null)
+const myCombobox = ref()
+const newUser = ref(null)
 const isActive = ref(true)
 const isFormValid = ref(false)
 const refAddUserForm = ref()
@@ -49,6 +51,12 @@ const excludedUsers = ref([])
 const usersOptions = ref([])
 const userData = computed(() => useCookie('userData', { default: null }).value)
 const isInviteDialogVisible = ref(false)
+
+const isValidEmail = email => {
+  const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
+  
+  return emailRegex.test(email)
+}
 
 const fetchUsersOptions = async () => {
   const memberIds = members.value.map(member => member.user_id).join(',')
@@ -66,12 +74,60 @@ const fetchUsersOptions = async () => {
   usersOptions.value = data.value
 
   if(!props.boardDetails?.id){
-    addUser(userData.value.id)
+    addUser(userData.value.id, true)
   }
 }
 
-const openInviteDialog = () => {
-  isInviteDialogVisible.value = true
+const addTemporaryUser = async () => {
+  if (!searchQuery.value.trim()) return
+
+  if (!isValidEmail(searchQuery.value.trim())) {
+    emailError.value = 'Please enter a valid email address'
+    selectedUser.value = null
+    myCombobox.value.search = searchQuery.value
+
+    return
+  }
+
+  emailError.value = null
+
+  try {
+    const response = await $api('/user', {
+      method: 'POST',
+      body: {
+        email: searchQuery.value.trim(),
+        is_temporary: true,
+        invited_by: userData.value.id,
+      },
+    })
+
+    if (response?.data) {
+      members.value.push({
+        user_id: response.data.id,
+        name: response.data.name || response.data.email,
+        email: response.data.email,
+        avatar: response.data.avatar,
+        avatarOrInitials: response.data.avatarOrInitials,
+        role: response.data.role,
+        is_temporary: true,
+        can_timing: false,
+        billable: false,
+        rate: 0,
+        weekly_limit_enabled: false,
+        weekly_limit_hours: null,
+        is_admin: false,
+      })
+
+      toast.success(`User ${response.data.email} invited successfully!`)
+
+      selectedUser.value = null
+      searchQuery.value = ''
+    }
+  } catch (err) {
+    selectedUser.value = null
+    searchQuery.value = ''
+    toast.error('Error creating user. This email already exists.')
+  }
 }
 
 watch(() => props.isDialogVisible, value => {
@@ -88,19 +144,28 @@ watch(() => props.isDialogVisible, value => {
     email: member.user.email,
     avatar: member.user.avatar,
     role: member.user.role,
+    is_admin: member.is_admin,
     avatarOrInitials: member.user.avatar_or_initials,
     can_timing: member.can_timing,
     billable: member.billable,
     rate: member.billable_rate,
+    is_temporary: member.user.is_temporary,
     weekly_limit_enabled: member.weekly_limit_enabled,
     weekly_limit_hours: member.weekly_limit_hours,
   }))
 
+  searchQuery.value = userData.value.email
   fetchUsersOptions()
 })
 
-const addUser = userId => {
-  const user = usersOptions.value.find(option => option.id === userId)
+watch(searchQuery, newQuery => {
+  if (newQuery.length >= 3) {
+    fetchUsersOptions()
+  }
+})
+
+const addUser = (userId, isOwner = false) => {
+  const user = usersOptions.value.find(option => option.id === userId.id)
 
   if (!user) {
     return
@@ -118,6 +183,8 @@ const addUser = userId => {
     rate: 0,
     weekly_limit_enabled: false,
     weekly_limit_hours: null,
+    is_owner: isOwner,
+    is_admin: false,
   })
 
   excludedUsers.value.push({
@@ -125,8 +192,7 @@ const addUser = userId => {
   })
 
   selectedUser.value = null
-
-  fetchUsersOptions()
+  usersOptions.value = []
 }
 
 const removeMember = member => {
@@ -155,6 +221,7 @@ const onSubmit = async () => {
           can_timing: member.can_timing,
           billable: member.billable,
           billable_rate: member.rate,
+          is_admin: member.is_admin,
           weekly_limit_enabled: member.weekly_limit_enabled,
           weekly_limit_hours: member.weekly_limit_enabled ? Number(member.weekly_limit_hours) : null,
         })),
@@ -282,13 +349,19 @@ onMounted(() => {
               placeholder="Enter Board Name"
             />
 
-            <h5 class="text-h5 mt-5 mb-1">
+            <h5
+              v-if="boardDataLocal?.id"
+              class="text-h5 mt-5 mb-1"
+            >
               Board Members
             </h5>
 
-            <AppAutocomplete
+            <AppCombobox
+              v-if="boardDataLocal?.id"
+              ref="myCombobox"
               v-model="selectedUser"
               v-model:items="usersOptions"
+              v-model:search="searchQuery"
               chips
               item-text="name"
               item-value="id"
@@ -296,7 +369,10 @@ onMounted(() => {
               label="Select User"
               no-filter
               autocomplete="off"
+              :error="!!emailError"
+              :error-messages="emailError"
               @update:model-value="addUser"
+              @keydown.enter.prevent="addTemporaryUser"
             >
               <template #chip="{ props, item }">
                 <VChip
@@ -342,22 +418,10 @@ onMounted(() => {
                   </template>
                 </VListItem>
               </template>
-              <template #append>
-                <VChip
-                  icon
-                  color="success"
-                  variant="elevated"
-                  @click="openInviteDialog"
-                >
-                  <VIcon
-                    icon="tabler-user-plus"
-                  />
-                </VChip>
-              </template>
               <template #no-data>
                 <VListItem>
                   <VListItemTitle>
-                    No data found
+                    No users found. Press <strong>Enter</strong> to add "{{ searchQuery }}"
                   </VListItemTitle>
                 </VListItem>
               </template>
@@ -368,8 +432,11 @@ onMounted(() => {
                   </VListItemTitle>
                 </VListItem>
               </template>
-            </AppAutocomplete>
-            <VTable class="permission-table text-no-wrap mb-6 mt-4">
+            </AppCombobox>
+            <VTable
+              v-if="boardDataLocal?.id"
+              class="permission-table text-no-wrap mb-6 mt-4"
+            >
               <template
                 v-for="member in members"
                 :key="member.user_id"
@@ -400,10 +467,26 @@ onMounted(() => {
                             SA
                           </VChip>
                         </h6>
+                        <VChip
+                          v-if="member.is_temporary"
+                          size="x-small"
+                          color="warning"
+                        >
+                          Pending Register
+                        </VChip>
                         <div class="text-sm">
                           {{ member.email }}
                         </div>
                       </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex justify-end">
+                      <VCheckbox
+                        v-model="member.is_admin"
+                        :disabled="member.is_owner || (boardDataLocal && boardDataLocal.owner_id === member.user_id)"
+                        label="Admin"
+                      />
                     </div>
                   </td>
                   <td>
@@ -447,7 +530,7 @@ onMounted(() => {
                   </td>
                   <td>
                     <div
-                      v-if="(!boardDataLocal && userData.id === member.user_id) || (boardDataLocal && boardDataLocal.owner_id === member.user_id)"
+                      v-if="member.is_owner || (boardDataLocal && boardDataLocal.owner_id === member.user_id)"
                       class="d-flex justify-end"
                     >
                       <VChip
@@ -478,11 +561,13 @@ onMounted(() => {
                       </VBtn>
                     </div>
                   </td>
-
                 </tr>
               </template>
             </VTable>
-            <div class="d-flex align-center justify-center gap-4">
+            <div
+              class="d-flex align-center justify-center gap-4"
+              :class="boardDataLocal?.id ? 'mt-2' : 'mt-6'"
+            >
               <VBtn type="submit">
                 Submit
               </VBtn>
@@ -495,61 +580,6 @@ onMounted(() => {
                 Cancel
               </VBtn>
             </div>
-          </VForm>
-        </VCardText>
-      </VCard>
-    </VDialog>
-    <VDialog v-model="isInviteDialogVisible" width="500">
-      <VCard class="pa-6">
-        <VCardTitle class="text-h5 text-center"> Invite new user </VCardTitle>
-        <VCardText>
-          <VForm
-            ref="refAddUserForm"
-            v-model="isAddUserFormValid"
-            @submit.prevent="sendInvite"
-          >
-            <VRow>
-              <VCol cols="12">
-                <AppTextField
-                  v-model="first_name"
-                  label="First Name"
-                  placeholder="Tzvi"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppTextField
-                  v-model="last_name"
-                  label="Last Name"
-                  placeholder="Gettenberg"
-                />
-              </VCol>
-              <VCol cols="12">
-                <AppTextField
-                  v-model="email"
-                  :rules="[requiredValidator, emailValidator]"
-                  :error-messages="emailError"
-                  label="Email"
-                  placeholder="tzvi@email.com"
-                />
-              </VCol>
-
-              <VCol cols="12">
-                <VBtn
-                  type="submit"
-                  class="me-3"
-                >
-                  Submit
-                </VBtn>
-                <VBtn
-                  type="reset"
-                  variant="tonal"
-                  color="error"
-                  @click="isInviteDialogVisible = false"
-                >
-                  Cancel
-                </VBtn>
-              </VCol>
-            </VRow>
           </VForm>
         </VCardText>
       </VCard>

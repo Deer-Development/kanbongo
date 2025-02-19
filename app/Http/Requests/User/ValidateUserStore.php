@@ -28,6 +28,7 @@ class ValidateUserStore extends FormRequest
             'email' => 'required|string|email|max:255|unique:users',
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
+            'is_temporary' => 'nullable|boolean',
         ];
     }
 

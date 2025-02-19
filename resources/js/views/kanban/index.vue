@@ -490,7 +490,7 @@ onBeforeUnmount(() => {
         </VMenu>
 
         <VChip
-          v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id"
+          v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id || kanban.members.find(member => member.user.id === userData.id && member.is_admin)"
           size="small"
           variant="elevated"
           @click="isEditContainerDialogVisible = true"

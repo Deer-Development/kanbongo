@@ -18,6 +18,7 @@ class PaymentDetails extends BaseController
         $endDate = null;
         $isSuperAdmin = filter_var($request->input('is_super_admin'), FILTER_VALIDATE_BOOLEAN);
         $isOwner = filter_var($request->input('is_owner'), FILTER_VALIDATE_BOOLEAN);
+        $isAdmin = filter_var($request->input('is_admin'), FILTER_VALIDATE_BOOLEAN);
         $authUserId = Auth::id();
 
         if ($dateRange) {
@@ -44,8 +45,8 @@ class PaymentDetails extends BaseController
                     }
                 ]);
             },
-            'members' => function ($q) use ($isSuperAdmin, $isOwner, $authUserId) {
-                if (!$isSuperAdmin && !$isOwner) {
+            'members' => function ($q) use ($isSuperAdmin, $isOwner, $authUserId, $isAdmin) {
+                if (!$isSuperAdmin && !$isOwner && !$isAdmin) {
                     $q->where('user_id', $authUserId);
                 }
                 $q->with('user.paychecks');
