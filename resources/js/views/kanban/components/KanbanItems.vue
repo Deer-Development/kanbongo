@@ -73,6 +73,7 @@ const emit = defineEmits([
 ])
 
 const refKanbanBoard = ref()
+const localKanbanData = ref(props.kanbanData.tasks)
 const localBoardName = ref(props.boardName)
 const localBoardColor = ref(props.boardColor)
 const hasLocalActiveTimer = ref(false)
@@ -127,9 +128,8 @@ const addNewItem = () => {
 
 // 👉 watch kanbanIds its is useful when you add new task
 watch(() => props, () => {
-  localIds.value = props.kanbanIds
+  localKanbanData.value = props.kanbanData.tasks
 }, {
-  immediate: true,
   deep: true,
 })
 
@@ -153,7 +153,7 @@ watch(() => props.auth, (newValue, oldValue) => {
 
 dragAndDrop({
   parent: refKanbanBoard,
-  values: localIds,
+  values: localKanbanData,
   group: props.groupName,
   draggable: child => child.classList.contains('kanban-card'),
   dragHandle: '.card-handler',
@@ -162,22 +162,22 @@ dragAndDrop({
   performTransfer: (state, data) => {
     performTransfer(state, data)
 
-    emit('updateItemsState', {
-      boardId: props.boardId,
-      ids: localIds.value,
-    })
+    // emit('updateItemsState', {
+    //   boardId: props.boardId,
+    //   ids: localKanbanData.value.map(task => task.id),
+    // })
   },
   handleEnd: data => {
     handleEnd(data)
 
     emit('updateItemsState', {
       boardId: props.boardId,
-      ids: localIds.value,
+      ids: localKanbanData.value.map(task => task.id),
     })
   },
 })
 
-const resolveItemUsingId = id => props.kanbanData.tasks.find(item => item.id === id)
+const resolveItemUsingId = id => localKanbanData.value.find(item => item.id === id)
 
 const deleteItem = item => {
   emit('deleteItem', item)
@@ -377,7 +377,7 @@ const refreshData = () => {
       class="flex-grow-1"
     >
       <div
-        v-if="localIds"
+        v-if="localKanbanData"
         ref="refKanbanBoard"
         class="kanban-board-drop-zone d-flex flex-column gap-2"
         :style="{
@@ -385,14 +385,14 @@ const refreshData = () => {
             ? `${props.boardColor}33`
             : '#f1f1f3'
         }"
-        :class="localIds.length ? 'mb-4' : ''"
+        :class="localKanbanData.length ? 'mb-4' : ''"
       >
         <template
-          v-for="id in localIds.filter(id => resolveItemUsingId(id))"
-          :key="id"
+          v-for="item in localKanbanData"
+          :key="item.id"
         >
           <KanbanCard
-            :item="resolveItemUsingId(id)"
+            :item="item"
             :board-id="props.boardId"
             :board-name="props.boardName"
             :is-super-admin="props.isSuperAdmin"
@@ -406,7 +406,7 @@ const refreshData = () => {
             @toggle-timer="toggleTimer"
             @edit-timer="editTimerFn"
             @refresh-kanban-data="refreshData"
-            @edit-kanban-item="emit('editItem', { item: resolveItemUsingId(id), boardId: props.boardId, boardName: props.boardName })"
+            @edit-kanban-item="emit('editItem', { item: item, boardId: props.boardId, boardName: props.boardName })"
           />
         </template>
       </div>
