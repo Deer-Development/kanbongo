@@ -102,11 +102,11 @@ const goToProject = item => {
         lg="4"
       >
         <VCard
-          @click="goToProject(item)"
           :class="{
             'cursor-pointer': item.is_active,
             'cursor-not-allowed': !item.is_active,
           }"
+          @click="goToProject(item)"
         >
           <VCardTitle>
             <VChip color="warning">
