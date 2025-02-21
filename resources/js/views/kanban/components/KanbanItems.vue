@@ -306,14 +306,14 @@ const refreshData = () => {
             {{ boardName }}
           </VChip>
           <VChip
-            v-if="localIds.length"
+            v-if="localKanbanData.length"
             class="text-md font-weight-medium text-truncate text-center ml-1"
             :color="props.boardColor"
             rounded
             size="small"
             variant="elevated"
           >
-            {{ localIds.length }}
+            {{ localKanbanData.length }}
           </VChip>
         </div>
         <div class="d-flex align-center gap-2">
