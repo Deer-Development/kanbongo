@@ -99,7 +99,7 @@ const goToProject = item => {
         :key="item.id"
         cols="12"
         sm="6"
-        lg="4"
+        lg="3"
       >
         <VCard
           :class="{
@@ -116,7 +116,7 @@ const goToProject = item => {
           <VCardText>
             <div class="d-flex justify-space-between align-center">
               <div>
-                <div class="custom-badge" >
+                <div class="custom-badge">
                   <VIcon
                     :icon="item.is_active ? 'tabler-circle-check' : 'tabler-circle-x'"
                     :color="item.is_active ? 'success' : 'error'"

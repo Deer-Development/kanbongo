@@ -52,7 +52,8 @@ const paymentBoard = board => {
 }
 
 const goToBoard = board => {
-  router.push({ name: 'container-view', params: { id: projectDataLocal.value.id, containerId: board.id } })
+  if(board.is_active)
+    router.push({ name: 'container-view', params: { id: projectDataLocal.value.id, containerId: board.id } })
 }
 
 watch(() => isPaymentDetailsDialogVisible.value, value => {
@@ -72,10 +73,16 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
         sm="6"
         lg="4"
       >
-        <VCard @click="goToBoard(item)">
+        <VCard
+          :class="{
+            'cursor-pointer': item.is_active,
+            'cursor-not-allowed': !item.is_active,
+          }"
+          @click="goToBoard(item)"
+        >
           <VCardTitle>
-            <VChip color="info">
-              Owner: {{ item.owner.full_name }}
+            <VChip color="warning">
+              <span>{{ item.name }}</span>
             </VChip>
           </VCardTitle>
           <VCardText class="d-flex align-center pb-4">
@@ -138,33 +145,37 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
           <VCardText>
             <div class="d-flex justify-space-between align-center">
               <div>
-                <h5 class="text-h5">
-                  {{ item.name }}
-                </h5>
-                <div class="d-flex align-center text-center mt-1">
-                  <RouterLink :to="{ name: 'container-view', params: { id: projectDataLocal.id, containerId: item.id } }">
-                    <VIcon
-                      icon="tabler-clipboard-list"
-                      class="text-high-emphasis"
-                    />
-                    Access Board
-                  </RouterLink>
+                <div class="custom-badge">
+                  <VIcon
+                    :icon="item.is_active ? 'tabler-circle-check' : 'tabler-circle-x'"
+                    :color="item.is_active ? 'success' : 'error'"
+                    size="18"
+                  />
+                  <span>{{ item.is_active ? 'Active' : 'Inactive' }}</span>
                 </div>
               </div>
               <div class="d-flex gap-4">
                 <VBtn
                   icon
                   color="info"
+                  size="x-small"
                   @click.stop="paymentBoard(item)"
                 >
-                  <VIcon icon="tabler-credit-card" />
+                  <VIcon
+                    size="14"
+                    icon="tabler-credit-card"
+                  />
                 </VBtn>
                 <VBtn
                   v-if="props.isSuperAdmin || projectDataLocal.owner.id === props.userData.id || item.members.find(member => member.user.id === props.userData.id && member.is_admin)"
                   icon
+                  size="x-small"
                   @click.stop="editBoard(item)"
                 >
-                  <VIcon icon="tabler-edit" />
+                  <VIcon
+                    icon="tabler-edit"
+                    size="14"
+                  />
                 </VBtn>
               </div>
             </div>
