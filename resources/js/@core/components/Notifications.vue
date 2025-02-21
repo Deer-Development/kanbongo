@@ -73,7 +73,7 @@ const toggleReadUnread = (isSeen, Id) => {
         <!-- 👉 Header -->
         <VCardItem class="notification-section">
           <VCardTitle class="text-h6">
-            Notifications
+            Notifications (In Progress)
           </VCardTitle>
 
           <template #append>

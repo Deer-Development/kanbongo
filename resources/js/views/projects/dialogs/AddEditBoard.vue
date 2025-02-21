@@ -33,24 +33,22 @@ const emit = defineEmits([
 const name = ref('')
 const toast = useToast()
 const searchQuery = ref('')
-const first_name = ref('')
-const last_name = ref('')
-const email = ref('')
 const emailError = ref('')
 const selectedUser = ref(null)
 const boardDataLocal = ref(null)
+const memberToRemove = ref(null)
 const myCombobox = ref()
-const newUser = ref(null)
 const isActive = ref(true)
 const isFormValid = ref(false)
+const isFormDirty = ref(false)
+const isRemoveModalVisible = ref(false)
 const refAddUserForm = ref()
-const isAddUserFormValid = ref(false)
 const refBoardForm = ref()
 const members = ref([])
 const excludedUsers = ref([])
 const usersOptions = ref([])
+const temporaryUsersAdded = ref([])
 const userData = computed(() => useCookie('userData', { default: null }).value)
-const isInviteDialogVisible = ref(false)
 
 const isValidEmail = email => {
   const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
@@ -72,10 +70,6 @@ const fetchUsersOptions = async () => {
   )
 
   usersOptions.value = data.value
-
-  if(!props.boardDetails?.id){
-    addUser(userData.value.id, true)
-  }
 }
 
 const addTemporaryUser = async () => {
@@ -122,6 +116,9 @@ const addTemporaryUser = async () => {
 
       selectedUser.value = null
       searchQuery.value = ''
+      isFormDirty.value = true
+
+      temporaryUsersAdded.value.push(response.data.id)
     }
   } catch (err) {
     selectedUser.value = null
@@ -130,7 +127,7 @@ const addTemporaryUser = async () => {
   }
 }
 
-watch(() => props.isDialogVisible, value => {
+watch(() => props.isDialogVisible, async value => {
   const data = JSON.parse(JSON.stringify(props.boardDetails))
 
   boardDataLocal.value = data
@@ -153,9 +150,6 @@ watch(() => props.isDialogVisible, value => {
     weekly_limit_enabled: member.weekly_limit_enabled,
     weekly_limit_hours: member.weekly_limit_hours,
   }))
-
-  searchQuery.value = userData.value.email
-  fetchUsersOptions()
 })
 
 watch(searchQuery, newQuery => {
@@ -193,13 +187,20 @@ const addUser = (userId, isOwner = false) => {
 
   selectedUser.value = null
   usersOptions.value = []
+  isFormDirty.value = true
+}
+
+const openRemoveDialog = member => {
+  isRemoveModalVisible.value = true
+  memberToRemove.value = member
 }
 
 const removeMember = member => {
   const index = members.value.findIndex(m => m.id === member.id)
   if (index !== -1) {
     members.value.splice(index, 1)[0]
-    fetchUsersOptions()
+    isFormDirty.value = true
+    memberToRemove.value = null
   }
 }
 
@@ -237,7 +238,7 @@ const onSubmit = async () => {
         `Board ${boardDataLocal.value?.id ? 'updated' : 'added'} successfully!`,
       )
     }
-
+    temporaryUsersAdded.value = []
     onReset()
 
     await nextTick(() => {
@@ -255,64 +256,26 @@ const submitForm = () => {
   })
 }
 
-const sendInvite = () => {
-  refAddUserForm.value?.validate().then(({ valid: isValid }) => {
-    if (isValid)
-      applyInvite()
-  })
-}
-
-const applyInvite = async () => {
-  try {
-    const response = await $api('/user', {
-      method: 'POST',
-      body: {
-        first_name: first_name.value,
-        last_name: last_name.value,
-        email: email.value,
-      },
-      onResponseError({ response }) {
-        emailError.value = 'Email already exists'
-      },
-    })
-
-    if (response?.data) {
-      members.value.push({
-        user_id: response.data.id,
-        name: response.data.name,
-        email: response.data.email,
-        avatar: response.data.avatar,
-        avatarOrInitials: response.data.avatarOrInitials,
-        role: response.data.role,
-        can_timing: false,
-        billable: false,
-        rate: 0,
-      })
-
-      toast.success('User added successfully!')
-      isInviteDialogVisible.value = false
-
-      first_name.value = ''
-      last_name.value = ''
-      email.value = ''
-      emailError.value = ''
-
-      await fetchUsersOptions()
-    }
-  } catch (err) {
-    toast.error('Something went wrong!')
-  }
-}
-
 const onReset = () => {
   emit('update:isDialogVisible', false)
   refBoardForm.value?.resetValidation()
   refAddUserForm.value?.resetValidation()
-}
+  isFormDirty.value = false
+  members.value = []
+  excludedUsers.value = []
+  usersOptions.value = []
+  searchQuery.value = ''
+  emailError.value = ''
+  boardDataLocal.value = null
 
-onMounted(() => {
-  fetchUsersOptions()
-})
+  if (temporaryUsersAdded.value.length) {
+    temporaryUsersAdded.value.forEach(async userId => {
+      await $api(`/user/${userId}`, { method: 'DELETE' })
+    })
+  }
+
+  temporaryUsersAdded.value = []
+}
 </script>
 
 <template>
@@ -328,8 +291,9 @@ onMounted(() => {
           <h4 class="text-h4 text-center mb-2">
             {{ props.boardDetails.name ? 'Edit' : 'Add New' }} Board {{ props.boardDetails.name }}
           </h4>
-          <p class="text-body-1 text-center mb-6">
-            Set Your Board Details
+          <p v-if="props.boardDetails.name" class="text-body-1 font-weight-medium d-flex align-center">
+            <VIcon size="20" color="warning" class="mr-2">tabler-info-circle</VIcon>
+            <span>After adding a member, don't forget to click <strong class="bg-primary px-2 py-1 rounded">Submit</strong> to send the invitation. 🚀</span>
           </p>
 
           <VForm
@@ -340,6 +304,7 @@ onMounted(() => {
             <VSwitch
               v-model="isActive"
               label="Active"
+              @change="isFormDirty = true"
             />
 
             <AppTextField
@@ -347,6 +312,7 @@ onMounted(() => {
               label="Board Name"
               :rules="[requiredValidator]"
               placeholder="Enter Board Name"
+              @change="isFormDirty = true"
             />
 
             <h5
@@ -486,6 +452,7 @@ onMounted(() => {
                         v-model="member.is_admin"
                         :disabled="member.is_owner || (boardDataLocal && boardDataLocal.owner_id === member.user_id)"
                         label="Admin"
+                        @change="isFormDirty = true"
                       />
                     </div>
                   </td>
@@ -494,6 +461,7 @@ onMounted(() => {
                       <VCheckbox
                         v-model="member.can_timing"
                         label="Can Timing"
+                        @change="isFormDirty = true"
                       />
                     </div>
                   </td>
@@ -504,6 +472,7 @@ onMounted(() => {
                         label="Rate"
                         type="number"
                         min="0"
+                        @change="isFormDirty = true"
                       />
                     </div>
                   </td>
@@ -512,6 +481,7 @@ onMounted(() => {
                       <VCheckbox
                         v-model="member.weekly_limit_enabled"
                         label="Weekly Limit"
+                        @change="isFormDirty = true"
                       />
                     </div>
                   </td>
@@ -525,6 +495,7 @@ onMounted(() => {
                         step="0.01"
                         min="0"
                         :disabled="!member.weekly_limit_enabled"
+                        @change="isFormDirty = true"
                       />
                     </div>
                   </td>
@@ -552,7 +523,7 @@ onMounted(() => {
                         icon
                         size="18"
                         color="error"
-                        @click="removeMember(member)"
+                        @click="openRemoveDialog(member)"
                       >
                         <VIcon
                           size="12"
@@ -568,7 +539,10 @@ onMounted(() => {
               class="d-flex align-center justify-center gap-4"
               :class="boardDataLocal?.id ? 'mt-2' : 'mt-6'"
             >
-              <VBtn type="submit">
+              <VBtn
+                type="submit"
+                :disabled="!isFormDirty"
+              >
                 Submit
               </VBtn>
 
@@ -584,6 +558,14 @@ onMounted(() => {
         </VCardText>
       </VCard>
     </VDialog>
+    <ConfirmDialog
+      v-model:isDialogVisible="isRemoveModalVisible"
+      cancel-title="Cancel"
+      confirm-title="Delete"
+      confirm-msg="Please remember to submit your changes to finalize the update."
+      confirmation-question="Are you sure you want to remove this member? This action is irreversible."
+      @confirm="confirmed => confirmed && removeMember(memberToRemove)"
+    />
   </div>
 </template>
 

@@ -27,7 +27,6 @@ class ValidateContainerStore extends FormRequest
             'name' => 'required|string|max:255',
             'is_active' => 'required|boolean',
             'project_id' => 'required|exists:projects,id',
-            'members' => 'array',
         ];
     }
 
@@ -46,7 +45,6 @@ class ValidateContainerStore extends FormRequest
             'is_active.boolean' => 'The is active field must be a boolean.',
             'project_id.required' => 'The project id field is required.',
             'project_id.exists' => 'The selected project id is invalid.',
-            'members.array' => 'The members field must be an array.',
         ];
     }
 }

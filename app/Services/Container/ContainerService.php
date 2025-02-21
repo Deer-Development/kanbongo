@@ -24,13 +24,12 @@ class ContainerService extends BaseService
     {
         return DB::transaction(function () use ($data) {
             $containerData = $this->prepareContainerData($data);
-            $members = $data['members'] ?? [];
-
             $container = $this->getModelInstance()->create($containerData);
 
-            foreach ($members as $memberData) {
-                $container->members()->create($memberData);
-            }
+            $container->members()->create([
+                'user_id' => $container->owner_id,
+                'billable_rate' => null,
+            ]);
 
             return $container;
         }, 3);
