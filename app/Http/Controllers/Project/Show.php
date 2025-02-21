@@ -36,6 +36,7 @@ class Show extends BaseController
                     }]);
             }
             $q->with('owner');
+            $q->orderBy('created_at', 'asc');
         }])->findOrFail($id);
 
         $response = [

@@ -71,9 +71,7 @@ const goToProject = item => {
 
 <template>
   <section>
-    <VCard class="mb-2"
-
-    >
+    <VCard class="mb-2">
       <VCardText>
         <div class="d-flex gap-4 justify-space-between">
           <div class="w-100">
@@ -102,51 +100,62 @@ const goToProject = item => {
         lg="3"
       >
         <VCard
+          class="elegant-card"
+          elevation="3"
           :class="{
             'cursor-pointer': item.is_active,
             'cursor-not-allowed': !item.is_active,
           }"
           @click="goToProject(item)"
         >
-          <VCardTitle>
-            <VChip color="warning">
+          <VCardTitle class="card-header">
+            <VChip
+              color="primary"
+              variant="elevated"
+              class="chip-title"
+            >
               {{ item.name }}
             </VChip>
+            <div class="custom-badge">
+              <VIcon
+                :icon="item.is_active ? 'tabler-circle-check' : 'tabler-circle-x'"
+                :color="item.is_active ? 'success' : 'error'"
+                size="18"
+              />
+              <span>{{ item.is_active ? 'Active' : 'Inactive' }}</span>
+            </div>
           </VCardTitle>
-          <VCardText>
+
+          <VCardText
+            v-if="isSuperAdmin || item.owner.id === userData.id"
+            class="card-content"
+          >
             <div class="d-flex justify-space-between align-center">
-              <div>
-                <div class="custom-badge">
-                  <VIcon
-                    :icon="item.is_active ? 'tabler-circle-check' : 'tabler-circle-x'"
-                    :color="item.is_active ? 'success' : 'error'"
-                    size="18"
-                  />
-                  <span>{{ item.is_active ? 'Active' : 'Inactive' }}</span>
-                </div>
-              </div>
-              <div class="d-flex gap-4">
+              <div class="d-flex gap-2">
                 <VBtn
                   v-if="isSuperAdmin || item.owner.id === userData.id"
                   icon
                   size="x-small"
                   color="error"
+                  variant="text"
                   @click.stop="itemToDelete(item)"
                 >
                   <VIcon
                     icon="tabler-trash"
-                    size="14"
+                    size="16"
                   />
                 </VBtn>
                 <VBtn
                   v-if="isSuperAdmin || item.owner.id === userData.id"
                   icon
                   size="x-small"
+                  color="info"
+                  variant="text"
                   @click.stop="editItem(item)"
                 >
                   <VIcon
                     icon="tabler-edit"
-                    size="14"
+                    size="16"
                   />
                 </VBtn>
               </div>
@@ -175,3 +184,36 @@ const goToProject = item => {
     />
   </section>
 </template>
+
+<style scoped>
+.elegant-card {
+  border-radius: 12px;
+  transition: transform 0.2s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.elegant-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.chip-title {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.card-content {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>

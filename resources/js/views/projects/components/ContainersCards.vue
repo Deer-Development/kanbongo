@@ -74,18 +74,32 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
         lg="4"
       >
         <VCard
+          class="elegant-card"
+          elevation="3"
           :class="{
             'cursor-pointer': item.is_active,
             'cursor-not-allowed': !item.is_active,
           }"
           @click="goToBoard(item)"
         >
-          <VCardTitle>
-            <VChip color="warning">
-              <span>{{ item.name }}</span>
+          <VCardTitle class="card-header">
+            <VChip
+              color="primary"
+              variant="elevated"
+              class="chip-title"
+            >
+              {{ item.name }}
             </VChip>
+            <div class="custom-badge">
+              <VIcon
+                :icon="item.is_active ? 'tabler-circle-check' : 'tabler-circle-x'"
+                :color="item.is_active ? 'success' : 'error'"
+                size="18"
+              />
+              <span>{{ item.is_active ? 'Active' : 'Inactive' }}</span>
+            </div>
           </VCardTitle>
-          <VCardText class="d-flex align-center pb-4">
+          <VCardText class="card-content">
             <div class="text-body-1">
               Total {{ item.members.length }} members
             </div>
@@ -144,16 +158,7 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
 
           <VCardText>
             <div class="d-flex justify-space-between align-center">
-              <div>
-                <div class="custom-badge">
-                  <VIcon
-                    :icon="item.is_active ? 'tabler-circle-check' : 'tabler-circle-x'"
-                    :color="item.is_active ? 'success' : 'error'"
-                    size="18"
-                  />
-                  <span>{{ item.is_active ? 'Active' : 'Inactive' }}</span>
-                </div>
-              </div>
+              <VSpacer />
               <div class="d-flex gap-4">
                 <VBtn
                   icon
@@ -201,3 +206,36 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
     />
   </div>
 </template>
+
+<style scoped>
+.elegant-card {
+  border-radius: 12px;
+  transition: transform 0.2s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.elegant-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.chip-title {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.card-content {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
