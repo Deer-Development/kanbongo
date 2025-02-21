@@ -64,13 +64,16 @@ const deleteItem = async () => {
 }
 
 const goToProject = item => {
-  router.push({ name: 'project-view', params: { id: item.id } })
+  if(item.is_active)
+    router.push({ name: 'project-view', params: { id: item.id } })
 }
 </script>
 
 <template>
   <section>
-    <VCard class="mb-2">
+    <VCard class="mb-2"
+
+    >
       <VCardText>
         <div class="d-flex gap-4 justify-space-between">
           <div class="w-100">
@@ -98,26 +101,28 @@ const goToProject = item => {
         sm="6"
         lg="4"
       >
-        <VCard @click="goToProject(item)">
+        <VCard
+          @click="goToProject(item)"
+          :class="{
+            'cursor-pointer': item.is_active,
+            'cursor-not-allowed': !item.is_active,
+          }"
+        >
           <VCardTitle>
-            <VChip color="info">
-              Owner: {{ item.owner.full_name }}
+            <VChip color="warning">
+              {{ item.name }}
             </VChip>
           </VCardTitle>
           <VCardText>
             <div class="d-flex justify-space-between align-center">
               <div>
-                <h5 class="text-h6">
-                  {{ item.name }}
-                </h5>
-                <div class="d-flex align-center text-center mt-1">
-                  <RouterLink :to="{ name: 'project-view', params: { id: item.id } }">
-                    <VIcon
-                      icon="tabler-clipboard-list"
-                      class="text-high-emphasis"
-                    />
-                    Access Project
-                  </RouterLink>
+                <div class="custom-badge" >
+                  <VIcon
+                    :icon="item.is_active ? 'tabler-circle-check' : 'tabler-circle-x'"
+                    :color="item.is_active ? 'success' : 'error'"
+                    size="18"
+                  />
+                  <span>{{ item.is_active ? 'Active' : 'Inactive' }}</span>
                 </div>
               </div>
               <div class="d-flex gap-4">
@@ -126,7 +131,7 @@ const goToProject = item => {
                   icon
                   size="x-small"
                   color="error"
-                  @click="itemToDelete(item)"
+                  @click.stop="itemToDelete(item)"
                 >
                   <VIcon
                     icon="tabler-trash"
@@ -137,7 +142,7 @@ const goToProject = item => {
                   v-if="isSuperAdmin || item.owner.id === userData.id"
                   icon
                   size="x-small"
-                  @click="editItem(item)"
+                  @click.stop="editItem(item)"
                 >
                   <VIcon
                     icon="tabler-edit"
@@ -161,11 +166,11 @@ const goToProject = item => {
     />
     <ConfirmDialog
       v-model:isDialogVisible="isDeleteModalVisible"
-      cancel-title="Cancel"
-      confirm-title="Delete!"
-      confirm-msg="Project deleted permanently."
-      confirmation-question="Are you sure to delete this Project?"
-      cancel-msg="Delete action cancelled."
+      cancel-title="❌ Cancel"
+      confirm-title="⚠️ Delete Forever!"
+      confirm-msg="🚨 Project and all its data have been permanently deleted! ⛔️ This action cannot be undone."
+      confirmation-question="⚠️ Are you sure you want to delete this project? 🚨 All tracked hours, tasks, and data will be lost forever!"
+      cancel-msg="✅ Delete action cancelled. Your project is safe!"
       @confirm="confirmed => confirmed && deleteItem()"
     />
   </section>
