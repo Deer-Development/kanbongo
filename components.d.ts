@@ -48,6 +48,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ScrollToTop: typeof import('./resources/js/@core/components/ScrollToTop.vue')['default']
+    SearchFilterDropdown: typeof import('./resources/js/@core/components/app-form-elements/SearchFilterDropdown.vue')['default']
     Shortcuts: typeof import('./resources/js/@core/components/Shortcuts.vue')['default']
     TablePagination: typeof import('./resources/js/@core/components/TablePagination.vue')['default']
     TagsComponent: typeof import('./resources/js/@core/components/app-form-elements/TagsComponent.vue')['default']

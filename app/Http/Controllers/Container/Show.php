@@ -84,6 +84,9 @@ class Show extends BaseController
                                     $q->whereIn('tag_id', $filters['tags']);
                                 });
                             }
+                            if (!empty($filters['search'])) {
+                                $q->whereAny(['name', 'id'], 'ILIKE','%' . $filters['search'] . '%');
+                            }
                         },
                     ]);
             },

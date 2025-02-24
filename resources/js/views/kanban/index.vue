@@ -18,6 +18,7 @@ const kanban = ref(null)
 const priorityFilter = ref(0)
 const usersFilter = ref([])
 const tagsFilter = ref([])
+const searchFilter = ref('')
 const saveFilters = ref(false)
 const userData = computed(() => useCookie('userData', { default: null }).value)
 const userTimers = reactive({})
@@ -30,6 +31,7 @@ const refetchKanban = async () => {
         priority: priorityFilter.value,
         users: usersFilter.value,
         tags: tagsFilter.value,
+        search: searchFilter.value,
       },
       save: saveFilters.value,
     },
@@ -41,6 +43,7 @@ const refetchKanban = async () => {
     priorityFilter.value = res.data.filters.priority
     usersFilter.value = res.data.filters.users
     tagsFilter.value = res.data.filters.tags
+    searchFilter.value = res.data.filters.search
   }
 }
 
@@ -191,7 +194,6 @@ const checkWeeklyLimitAndToggle = entry => {
   const totalTracked = entry.weekly_tracked.total_seconds + elapsedSeconds
   const remainingSeconds = entry.weekly_limit_seconds - totalTracked
 
-  console.log('Remaining seconds:', remainingSeconds)
   if (remainingSeconds <= 0 && !userToggleStatus[entry.user.id]) {
     userToggleStatus[entry.user.id] = true
     toggleTimerFn({
@@ -270,6 +272,12 @@ const setTagsFilter = tags => {
   refetchKanban()
 }
 
+const setSearchFilter = search => {
+  searchFilter.value = search
+  saveFilters.value = true
+  refetchKanban()
+}
+
 watch(
   () => activeUsersMenu.value,
   isOpen => {
@@ -313,7 +321,7 @@ onBeforeUnmount(() => {
         <VBadge
           location="top start"
           bordered
-          :color="priorityFilter || usersFilter.length || tagsFilter.length ? 'primary' : ''"
+          :color="priorityFilter || usersFilter.length || tagsFilter.length || searchFilter ? 'primary' : ''"
         >
           <template #badge>
             <VIcon
@@ -332,9 +340,15 @@ onBeforeUnmount(() => {
               :model-value="usersFilter"
               @update:model-value="setUsersFilter($event)"
             />
+
             <TagsFilterDropdown
               :model-value="tagsFilter"
               @update:model-value="setTagsFilter($event)"
+            />
+
+            <SearchFilterDropdown
+              :model-value="searchFilter"
+              @update:model-value="setSearchFilter($event)"
             />
           </div>
         </VBadge>

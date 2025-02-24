@@ -70,7 +70,7 @@ const goToProject = item => {
 </script>
 
 <template>
-  <section>
+  <div>
     <VCard class="mb-2">
       <VCardText>
         <div class="d-flex gap-4 justify-space-between">
@@ -182,7 +182,7 @@ const goToProject = item => {
       cancel-msg="✅ Delete action cancelled. Your project is safe!"
       @confirm="confirmed => confirmed && deleteItem()"
     />
-  </section>
+  </div>
 </template>
 
 <style scoped>

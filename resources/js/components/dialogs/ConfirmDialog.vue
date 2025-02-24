@@ -24,7 +24,7 @@ const props = defineProps({
   },
   cancelMsg: {
     type: String,
-    required: true,
+    required: false,
   },
 })
 
@@ -52,9 +52,11 @@ const onCancel = () => {
   emit('confirm', false)
   emit('close', true)
   emit('update:isDialogVisible', false)
-  toast.error(props.cancelMsg, {
-    timeout: 1000,
-  })
+  if(props.cancelMsg){
+    toast.error(props.cancelMsg, {
+      timeout: 1000,
+    })
+  }
 }
 </script>
 
