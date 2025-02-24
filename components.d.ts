@@ -44,6 +44,7 @@ declare module 'vue' {
     MessageEditor: typeof import('./resources/js/@core/components/MessageEditor.vue')['default']
     MoreBtn: typeof import('./resources/js/@core/components/MoreBtn.vue')['default']
     Notifications: typeof import('./resources/js/@core/components/Notifications.vue')['default']
+    PriorityFilterDropdown: typeof import('./resources/js/@core/components/app-form-elements/PriorityFilterDropdown.vue')['default']
     ProductDescriptionEditor: typeof import('./resources/js/@core/components/ProductDescriptionEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

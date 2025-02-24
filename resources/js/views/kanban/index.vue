@@ -5,7 +5,7 @@ import { watch } from "vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 import { useToast } from "vue-toastification"
-import PriorityBadge from "@/views/kanban/components/PriorityBadge.vue"
+import PriorityFilterDropdown from "@core/components/app-form-elements/PriorityFilterDropdown.vue"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -15,7 +15,7 @@ const activeUsersMenu = ref(false)
 const deleteItem = ref(null)
 const kanbanBoard = ref(null)
 const kanban = ref(null)
-const priorityFilter = ref(0)
+const priorityFilter = ref([])
 const usersFilter = ref([])
 const tagsFilter = ref([])
 const searchFilter = ref('')
@@ -40,7 +40,7 @@ const refetchKanban = async () => {
   kanban.value = res.data.container
 
   if(res.data.filters) {
-    priorityFilter.value = res.data.filters.priority
+    priorityFilter.value = res.data.filters.priority || []
     usersFilter.value = res.data.filters.users
     tagsFilter.value = res.data.filters.tags
     searchFilter.value = res.data.filters.search
@@ -255,7 +255,7 @@ const clearUserTimers = () => {
 }
 
 const setPriority = data => {
-  priorityFilter.value = data.priority !== 0 ? Number(data.priority) : null
+  priorityFilter.value = data
   saveFilters.value = true
   refetchKanban()
 }
@@ -321,7 +321,7 @@ onBeforeUnmount(() => {
         <VBadge
           location="top start"
           bordered
-          :color="priorityFilter || usersFilter.length || tagsFilter.length || searchFilter ? 'primary' : ''"
+          :color="priorityFilter.length || usersFilter.length || tagsFilter.length || searchFilter ? 'primary' : ''"
         >
           <template #badge>
             <VIcon
@@ -331,9 +331,9 @@ onBeforeUnmount(() => {
           </template>
 
           <div class="d-flex align-center gap-2 filters-container">
-            <PriorityBadge
-              :priority="priorityFilter"
-              @update-priority="setPriority"
+            <PriorityFilterDropdown
+              :model-value="priorityFilter"
+              @update:model-value="setPriority($event)"
             />
 
             <UserFilterDropdown

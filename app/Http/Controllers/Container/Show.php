@@ -62,7 +62,17 @@ class Show extends BaseController
                                 ->with(['members.user:id,first_name,last_name,email', 'tags']);
 
                             if (!empty($filters['priority'])) {
-                                $q->where('priority', $filters['priority']);
+                                $hasUnflagged = in_array("unflagged", $filters['priority']);
+                                $filteredPriorities = array_filter($filters['priority'], fn($priority) => $priority !== "unflagged");
+
+                                $q->where(function ($q) use ($filteredPriorities, $hasUnflagged) {
+                                    if (!empty($filteredPriorities)) {
+                                        $q->whereIn('priority', $filteredPriorities);
+                                    }
+                                    if ($hasUnflagged) {
+                                        $q->orWhere('priority', 0);
+                                    }
+                                });
                             }
                             if (!empty($filters['users'])) {
                                 $hasUnassigned = in_array("unassigned", $filters['users']);
@@ -80,8 +90,18 @@ class Show extends BaseController
                                 });
                             }
                             if (!empty($filters['tags'])) {
-                                $q->whereHas('tags', function ($q) use ($filters) {
-                                    $q->whereIn('tag_id', $filters['tags']);
+                                $hasUntagged = in_array("untagged", $filters['tags']);
+                                $filteredTags = array_filter($filters['tags'], fn($tag) => $tag !== "untagged");
+
+                                $q->where(function ($q) use ($filteredTags, $hasUntagged) {
+                                    if (!empty($filteredTags)) {
+                                        $q->whereHas('tags', function ($q) use ($filteredTags) {
+                                            $q->whereIn('tag_id', $filteredTags);
+                                        });
+                                    }
+                                    if ($hasUntagged) {
+                                        $q->orWhereDoesntHave('tags');
+                                    }
                                 });
                             }
                             if (!empty($filters['search'])) {

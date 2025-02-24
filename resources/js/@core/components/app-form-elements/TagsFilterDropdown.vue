@@ -20,6 +20,21 @@
       <div class="dropdown-header">
         Tags
       </div>
+      <button
+        class="dropdown-item"
+        :class="{ 'is-selected': modelValue.includes('untagged') }"
+        @click="toggleUntagged"
+      >
+        <VIcon
+          size="18"
+          :icon="modelValue.includes('untagged') ? 'tabler-tag-off' : 'tabler-tag-off'"
+          class="user-icon"
+        />
+        Untagged
+      </button>
+
+      <VDivider />
+
       <template v-if="tags.length">
         <button
           v-for="tag in tags"
@@ -79,9 +94,21 @@ const emit = defineEmits(["update:modelValue"])
 
 const btn = ref(null)
 const dropdown = ref(null)
-const selectedTags = ref([])
 const tags = ref([])
 const route = useRoute()
+
+const toggleUntagged = () => {
+  const selected = [...props.modelValue]
+  const index = selected.indexOf("untagged")
+
+  if (index === -1) {
+    selected.push("untagged")
+  } else {
+    selected.splice(index, 1)
+  }
+
+  emit("update:modelValue", selected)
+}
 
 const selectTag = tag => {
   const selected = [...props.modelValue]
@@ -167,6 +194,7 @@ onMounted(() => {
 
 .is-selected {
   background: rgba(9, 105, 218, 0.1);
+  color: #0969da;
   font-weight: 600;
 }
 

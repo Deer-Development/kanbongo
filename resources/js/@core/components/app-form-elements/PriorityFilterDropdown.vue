@@ -9,7 +9,7 @@
         class="icon"
         :color="modelValue.length ? 'primary' : ''"
       >
-        tabler-users
+        tabler-flag
       </VIcon>
     </button>
 
@@ -18,62 +18,55 @@
       class="dropdown-menu hidden"
     >
       <div class="dropdown-header">
-        Assignees
+        Priority
       </div>
 
       <button
         class="dropdown-item"
-        :class="{ 'is-selected': modelValue.includes('unassigned') }"
-        @click="toggleUnassigned"
+        :class="{ 'is-selected': modelValue.includes('unflagged') }"
+        @click="toggleUnflagged"
       >
         <VIcon
           size="18"
-          :icon="modelValue.includes('unassigned') ? 'tabler-user-x' : 'tabler-user'"
+          :icon="modelValue.includes('unflagged') ? 'tabler-user-x' : 'tabler-user'"
           class="user-icon"
         />
-        Unassigned
+        Unflagged
       </button>
 
       <VDivider />
 
-      <template v-if="users.length">
-        <button
-          v-for="user in users"
-          :key="user.id"
-          class="dropdown-item"
-          :class="{ 'is-selected': modelValue.includes(user.id) }"
-          @click="selectUser(user)"
+      <button
+        v-for="(label, key) in Priority.data"
+        :key="key"
+        class="dropdown-item"
+        :class="{ 'is-selected': modelValue.includes(key) }"
+        @click="selectPriority(key)"
+      >
+        <VIcon
+          size="16"
+          :color="getPriorityColor(key)"
+          class="user-icon"
         >
-          <VIcon
-            size="18"
-            :icon="modelValue.includes(user.id) ? 'tabler-user-check' : 'tabler-user'"
-            class="user-icon"
-          />
-          {{ user.full_name }}
-        </button>
+          tabler-flag-3-filled
+        </VIcon>
+        <span>{{ label }}</span>
+      </button>
 
-        <VDivider />
-
-        <div
-          class="dropdown-item priority-clear"
-          @click="clearSelection"
-        >
-          <VIcon
-            left
-            size="16"
-            color="gray"
-          >
-            tabler-circle-off
-          </VIcon>
-          <span>Clear</span>
-        </div>
-      </template>
+      <VDivider />
 
       <div
-        v-else
-        class="no-result"
+        class="dropdown-item priority-clear"
+        @click="clearSelection"
       >
-        No result
+        <VIcon
+          left
+          size="16"
+          color="gray"
+        >
+          tabler-circle-off
+        </VIcon>
+        <span>Clear</span>
       </div>
     </div>
   </div>
@@ -92,15 +85,39 @@ const emit = defineEmits(["update:modelValue"])
 
 const btn = ref(null)
 const dropdown = ref(null)
-const users = ref([])
-const route = useRoute()
 
-const selectUser = user => {
+const Priority = {
+  URGENT: 1,
+  HIGH: 2,
+  NORMAL: 3,
+  LOW: 4,
+  data: {
+    1: 'Urgent',
+    2: 'High',
+    3: 'Normal',
+    4: 'Low',
+  },
+}
+
+const getPriorityColor = priority => {
+  if (priority == Priority.URGENT)
+    return '#FF5733'
+  if (priority == Priority.HIGH)
+    return '#FFA533'
+  if (priority == Priority.NORMAL)
+    return '#338DFF'
+  if (priority == Priority.LOW)
+    return '#30c15a'
+
+  return '#d2d2d5'
+}
+
+const selectPriority = priority => {
   const selected = [...props.modelValue]
-  const index = selected.indexOf(user.id)
+  const index = selected.indexOf(priority)
 
   if (index === -1) {
-    selected.push(user.id)
+    selected.push(priority)
   } else {
     selected.splice(index, 1)
   }
@@ -108,12 +125,12 @@ const selectUser = user => {
   emit("update:modelValue", selected)
 }
 
-const toggleUnassigned = () => {
+const toggleUnflagged = () => {
   const selected = [...props.modelValue]
-  const index = selected.indexOf("unassigned")
+  const index = selected.indexOf("unflagged")
 
   if (index === -1) {
-    selected.push("unassigned")
+    selected.push("unflagged")
   } else {
     selected.splice(index, 1)
   }
@@ -125,14 +142,6 @@ const clearSelection = () => {
   emit("update:modelValue", [])
 }
 
-const fetchContainerUsers = async () => {
-  const res = await $api(`/container/members/${route.params.containerId}`, {
-    method: "GET",
-  })
-
-  users.value = res.data
-}
-
 onMounted(() => {
   tippy(btn.value, {
     content: dropdown.value,
@@ -141,9 +150,6 @@ onMounted(() => {
     animation: "shift-away",
     trigger: "click",
     arrow: false,
-    onShow() {
-      fetchContainerUsers()
-    },
   })
 })
 </script>
