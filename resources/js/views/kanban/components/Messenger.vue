@@ -1,8 +1,6 @@
 <script setup>
-import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useToast } from "vue-toastification"
 import { defineExpose, ref, watch } from "vue"
-import { remapNodes } from "@formkit/drag-and-drop"
 
 const props = defineProps({
   kanbanItem: {

@@ -6,10 +6,12 @@ import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 import { useToast } from "vue-toastification"
 import PriorityFilterDropdown from "@core/components/app-form-elements/PriorityFilterDropdown.vue"
+import GeneralMessenger from "@/views/kanban/components/GeneralMessenger.vue"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
 const isPaymentDetailsDialogVisible = ref(false)
+const isMessagesDialogVisible = ref(false)
 const isEditContainerDialogVisible = ref(false)
 const activeUsersMenu = ref(false)
 const deleteItem = ref(null)
@@ -22,6 +24,7 @@ const searchFilter = ref('')
 const saveFilters = ref(false)
 const userData = computed(() => useCookie('userData', { default: null }).value)
 const userTimers = reactive({})
+const isActiveUsersMenuOpen = ref(false)
 
 const refetchKanban = async () => {
   const res = await $api(`/container/${ route.params.containerId }`, {
@@ -115,12 +118,6 @@ const addNewItem = async newItem => {
 
 const editItemFn = async editItem => {
   console.log(editItem)
-
-  // await $api('/apps/kanban/item/update', {
-  //   method: 'PUT',
-  //   body: editItem,
-  // })
-  // refetchKanban()
 }
 
 const membersEdited = async () => {
@@ -516,6 +513,21 @@ onBeforeUnmount(() => {
             tabler-user-edit
           </VIcon>
         </VChip>
+
+        <VChip
+          size="small"
+          variant="elevated"
+          class="comments-chip"
+          @click="isMessagesDialogVisible = true"
+        >
+          <VIcon
+            left
+            size="16"
+          >
+            tabler-message
+          </VIcon>
+        </VChip>
+
         <VChip
           size="small"
           variant="elevated"
@@ -556,6 +568,10 @@ onBeforeUnmount(() => {
       @confirm="confirmed => confirmed && deleteItemFn()"
     />
     <div v-if="kanban">
+      <GeneralMessenger
+        v-model:is-drawer-open="isMessagesDialogVisible"
+        :board-id="kanban.id"
+      />
       <PaymentDetails
         v-model:board-id="boardId"
         v-model:is-super-admin="isSuperAdmin"

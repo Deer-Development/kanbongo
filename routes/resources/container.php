@@ -5,6 +5,7 @@ use App\Http\Controllers\Container\MemberPaychecksDetails;
 use App\Http\Controllers\Container\ProcessPayment;
 use App\Http\Controllers\Container\StateUpdate;
 use App\Http\Controllers\Container\Tags;
+use App\Http\Controllers\Container\Activities;
 use App\Http\Controllers\Container\Users;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Container\Index;
@@ -20,6 +21,7 @@ Route::group(['prefix' => 'container'], function () {
     Route::put('/{id}', Update::class)->name("container.update");
     Route::get('/tags/{id}', Tags::class)->name("container.fetch-tags");
     Route::get('/members/{id}', Users::class)->name("container.fetch-users");
+    Route::post('/activities/{id}', Activities::class)->name("container.fetch-activities");
     Route::put('/boards-state-update/{id}', StateUpdate::class)->name("container.boards-state-update");
     Route::get('/{id}/member-payment-details/{userId}', MemberPaymentDetails::class)->name("container.member-payment-details");
     Route::get('/{id}/member-paychecks-details/{userId}', MemberPaychecksDetails::class)->name("container.member-paychecks-details");
