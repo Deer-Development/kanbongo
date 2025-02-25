@@ -49,44 +49,56 @@ watch(() => props.member, (newValue, oldValue) => {
 
 <template>
   <div class="member-payment-details">
-    <div v-if="paychecksDetails" class="members-container">
+    <!-- Payment Summary Section -->
+    <div v-if="paychecksDetails?.length" class="payment-summary">
+      <h3>Payment History</h3>
+      <div class="summary-stats">
+        <div class="summary-stat">
+          <span>Total Paychecks</span>
+          <span>{{ paychecksDetails.length }}</span>
+        </div>
+        <div class="summary-stat">
+          <span>Total Hours</span>
+          <span>{{ paychecksDetails.reduce((sum, p) => sum + parseFloat(p.total_hours), 0).toFixed(2) }} hrs</span>
+        </div>
+        <div class="summary-stat">
+          <span>Total Amount</span>
+          <span>${{ paychecksDetails.reduce((sum, p) => sum + parseFloat(p.total_amount), 0).toFixed(2) }}</span>
+        </div>
+        <div class="summary-stat">
+          <span>Latest Payment</span>
+          <span>{{ paychecksDetails[0]?.created_at ? formatDate(paychecksDetails[0].created_at) : 'N/A' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="paychecksDetails" class="paychecks-grid">
       <div
         v-for="paycheck in paychecksDetails"
         :key="paycheck.id"
-        class="entry-card-github"
+        class="paycheck-card"
       >
-        <VChip
-          :color="(paycheck.status === 'paid') ? 'success' : 'warning'"
-          class="payment-status-badge"
-          label
-          outlined
-        >
-          {{
-            (paycheck.status === 'paid') ? 'Paid' : 'Pending'
-          }}
-        </VChip>
+        <div class="status-badge" :class="paycheck.status">
+          {{ paycheck.status === 'paid' ? 'Paid' : 'Pending' }}
+        </div>
 
-        <div class="payment-details mt-7">
-          <div class="detail">
+        <div class="payment-stats">
+          <div class="stat-row">
             <span class="label">Total Paid Hours:</span>
             <span class="value text-success">{{ paycheck.total_hours }} hrs</span>
           </div>
-          <div class="detail">
+          <div class="stat-row">
             <span class="label">Total Paid Amount:</span>
             <span class="value text-success">${{ paycheck.total_amount }}</span>
           </div>
-          <div class="detail">
+          <div class="stat-row">
             <span class="label">Paid By:</span>
             <span class="value text-primary">{{ paycheck.created_by.full_name }}</span>
           </div>
-          <div class="detail">
+          <div class="stat-row">
             <span class="label">Paid At:</span>
             <span class="value text-primary">{{ formatDate(paycheck.created_at) }}</span>
           </div>
-        </div>
-
-        <div class="card-actions">
-
         </div>
       </div>
     </div>
@@ -101,82 +113,124 @@ watch(() => props.member, (newValue, oldValue) => {
 </template>
 
 <style lang="scss" scoped>
-.members-container {
-  display: grid;
-  gap: 0.8rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+.member-payment-details {
+  padding: 1rem;
 }
 
-.entry-card-github {
+.payment-summary {
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
+
+  h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #24292f;
+    margin-bottom: 1rem;
+  }
+
+  .summary-stats {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .summary-stat {
+    background: #f6f8fa;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #d0d7de;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    span:first-child {
+      font-size: 0.875rem;
+      color: #57606a;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    span:last-child {
+      font-size: 1.125rem;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+.paychecks-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+}
+
+.paycheck-card {
   position: relative;
   background-color: #ffffff;
   border: 1px solid #d0d7de;
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: 6px;
+  padding: 1.25rem;
   transition: all 0.2s ease-in-out;
 
   &:hover {
-    background-color: #f3f4f6;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    border-color: #0969da;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
-  .payment-status-badge {
+  .status-badge {
     position: absolute;
-    top: 8px;
-    left: 8px;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
     font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.3rem 0.6rem;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
 
-  .member-info {
-    h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #24292e;
-      margin-bottom: 2px;
+    &.paid {
+      background: #dafbe1;
+      color: #1a7f37;
     }
-    p {
-      font-size: 0.875rem;
-      color: #57606a;
+
+    &.pending {
+      background: #fff8c5;
+      color: #9a6700;
     }
   }
 
-  .payment-details {
-    margin-bottom: 0.75rem;
-    .detail {
+  .payment-stats {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-top: 1rem;
+
+    .stat-row {
       display: flex;
       justify-content: space-between;
       font-size: 0.875rem;
-      margin-bottom: 0.4rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #d8dee4;
 
-      .label {
-        color: #6c757d;
+      &:last-child {
+        border-bottom: none;
       }
-      .value {
-        font-weight: bold;
-      }
-    }
-  }
 
-  .card-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.4rem;
-
-    .btn-github {
-      font-weight: 600;
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
-      transition: all 0.2s ease-in-out;
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      span:first-child {
+        color: #57606a;
       }
     }
   }
@@ -221,18 +275,18 @@ watch(() => props.member, (newValue, oldValue) => {
 
 .no-data {
   text-align: center;
-  font-size: 0.95rem;
-  color: #6c757d;
+  font-size: 0.875rem;
+  color: #57606a;
   margin-top: 1.5rem;
+  padding: 2rem;
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
 }
 
-.text-danger {
-  color: #cf222e;
-}
-
-.text-primary {
-  color: #0969da;
-}
+.text-success { color: #1a7f37; }
+.text-danger { color: #cf222e; }
+.text-primary { color: #0969da; }
 </style>
 
 

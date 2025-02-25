@@ -470,7 +470,7 @@ const goBack = () => {
   .content-section {
     flex: 1;
     overflow-y: auto;
-    padding: 1.5rem;
+    padding: 0.5rem !important;
   }
 
   .members-grid {
@@ -597,32 +597,42 @@ const goBack = () => {
     }
 
     .summary-stats {
-      display: flex;
-      gap: 1rem;
+      display: grid;
+      gap: 0.75rem;
       margin-bottom: 1.5rem;
-      flex-wrap: nowrap;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      
+      @media (max-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      @media (max-width: 480px) {
+        grid-template-columns: 1fr;
+      }
     }
 
     .summary-stat {
-      flex: 1;
       background: #f6f8fa;
       padding: 1rem;
       border-radius: 6px;
       border: 1px solid #d0d7de;
-      min-width: 150px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
 
       span:first-child {
         font-size: 0.875rem;
         color: #57606a;
         display: block;
         margin-bottom: 0.25rem;
-        white-space: nowrap;
       }
 
       span:last-child {
         font-size: 1.125rem;
         font-weight: 600;
-        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
   }

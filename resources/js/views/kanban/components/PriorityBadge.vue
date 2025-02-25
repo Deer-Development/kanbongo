@@ -5,7 +5,6 @@
   >
     <template #activator="{ props }">
       <div
-        class="custom-badge"
         v-bind="props"
       >
         <VIcon

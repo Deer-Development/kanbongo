@@ -212,7 +212,7 @@ watch(() => props.member, fetchMemberPaymentDetails, { deep: true, immediate: tr
 
         <!-- Task Logs -->
         <VExpandTransition>
-          <div v-if="expandedTask === taskDetail.task.id" class="logs-section">
+          <div v-if="expandedTask === taskDetail.task?.id" class="logs-section">
             <VTimeline
               density="comfortable"
               line-thickness="2"

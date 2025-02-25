@@ -12,24 +12,18 @@
         class="custom-badge"
         v-bind="props"
       >
-        <button
+        <VIcon
           class="timer-btn"
           :class="{
             'timer-btn-active': isTiming,
-            'timer-btn-disabled': hasActiveTimer && !isTiming || !member || (authDetails.has_weekly_limit && authDetails.weekly_limit_seconds <= authDetails.weekly_tracked.total_seconds),
           }"
-          :disabled="hasActiveTimer && !isTiming || !member || (authDetails.has_weekly_limit && authDetails.weekly_limit_seconds <= authDetails.weekly_tracked.total_seconds)"
+          :disabled="isTimerDisabled"
           @click.stop="toggleTimer"
-        >
-          <VIcon
-            :icon="isTiming ? 'tabler-pause' : (member ? 'tabler-play' : (task.tracked_time?.trackedTimeDisplay ? 'tabler-hourglass' :'tabler-hourglass-empty'))"
-            :color="(hasActiveTimer && !isTiming) ? '#6C757D' : isTiming ? '#fff' : (member && !(authDetails.has_weekly_limit && authDetails.weekly_limit_seconds <= authDetails.weekly_tracked.total_seconds) ? '#fff' :
-              (task.tracked_time?.trackedTimeDisplay ? '#6C757D' :'#6C757D')
-            )"
-            size="11"
-          />
-        </button>
-        <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay ? task.tracked_time.trackedTimeDisplay : '0h 0m 0s') }}</span>
+          :icon="getTimerIcon"
+          :color="getTimerColor"
+          size="14"
+        />
+        <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay || '0h 0m 0s') }}</span>
       </div>
     </template>
     <div class="timer-options ">
@@ -226,7 +220,7 @@
 </template>
 
 <script setup>
-import { ref, watch, defineProps, defineEmits } from 'vue'
+import { ref, watch, defineProps, defineEmits, computed, onUnmounted } from 'vue'
 import { differenceInSeconds, parseISO, format, parse } from "date-fns"
 
 const props = defineProps({
@@ -432,6 +426,25 @@ const deleteEntry = (entry, timeEntry) => {
   }
 }
 
+const isTimerDisabled = computed(() => {
+  return (props.hasActiveTimer && !isTiming.value) || 
+         !props.member || 
+         (props.auth.has_weekly_limit && 
+          props.auth.weekly_limit_seconds <= props.auth.weekly_tracked.total_seconds)
+})
+
+const getTimerIcon = computed(() => { 
+  if (isTiming.value) return 'tabler-player-pause-filled'
+  if (!props.member) return 'tabler-hourglass-filled'
+  return 'tabler-player-play-filled'
+})
+
+const getTimerColor = computed(() => {
+  if (isTimerDisabled.value) return '#9CA3AF' // gray-400
+  if (isTiming.value) return '#059669' // green-600
+  return '#2563EB' // blue-600
+})
+
 onUnmounted(() => {
   if (props.member?.intervalId) {
     clearInterval(props.member.intervalId)
@@ -469,6 +482,37 @@ onUnmounted(() => {
 .user-panel {
   background-color: #f8f9fa;
   border-radius: 8px;
+}
+
+.timer-btn {
+  transition: all 0.3s ease;
+  
+  &:not(:disabled) {
+    &:hover {
+      transform: scale(1.1);
+      opacity: 0.9;
+    }
+  }
+  
+  &-active {
+    animation: pulse 2s infinite;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.v-icon {
+  font-weight: bold;
 }
 </style>
 
