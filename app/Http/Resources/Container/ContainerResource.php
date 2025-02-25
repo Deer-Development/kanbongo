@@ -2,11 +2,7 @@
 
 namespace App\Http\Resources\Container;
 
-namespace App\Http\Resources\Container;
-
 use App\Http\Resources\Task\TaskBoardResource;
-use App\Models\TimeEntry;
-use App\Models\User;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;

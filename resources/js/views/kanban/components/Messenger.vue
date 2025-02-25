@@ -1,26 +1,22 @@
 <script setup>
 import { useToast } from "vue-toastification"
-import { defineExpose, ref, watch } from "vue"
+import { defineExpose, ref, watch, computed, nextTick } from "vue"
 
 const props = defineProps({
   kanbanItem: {
-    type: null,
+    type: Object,
     required: false,
     default: () => ({
       item: {
-        title: '',
-        dueDate: '2022-01-01T00:00:00Z',
-        labels: [],
-        members: [],
-        id: 0,
-        attachments: 0,
-        commentsCount: 0,
-        image: '',
-        comments: '',
-      },
-      boardId: 0,
-      boardName: '',
+        id: null,
+        name: 'Board Chat'
+      }
     }),
+  },
+  containerId: {
+    type: Number,
+    required: false,
+    default: null
   },
   availableMembers: {
     type: Array,
@@ -56,10 +52,29 @@ const chatLogPS = ref()
 const previewDialog = ref(false)
 const isEditMode = ref(false)
 const selectedAttachment = ref(null)
+const containerData = ref(null)
 
 const toast = useToast()
 
-const localKanbanItem = ref(JSON.parse(JSON.stringify(props.kanbanItem.item)))
+const localKanbanItem = ref(props.kanbanItem?.item || {
+  id: null,
+  name: 'Board Chat'
+})
+
+const commentableType = computed(() => {
+  return props.containerId ? 'App\\Models\\Container' : 'App\\Models\\Task'
+})
+
+const commentableId = computed(() => {
+  return props.containerId || props.kanbanItem.item.id
+})
+
+const itemTitle = computed(() => {
+  if (props.containerId) {
+    return 'Board Chat'
+  }
+  return `${props.kanbanItem.item.id}) ${props.kanbanItem.item.name}`
+})
 
 const handleDrawerModelValueUpdate = val => {
   emit('update:isDrawerOpen', val)
@@ -70,21 +85,32 @@ watch(() => props, () => {
 }, { deep: true, immediate: true })
 
 const fetchKanbanItem = async () => {
-  const res = await $api(`/task/${localKanbanItem.value.id}`)
+  if (!commentableId.value) return
+
+  const endpoint = props.containerId ? `/container/${props.containerId}/comments` : `/task/${props.kanbanItem.item.id}`
+  const res = await $api(endpoint)
+  
   if (res) {
-    localKanbanItem.value = res.data
+    if (props.containerId) {
+      // Handle container data
+      containerData.value = res.data
+    } else {
+      // Handle task data
+      localKanbanItem.value = res.data
+    }
+    
+    if (res.data.comments) {
+      messages.value = res.data.comments
+      await nextTick()
+      scrollToBottom()
+      checkCommentsInView()
+    }
   }
 }
 
-watch(() => props.kanbanItem, async () => {
-  localKanbanItem.value = JSON.parse(JSON.stringify(props.kanbanItem.item))
-
-  await fetchKanbanItem()
-
-  if (localKanbanItem.value.comments) {
-    messages.value = localKanbanItem.value.comments
-    scrollToBottom()
-    checkCommentsInView()
+watch(() => props.kanbanItem, () => {
+  if (props.kanbanItem?.item) {
+    localKanbanItem.value = JSON.parse(JSON.stringify(props.kanbanItem.item))
   }
 }, { deep: true })
 
@@ -101,8 +127,8 @@ const handleAddMessage = async () => {
     method: 'POST',
     body: {
       content: message.value,
-      commentable_id: localKanbanItem.value.id,
-      commentable_type: 'App\\Models\\Task',
+      commentable_id: commentableId.value,
+      commentable_type: commentableType.value,
       temporary_uploads: uploadedFiles.value,
       mentioned_users: selectedMembers.value,
       parent_id: messageToReply.value ? messageToReply.value.id : null,
@@ -111,21 +137,18 @@ const handleAddMessage = async () => {
 
   if (res) {
     messages.value = res.data
-  }
+    message.value = ''
+    selectedMembers.value = []
+    uploadedFiles.value = []
+    messageToReply.value = null
+    currentMessageId.value = null
+    isEditMode.value = false
 
-  message.value = ''
-  selectedMembers.value = []
-  uploadedFiles.value = []
-  messageToReply.value = null
-  currentMessageId.value = null
-  isEditMode.value = false
-
-  await nextTick(() => {
+    await nextTick()
     exitEditMode()
+    exitReplyMode()
     scrollToBottom()
-  })
-
-  scrollToBottom()
+  }
 }
 
 const markCommentAsRead = async commentId => {
@@ -171,7 +194,6 @@ const exitEditMode = () => {
   currentMessageId.value = null
   isEditMode.value = false
   messageToReply.value = null
-  messageToReply.value = null
   message.value = ''
   uploadedFiles.value = []
   selectedMembers.value = []
@@ -187,8 +209,8 @@ const submitEditMessage = async messageId => {
     method: 'PUT',
     body: {
       content: message.value,
-      commentable_id: localKanbanItem.value.id,
-      commentable_type: 'App\\Models\\Task',
+      commentable_id: commentableId.value,
+      commentable_type: commentableType.value,
       temporary_uploads: uploadedFiles.value,
       mentioned_users: selectedMembers.value,
     },
@@ -276,8 +298,26 @@ const getAttachmentStyle = attachment => {
   `
 }
 
-defineExpose({
-  fetchKanbanItem,
+const getAttachmentIcon = (attachment) => {
+  if (isImage(attachment)) return 'tabler-photo'
+  if (isPDF(attachment)) return 'tabler-file-type-pdf'
+  if (isWord(attachment)) return 'tabler-file-word'
+  if (isExcel(attachment)) return 'tabler-file-excel'
+  return 'tabler-file-check'
+}
+
+const getAttachmentColor = (attachment) => {
+  if (isImage(attachment)) return '#00A5E0'
+  if (isPDF(attachment)) return '#E74C3C'
+  if (isWord(attachment)) return '#2B579A'
+  if (isExcel(attachment)) return '#217346'
+  return '#636E72'
+}
+
+watch(() => props.isDrawerOpen, async () => {
+  if (props.isDrawerOpen) {
+    await fetchKanbanItem()
+  }
 })
 </script>
 
@@ -292,7 +332,7 @@ defineExpose({
     @update:model-value="handleDrawerModelValueUpdate"
   >
     <AppDrawerHeaderSection
-      :title="`${localKanbanItem.id}) ${localKanbanItem.name}`"
+      :title="itemTitle"
       class="py-2 px-2"
       @cancel="closeNavigationDrawer"
     />
@@ -346,67 +386,31 @@ defineExpose({
             >
               <div
                 v-if="msg.attachments?.length"
-                class="attachment-section"
+                class="attachments-section"
               >
-                <div
-                  v-for="attachment in msg.attachments"
-                  :key="attachment.id"
-                  class="attachment-item"
-                >
-                  <a
-                    class="attachment-link cursor-pointer d-flex flex-column align-items-center justify-center"
-                    :style="getAttachmentStyle(attachment)"
+                <div class="attachments-wrapper">
+                  <div
+                    v-for="attachment in msg.attachments"
+                    :key="attachment.id"
+                    class="attachment-item"
                     @click.prevent="openPreview(attachment)"
                   >
-                    <VIcon
-                      v-if="isImage(attachment)"
-                      size="16"
-                      style="color: #00A5E0;"
-                    >
-                      tabler-photo
-                    </VIcon>
-
-                    <VIcon
-                      v-else-if="isPDF(attachment)"
-                      size="24"
-                      style="color: #E74C3C;"
-                    >
-                      tabler-file-type-pdf
-                    </VIcon>
-
-                    <VIcon
-                      v-else-if="isWord(attachment)"
-                      size="24"
-                      style="color: #2B579A;"
-                    >
-                      tabler-file-word
-                    </VIcon>
-
-                    <VIcon
-                      v-else-if="isExcel(attachment)"
-                      size="24"
-                      style="color: #217346;"
-                    >
-                      tabler-file-excel
-                    </VIcon>
-
-                    <VIcon
-                      v-else
-                      size="24"
-                      style="color: #636E72;"
-                    >
-                      tabler-file-check
-                    </VIcon>
-
-                    <span class="text-body-2 text-link">{{ attachment.size }}</span>
-                  </a>
+                    <div class="attachment-info">
+                      <VIcon
+                        :icon="getAttachmentIcon(attachment)"
+                        :color="getAttachmentColor(attachment)"
+                        size="16"
+                      />
+                      <span class="attachment-name">{{ attachment.name }}</span>
+                      <span class="attachment-size">{{ attachment.size }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="d-flex justify-space-between gap-1">
                 <div class="d-flex flex-column gap-2 w-100 ">
-                  <div class="chat-parent-message-preview">
+                  <div class="chat-parent-message-preview" v-if="msg.parent">
                     <div
-                      v-if="msg.parent"
                       class="chat-message-box-reply w-100"
                     >
                       <div
@@ -619,55 +623,282 @@ defineExpose({
   </VNavigationDrawer>
 </template>
 
-<style scoped>
-.chat-parent-message-preview{
-  border-style: none none none solid;
-  border-width: 1px 1px 1px 3px;
-  border-color: #000 #000 #000 #f6c44c;
-  background-color: #0000;
-  border-radius: 0;
-  align-items: center;
-  min-width: auto;
-  min-height: auto;
-  max-height: 40px;
-  margin-left: 6px;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-right: 15px;
+<style lang="scss" scoped>
+$github-colors: (
+  text-primary: #24292f,
+  text-secondary: #57606a,
+  border: #d0d7de,
+  bg-primary: #ffffff,
+  bg-secondary: #f6f8fa,
+  accent: #0969da,
+  hover: #f3f4f6,
+  shadow: rgba(31, 35, 40, 0.07),
+  reply-border: #ffd33d,
+  reply-bg: rgba(255, 211, 61, 0.1)
+);
+
+$spacing: (
+  xs: 4px,
+  sm: 8px,
+  md: 12px,
+  lg: 16px,
+  xl: 20px
+);
+
+// Mixins
+@mixin github-card {
+  background: map-get($github-colors, bg-primary);
+  border: 1px solid map-get($github-colors, border);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+}
+
+.chat-log {
+  padding: map-get($spacing, lg);
   display: flex;
-  overflow: hidden;
+  flex-direction: column;
+  gap: map-get($spacing, lg);
 }
-.chat-message-box-reply {
-  background-color: #f2f3fa;
-  border-radius: 0 14px 14px 0;
-  max-width: none;
-  min-height: auto;
-  max-height: 48px;
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 8px;
-  font-size: 13.7px;
-  line-height: 19px;
-  overflow: auto;
+
+.chat-group {
+  display: flex;
+  gap: map-get($spacing, md);
+  align-items: flex-start;
+
+  &.flex-row-reverse {
+    .chat-content {
+      background: #f0f6ff;
+    }
+  }
 }
-.chat-parent-message-text.me.reply{
-  opacity: .8;
-  color: #2d2e32;
-  text-align: left;
-  min-height: auto;
-  max-height: none;
-  margin-bottom: 0;
-  font-family: Montserrat, sans-serif;
-  font-size: 13.5px;
-  line-height: 19px;
-  display: inline;
-  overflow: auto;
+
+.chat-body {
+  flex: 1;
+  max-width: 85%;
 }
-.text-message-content{
-  font-family: Montserrat, sans-serif;
-  font-size: 14.5px;
-  line-height: 19px;
+
+.chat-content {
+  @include github-card;
+  padding: map-get($spacing, md);
+  position: relative;
+  
+  @media (min-width: 769px) {
+    &:hover {
+      .message-actions {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+.chat-parent-message-preview {
+  margin-bottom: map-get($spacing, sm);
+  border-left: 3px solid map-get($github-colors, reply-border);
+  background: map-get($github-colors, reply-bg);
+  padding: map-get($spacing, xs) map-get($spacing, sm);
+  border-radius: 0 3px 3px 0;
+  font-size: 13px;
+  color: map-get($github-colors, text-secondary);
+}
+
+.text-message-content {
+  color: map-get($github-colors, text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  word-break: break-word;
+}
+
+.message-actions {
+  position: absolute;
+  top: map-get($spacing, xs);
+  right: map-get($spacing, xs);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  
+  // Show on mobile devices
+  @media (max-width: 768px) {
+    opacity: 1;
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-left: map-get($spacing, xs);
+  }
+  
+  .dropdown-menu {
+    @include github-card;
+    padding: map-get($spacing, xs);
+  }
+  
+  .custom-badge {
+    display: flex;
+    align-items: center;
+    gap: map-get($spacing, xs);
+    padding: map-get($spacing, xs) map-get($spacing, sm);
+    cursor: pointer;
+    border-radius: 4px;
+    color: map-get($github-colors, text-secondary);
+    
+    @media (max-width: 768px) {
+      padding: map-get($spacing, xs);
+      
+      // Optional: Make the touch target larger on mobile
+      min-width: 32px;
+      min-height: 32px;
+      justify-content: center;
+    }
+    
+    &:hover {
+      background: map-get($github-colors, hover);
+      color: map-get($github-colors, text-primary);
+    }
+  }
+}
+
+.attachments-section {
+  border-bottom: 1px solid map-get($github-colors, border);
+  padding: map-get($spacing, xs) map-get($spacing, sm);
+  margin-bottom: map-get($spacing, sm);
+}
+
+.attachments-wrapper {
+  display: flex;
+  overflow-x: auto;
+  gap: map-get($spacing, xs);
+  padding-bottom: map-get($spacing, sm);
+  
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: map-get($github-colors, bg-secondary);
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: darken(map-get($github-colors, border), 10%);
+    border-radius: 4px;
+    
+    &:hover {
+      background: darken(map-get($github-colors, border), 15%);
+    }
+  }
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  background: map-get($github-colors, bg-secondary);
+  border: 1px solid map-get($github-colors, border);
+  border-radius: 4px;
+  padding: map-get($spacing, xs) map-get($spacing, sm);
+  min-width: 180px;
+  max-width: 180px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: map-get($github-colors, hover);
+    border-color: darken(map-get($github-colors, border), 5%);
+  }
+
+  .attachment-info {
+    display: flex;
+    align-items: center;
+    gap: map-get($spacing, sm);
+    flex: 1;
+    min-width: 0; // For text truncation
+    
+    .attachment-name {
+      font-size: 12px;
+      color: map-get($github-colors, text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    
+    .attachment-size {
+      font-size: 11px;
+      color: map-get($github-colors, text-secondary);
+      white-space: nowrap;
+    }
+  }
+}
+
+// Empty state styling
+.no-activities {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: map-get($github-colors, text-secondary);
+  text-align: center;
+  padding: map-get($spacing, xl);
+  
+  .v-icon {
+    margin-bottom: map-get($spacing, md);
+    opacity: 0.7;
+  }
+}
+
+// Preview dialog styling
+.v-dialog {
+  .v-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    padding: map-get($spacing, md) map-get($spacing, lg);
+    border-bottom: 1px solid map-get($github-colors, border);
+  }
+  
+  .v-card-text {
+    padding: map-get($spacing, lg);
+  }
+  
+  .v-card-actions {
+    padding: map-get($spacing, sm) map-get($spacing, lg);
+    border-top: 1px solid map-get($github-colors, border);
+  }
+}
+
+// Custom scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: map-get($github-colors, bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: darken(map-get($github-colors, border), 10%);
+  border-radius: 4px;
+  
+  &:hover {
+    background: darken(map-get($github-colors, border), 15%);
+  }
+}
+
+// Timestamp and read status
+.text-disabled {
+  color: map-get($github-colors, text-secondary);
+  font-size: 12px;
+}
+
+#comment-check {
+  transition: opacity 0.3s ease;
+  
+  &.check-animation {
+    animation: checkmark 0.3s ease-in-out;
+  }
+}
+
+@keyframes checkmark {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>
+

@@ -1,0 +1,35 @@
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+}
+
+@mixin icon-size {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin github-card {
+  background: map-get($github-colors, bg-primary);
+  border: 1px solid map-get($github-colors, border);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px map-get($github-colors, shadow);
+}
+
+@mixin github-hover {
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background: map-get($github-colors, hover);
+  }
+}
+
+@mixin github-focus {
+  &:focus {
+    outline: none;
+    border-color: map-get($github-colors, accent);
+    box-shadow: 0 0 0 3px rgba(map-get($github-colors, accent), 0.2);
+  }
+} 

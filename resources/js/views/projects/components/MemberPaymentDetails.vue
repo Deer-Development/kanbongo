@@ -57,13 +57,51 @@ const totalSelectedPayment = computed(() => {
   }, 0)
 })
 
-const toggleTaskEntries = taskDetail => {
-  const entryIds = taskDetail.timeEntries.map(entry => entry.id)
+const isAllSelected = (entries) => {
+  if (!entries || entries.length === 0) return false
+  return entries.every(entry => 
+    entry.is_paid || selectedTimeEntries.value.includes(entry.id)
+  )
+}
+
+const getLogColor = (action) => {
+  switch (action) {
+    case 'update':
+      return 'primary'
+    case 'delete':
+      return 'error'
+    default:
+      return 'grey'
+  }
+}
+
+const selectionState = computed(() => {
+  if (!paymentDetails.value) return {}
+  
+  return Object.values(paymentDetails.value).reduce((acc, taskDetail) => {
+    acc[taskDetail.task.id] = taskDetail.timeEntries.every(entry => 
+      selectedTimeEntries.value.includes(entry.id)
+    )
+    return acc
+  }, {})
+})
+
+const toggleTaskEntries = (taskDetail) => {
+  const entryIds = taskDetail.timeEntries
+    .filter(entry => !entry.is_paid)
+    .map(entry => entry.id)
+    
   const allSelected = entryIds.every(id => selectedTimeEntries.value.includes(id))
 
-  selectedTimeEntries.value = allSelected
-    ? selectedTimeEntries.value.filter(id => !entryIds.includes(id))
-    : [...new Set([...selectedTimeEntries.value, ...entryIds])]
+  if (allSelected) {
+    selectedTimeEntries.value = selectedTimeEntries.value.filter(id => 
+      !entryIds.includes(id)
+    )
+  } else {
+    selectedTimeEntries.value = [
+      ...new Set([...selectedTimeEntries.value, ...entryIds])
+    ]
+  }
 }
 
 const generateLogMessage = log => {
@@ -143,255 +181,300 @@ watch(() => props.member, fetchMemberPaymentDetails, { deep: true, immediate: tr
 
 <template>
   <div class="member-payment-details">
-    <div v-if="paymentDetails">
+    <div v-if="paymentDetails" class="tasks-container">
       <div
         v-for="(taskDetail, key) in paymentDetails"
         :key="key"
-        class="task-card"
+        class="github-card"
       >
-        <div class="task-header">
-          <h4 class="task-title">
-            {{ taskDetail.task?.name }}
-          </h4>
-          <span class="custom-badge custom-badge-add">
-            <VIcon>
-              tabler-clock-play
-            </VIcon>
-            <span>{{ taskDetail.trackedTimeDisplay }}</span>
-          </span>
+        <div class="card-header">
+          <div class="header-content">
+            <h4 class="task-title">
+              {{ taskDetail.task?.name }}
+            </h4>
+            <div class="time-badge">
+              <VIcon size="16" color="success">tabler-clock-play</VIcon>
+              <span>{{ taskDetail.trackedTimeDisplay }}</span>
+            </div>
+          </div>
+
+          <VBtn
+            v-if="taskDetail.task && taskDetail.entries_logs.length"
+            variant="text"
+            size="small"
+            class="logs-btn"
+            prepend-icon="tabler-history"
+            @click="expandedTask = expandedTask === taskDetail.task.id ? null : taskDetail.task.id"
+          >
+            Task Logs
+          </VBtn>
         </div>
 
-        <VExpansionPanels
-          v-if="taskDetail.task && taskDetail.entries_logs.length"
-          v-model="expandedTask"
-          variant="accordion"
-          class="expansion-panels-width-border"
-        >
-          <VExpansionPanel :value="taskDetail.task.id">
-            <VExpansionPanelTitle>
-              <div class="custom-badge">
-                <VIcon>
-                  tabler-history
-                </VIcon>
-                <span>Task Logs</span>
-              </div>
-            </VExpansionPanelTitle>
-            <VExpansionPanelText>
-              <VTimeline
-                side="end"
-                density="comfortable"
-              >
-                <VTimelineItem
-                  v-for="log in taskDetail.entries_logs"
-                  :key="log.id"
-                  class="timeline-item"
-                  :dot-color="log.action === 'delete' ? 'error' : 'success'"
-                >
-                  <div class="log-entry">
-                    <div class="log-header">
-                      <strong>{{ log.action.toUpperCase() }}</strong>
-                      <span class="log-date">{{ formatDate(log.created_at) }}</span>
-                    </div>
-                    <p
-                      class="log-message"
-                      v-html="generateLogMessage(log)"
-                    />
-                  </div>
-                </VTimelineItem>
-              </VTimeline>
-            </VExpansionPanelText>
-          </VExpansionPanel>
-        </VExpansionPanels>
-
-        <table class="time-entries-table">
-          <thead>
-            <tr>
-              <th
-                v-if="props.isOwner || props.isSuperAdmin"
-                class="center"
-              >
-                ✔
-              </th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Duration</th>
-              <th>Paid</th>
-              <th>Amount</th>
-              <th>Rate</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="entry in taskDetail.timeEntries"
-              :key="entry.id"
+        <!-- Task Logs -->
+        <VExpandTransition>
+          <div v-if="expandedTask === taskDetail.task.id" class="logs-section">
+            <VTimeline
+              density="comfortable"
+              line-thickness="2"
+              class="github-timeline"
             >
-              <td
-                v-if="props.isOwner || props.isSuperAdmin"
-                class="center"
+              <VTimelineItem
+                v-for="log in taskDetail.entries_logs"
+                :key="log.id"
+                :dot-color="getLogColor(log.action)"
+                size="small"
               >
-                <VCheckbox
-                  v-model="selectedTimeEntries"
-                  :value="entry.id"
-                  :disabled="entry.is_paid"
-                />
-              </td>
-              <td>{{ formatDate(entry.start) }}</td>
-              <td>{{ formatDate(entry.end) }}</td>
-              <td>{{ entry.duration }}</td>
-              <td>
-                <span :class="entry.is_paid ? 'badge-paid' : 'badge-unpaid'">
-                  {{ entry.is_paid ? 'Yes' : 'No' }}
-                </span>
-              </td>
-              <td>{{ entry.amount_paid ? `$${entry.amount_paid}` : '--' }}</td>
-              <td>{{ entry.paid_rate ? `$${entry.paid_rate}` : '--' }}</td>
-            </tr>
-          </tbody>
-        </table>
+                <div class="log-entry">
+                  <div class="log-header">
+                    <span class="action-badge" :class="log.action">
+                      {{ log.action.toUpperCase() }}
+                    </span>
+                    <span class="log-date">{{ formatDate(log.created_at) }}</span>
+                  </div>
+                  <div
+                    class="log-content"
+                    v-html="generateLogMessage(log)"
+                  />
+                </div>
+              </VTimelineItem>
+            </VTimeline>
+          </div>
+        </VExpandTransition>
+
+        <!-- Time Entries Table -->
+        <div class="table-container">
+          <table class="github-table">
+            <thead>
+              <tr>
+                <th v-if="props.isOwner || props.isSuperAdmin" class="checkbox-column">
+                  <VCheckbox
+                    :model-value="isAllSelected(taskDetail.timeEntries)"
+                    :indeterminate="
+                      taskDetail.timeEntries.some(entry => selectedTimeEntries.includes(entry.id)) &&
+                      !isAllSelected(taskDetail.timeEntries)
+                    "
+                    @change="toggleTaskEntries(taskDetail)"
+                  />
+                </th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Amount</th>
+                <th>Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="entry in taskDetail.timeEntries"
+                :key="entry.id"
+                :class="{ 'is-paid': entry.is_paid }"
+              >
+                <td v-if="props.isOwner || props.isSuperAdmin" class="checkbox-column">
+                  <VCheckbox
+                    v-model="selectedTimeEntries"
+                    :value="entry.id"
+                    :disabled="entry.is_paid"
+                  />
+                </td>
+                <td>{{ formatDate(entry.start) }}</td>
+                <td>{{ formatDate(entry.end) }}</td>
+                <td>{{ entry.duration }}</td>
+                <td>
+                  <span class="status-badge" :class="entry.is_paid ? 'paid' : 'unpaid'">
+                    {{ entry.is_paid ? 'Paid' : 'Unpaid' }}
+                  </span>
+                </td>
+                <td>{{ entry.amount_paid ? `$${entry.amount_paid}` : '--' }}</td>
+                <td>{{ entry.paid_rate ? `$${entry.paid_rate}` : '--' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
-<style>
+<style lang="scss" scoped>
 .member-payment-details {
-  background: linear-gradient(to bottom, #ffffff, #f4f6f9);
+  .tasks-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .github-card {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #0969da;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+      padding: 1rem;
+      background: #f6f8fa;
+      border-bottom: 1px solid #d0d7de;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .header-content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .task-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #24292f;
+        margin: 0;
+      }
+
+      .time-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        background: #dafbe1;
+        color: #1a7f37;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .logs-btn {
+        color: #57606a;
+        font-size: 0.75rem;
+        
+        &:hover {
+          color: #0969da;
+        }
+      }
+    }
+
+    .logs-section {
+      padding: 1rem;
+      background: #f6f8fa;
+      border-bottom: 1px solid #d0d7de;
+
+      .github-timeline {
+        .log-entry {
+          background: #ffffff;
+          border: 1px solid #d0d7de;
+          border-radius: 6px;
+          padding: 0.75rem;
+
+          .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+
+            .action-badge {
+              font-size: 0.75rem;
+              font-weight: 600;
+              padding: 0.25rem 0.5rem;
+              border-radius: 2rem;
+
+              &.update { background: #ddf4ff; color: #0969da; }
+              &.delete { background: #ffebe9; color: #cf222e; }
+            }
+
+            .log-date {
+              font-size: 0.75rem;
+              color: #57606a;
+            }
+          }
+
+          .log-content {
+            font-size: 0.8125rem;
+            color: #24292f;
+          }
+        }
+      }
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    .github-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+
+      th, td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #d0d7de;
+        text-align: left;
+      }
+
+      th {
+        background: #f6f8fa;
+        color: #24292f;
+        font-weight: 600;
+      }
+
+      .checkbox-column {
+        width: 48px;
+        text-align: center;
+      }
+
+      tr {
+        &:hover {
+          background: #f6f8fa;
+        }
+
+        &.is-paid {
+          background: #f8f9fa;
+          color: #57606a;
+        }
+      }
+
+      .status-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+
+        &.paid {
+          background: #dafbe1;
+          color: #1a7f37;
+        }
+
+        &.unpaid {
+          background: #ffebe9;
+          color: #cf222e;
+        }
+      }
+    }
+  }
 }
 
-.task-card {
-  background: #ffffff;
-  padding: 14px;
-  margin-bottom: 12px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.task-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.task-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.task-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #333;
-}
-
-.badge {
-  background: #0056b3;
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.time-entries-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 5px;
-  font-size: 0.95rem;
-}
-
-table th, table td {
-  padding: 8px 12px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
-}
-
-.badge-paid {
-  background: #28a745;
-  color: white;
-  padding: 5px 8px;
-  border-radius: 5px;
-  font-weight: bold;
-}
-
-.badge-unpaid {
-  background: #dc3545;
-  color: white;
-  padding: 5px 8px;
-  border-radius: 5px;
-  font-weight: bold;
-}
-
-.icon-title {
-  margin-right: 8px;
-  color: #007bff;
-}
-
-.timeline-item {
-  padding-left: 16px;
-}
-
-.log-entry {
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.log-header {
-  display: flex;
-  justify-content: space-between;
-  font-weight: bold;
-  color: #333;
-}
-
-.log-date {
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.log-message {
-  padding: 10px;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  font-weight: 500;
-}
-
-.log-paid {
-  background-color: #d4edda;
-  color: #155724;
-  border-left: 5px solid #28a745;
-}
-
-.log-stopped {
-  background-color: #fff3cd;
-  color: #856404;
-  border-left: 5px solid #ffc107;
-}
-
-.log-manual {
-  background-color: #e2e3e5;
-  color: #383d41;
-  border-left: 5px solid #6c757d;
-}
-
-.log-deleted {
-  background-color: #f8d7da;
-  color: #721c24;
-  border-left: 5px solid #dc3545;
-}
-
-.log-default {
-  background-color: #d1ecf1;
-  color: #0c5460;
-  border-left: 5px solid #17a2b8;
+.github-table {
+  .checkbox-column {
+    .v-checkbox {
+      .v-selection-control {
+        &--dirty {
+          .v-selection-control__input::before {
+            background-color: #0969da;
+          }
+        }
+        
+        &--indeterminate {
+          .v-selection-control__input::before {
+            background-color: #6e7781;
+          }
+        }
+      }
+    }
+  }
 }
 </style>

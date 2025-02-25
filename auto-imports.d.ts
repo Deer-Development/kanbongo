@@ -175,6 +175,7 @@ declare global {
   const useAsyncState: typeof import('@vueuse/core')['useAsyncState']
   const useAttrs: typeof import('vue')['useAttrs']
   const useAuthApi: typeof import('./resources/js/composables/useAuthApi.js')['useAuthApi']
+  const useAvailableSpace: typeof import('./resources/js/composables/useAvailableSpace.js')['useAvailableSpace']
   const useAverage: typeof import('@vueuse/math')['useAverage']
   const useBase64: typeof import('@vueuse/core')['useBase64']
   const useBattery: typeof import('@vueuse/core')['useBattery']
@@ -535,6 +536,7 @@ declare module 'vue' {
     readonly useAsyncState: UnwrapRef<typeof import('@vueuse/core')['useAsyncState']>
     readonly useAttrs: UnwrapRef<typeof import('vue')['useAttrs']>
     readonly useAuthApi: UnwrapRef<typeof import('./resources/js/composables/useAuthApi.js')['useAuthApi']>
+    readonly useAvailableSpace: UnwrapRef<typeof import('./resources/js/composables/useAvailableSpace.js')['useAvailableSpace']>
     readonly useAverage: UnwrapRef<typeof import('@vueuse/math')['useAverage']>
     readonly useBase64: UnwrapRef<typeof import('@vueuse/core')['useBase64']>
     readonly useBattery: UnwrapRef<typeof import('@vueuse/core')['useBattery']>

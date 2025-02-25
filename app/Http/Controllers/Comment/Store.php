@@ -23,6 +23,7 @@ class Store extends BaseController
     {
         $comment = $this->service->create(array_merge($request->validated(), [
             'created_by' => auth()->id(),
+            'content' => $request->validated()['content'] ?? '<p class="attachment-placeholder"> </p>',
         ]));
 
         if ($request->has('temporary_uploads')) {

@@ -361,6 +361,7 @@
     "useModel": true,
     "useTemplateRef": true,
     "useAuthApi": true,
-    "maxLengthValidator": true
+    "maxLengthValidator": true,
+    "useAvailableSpace": true
   }
 }

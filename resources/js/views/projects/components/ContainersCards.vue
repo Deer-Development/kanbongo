@@ -61,181 +61,233 @@ watch(() => isPaymentDetailsDialogVisible.value, value => {
     boardId.value = 0
   }
 })
+
+const canEditBoard = board => {
+  return props.isSuperAdmin || projectDataLocal.value.owner.id === props.userData.id || board.members.find(member => member.user.id === props.userData.id && member.is_admin)
+}
 </script>
 
 <template>
-  <div>
-    <VRow>
-      <VCol
-        v-for="item in projectDataLocal.containers"
-        :key="item.id"
-        cols="12"
-        sm="6"
-        lg="4"
-      >
-        <VCard
-          class="elegant-card"
-          elevation="3"
-          :class="{
-            'cursor-pointer': item.is_active,
-            'cursor-not-allowed': !item.is_active,
-          }"
-          @click="goToBoard(item)"
-        >
-          <VCardTitle class="card-header">
-            <VChip
-              color="primary"
-              variant="elevated"
-              class="chip-title"
+  <div class="boards-grid">
+    <div
+      v-for="board in projectDataLocal.containers"
+      :key="board.id"
+      class="board-card"
+      :class="{ 'is-inactive': !board.is_active }"
+      @click="goToBoard(board)"
+    >
+      <!-- Card Header -->
+      <div class="card-header">
+        <div class="header-content">
+          <div class="status-dot" :class="{ 'active': board.is_active }"></div>
+          <h3 class="board-name">{{ board.name }}</h3>
+        </div>
+        <div class="status-badge" :class="board.is_active ? 'active' : 'inactive'">
+          {{ board.is_active ? 'Active' : 'Inactive' }}
+        </div>
+      </div>
+
+      <!-- Card Content -->
+      <div class="card-content">
+        <div class="members-count">
+          <VIcon size="16" color="text-medium-emphasis">tabler-users</VIcon>
+          <span>{{ board.members.length }} members</span>
+        </div>
+
+        <!-- Members Avatars -->
+        <div class="members-avatars">
+          <template v-for="(member, index) in board.members.slice(0, 3)" :key="member.id">
+            <VAvatar
+              :size="32"
+              :color="member.user.avatar ? 'transparent' : '#f3f4f6'"
+              class="member-avatar"
+              v-tooltip="member.user.full_name"
             >
-              {{ item.name }}
-            </VChip>
-            <div class="custom-badge">
-              <VIcon
-                :icon="item.is_active ? 'tabler-circle-check' : 'tabler-circle-x'"
-                :color="item.is_active ? 'success' : 'error'"
-                size="18"
-              />
-              <span>{{ item.is_active ? 'Active' : 'Inactive' }}</span>
-            </div>
-          </VCardTitle>
-          <VCardText class="card-content">
-            <div class="text-body-1">
-              Total {{ item.members.length }} members
-            </div>
+              <VImg v-if="member.user.avatar" :src="member.user.avatar" />
+              <span v-else class="text-caption">{{ member.user.avatar_or_initials }}</span>
+            </VAvatar>
+          </template>
+          <VAvatar
+            v-if="board.members.length > 3"
+            :size="32"
+            color="#f3f4f6"
+            class="member-avatar"
+          >
+            <span class="text-caption">+{{ board.members.length - 3 }}</span>
+          </VAvatar>
+        </div>
+      </div>
 
-            <VSpacer />
-
-            <div class="v-avatar-group">
-              <template
-                v-for="(member, index) in item.members"
-                :key="member.id"
-              >
-                <VAvatar
-                  v-if="item.members.length > 0 && item.members.length !== 4 && index < 3"
-                  v-tooltip="member.user.full_name"
-                  size="40"
-                  :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-                >
-                  <template v-if="member.user.avatar">
-                    <img
-                      :src="member.user.avatar"
-                      alt="Avatar"
-                    >
-                  </template>
-                  <template v-else>
-                    <span>{{ member.user.avatar_or_initials }}</span>
-                  </template>
-                </VAvatar>
-
-                <VAvatar
-                  v-if="item.members.length === 4"
-                  size="40"
-                  :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-                >
-                  <template v-if="member.user.avatar">
-                    <img
-                      :src="member.user.avatar"
-                      alt="Avatar"
-                    >
-                  </template>
-                  <template v-else>
-                    <span>{{ member.user.avatar_or_initials }}</span>
-                  </template>
-                </VAvatar>
-              </template>
-
-              <VAvatar
-                v-if="item.members.length > 4"
-                :color="$vuetify.theme.current.dark ? '#373B50' : '#EEEDF0'"
-              >
-                <span>
-                  +{{ item.members.length - 3 }}
-                </span>
-              </VAvatar>
-            </div>
-          </VCardText>
-
-          <VCardText>
-            <div class="d-flex justify-space-between align-center">
-              <VSpacer />
-              <div class="d-flex gap-4">
-                <VBtn
-                  icon
-                  color="info"
-                  size="x-small"
-                  @click.stop="paymentBoard(item)"
-                >
-                  <VIcon
-                    size="14"
-                    icon="tabler-credit-card"
-                  />
-                </VBtn>
-                <VBtn
-                  v-if="props.isSuperAdmin || projectDataLocal.owner.id === props.userData.id || item.members.find(member => member.user.id === props.userData.id && member.is_admin)"
-                  icon
-                  size="x-small"
-                  @click.stop="editBoard(item)"
-                >
-                  <VIcon
-                    icon="tabler-edit"
-                    size="14"
-                  />
-                </VBtn>
-              </div>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
-
-    <AddEditBoard
-      v-model:board-details="boardDetails"
-      v-model:is-dialog-visible="isBoardDialogVisible"
-      v-model:project-id="projectDataLocal.id"
-      @form-submitted="handleFormSubmitted"
-    />
-
-    <PaymentDetails
-      v-model:board-id="boardId"
-      v-model:is-super-admin="props.isSuperAdmin"
-      v-model:is-owner="isOwner"
-      v-model:is-admin="isAdmin"
-      v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
-      @form-submitted="handleFormSubmitted"
-    />
+      <!-- Card Actions -->
+      <div class="card-actions">
+        <VBtn
+          variant="text"
+          size="small"
+          color="primary"
+          class="action-btn"
+          prepend-icon="tabler-credit-card"
+          @click.stop="paymentBoard(board)"
+        >
+          Payments
+        </VBtn>
+        <VBtn
+          v-if="canEditBoard(board)"
+          variant="text"
+          size="small"
+          color="primary"
+          class="action-btn"
+          prepend-icon="tabler-edit"
+          @click.stop="editBoard(board)"
+        >
+          Edit
+        </VBtn>
+      </div>
+    </div>
   </div>
+
+  <!-- Dialogs -->
+  <AddEditBoard
+    v-model:board-details="boardDetails"
+    v-model:is-dialog-visible="isBoardDialogVisible"
+    v-model:project-id="projectDataLocal.id"
+    @form-submitted="handleFormSubmitted"
+  />
+
+  <PaymentDetails
+    v-model:board-id="boardId"
+    v-model:is-super-admin="props.isSuperAdmin"
+    v-model:is-owner="isOwner"
+    v-model:is-admin="isAdmin"
+    v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
+    @form-submitted="handleFormSubmitted"
+  />
 </template>
 
-<style scoped>
-.elegant-card {
-  border-radius: 12px;
-  transition: transform 0.2s ease-in-out, box-shadow 0.3s ease-in-out;
-}
+<style lang="scss" scoped>
+.boards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
 
-.elegant-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.1);
-}
+  .board-card {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    cursor: pointer;
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  font-weight: bold;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
+    &:hover {
+      border-color: #0969da;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
 
-.chip-title {
-  font-size: 14px;
-  font-weight: bold;
-}
+    &.is-inactive {
+      opacity: 0.7;
+      cursor: not-allowed;
 
-.card-content {
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+      &:hover {
+        transform: none;
+        border-color: #d0d7de;
+        box-shadow: none;
+      }
+    }
+
+    .card-header {
+      padding: 1rem;
+      border-bottom: 1px solid #d0d7de;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .header-content {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #cf222e;
+
+          &.active {
+            background: #2da44e;
+          }
+        }
+
+        .board-name {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #24292f;
+          margin: 0;
+        }
+      }
+
+      .status-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+
+        &.active {
+          background: #dafbe1;
+          color: #1a7f37;
+        }
+
+        &.inactive {
+          background: #ffebe9;
+          color: #cf222e;
+        }
+      }
+    }
+
+    .card-content {
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .members-count {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #57606a;
+        font-size: 0.875rem;
+      }
+
+      .members-avatars {
+        display: flex;
+        align-items: center;
+
+        .member-avatar {
+          margin-left: -0.5rem;
+          border: 2px solid #ffffff;
+
+          &:first-child {
+            margin-left: 0;
+          }
+        }
+      }
+    }
+
+    .card-actions {
+      padding: 0.75rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      border-top: 1px solid #d0d7de;
+      background: #f6f8fa;
+
+      .action-btn {
+        font-size: 0.75rem;
+        height: 28px;
+        
+        .v-icon {
+          font-size: 1rem;
+        }
+      }
+    }
+  }
 }
 </style>

@@ -246,13 +246,9 @@ const uploadFile = async event => {
   if (!file) return
 
   const fileData = { name: file.name, progress: 0, error: false }
-
   uploadingFiles.value.push(fileData)
-
   const formData = new FormData()
-
   formData.append('file', file)
-
   const progressInterval = simulateProgress(fileData)
 
   try {
@@ -272,6 +268,11 @@ const uploadFile = async event => {
       uploadedFiles.value.push(response)
       toast.success('File uploaded successfully!')
       emit('update:uploadedFiles', uploadedFiles.value)
+      
+      // Add a simple space to the editor if it's empty
+      if (editor.value && editor.value.isEmpty) {
+        editor.value.commands.setContent('&nbsp;')
+      }
     }, 500)
   } catch (error) {
     clearInterval(progressInterval)
@@ -365,270 +366,436 @@ onUnmounted(() => {
     editor.value.destroy()
   }
 })
+
+// Add this before the template
+const editorActions = [
+  {
+    icon: 'tabler-paperclip',
+    action: () => document.querySelector('input[type="file"]').click(),
+    tooltip: 'Attach file'
+  },
+  {
+    icon: 'tabler-bold',
+    command: 'bold',
+    action: editor => editor.chain().focus().toggleBold().run(),
+    tooltip: 'Bold'
+  },
+  {
+    icon: 'tabler-italic',
+    command: 'italic',
+    action: editor => editor.chain().focus().toggleItalic().run(),
+    tooltip: 'Italic'
+  },
+  {
+    icon: 'tabler-strikethrough',
+    command: 'strike',
+    action: editor => editor.chain().focus().toggleStrike().run(),
+    tooltip: 'Strike'
+  },
+  {
+    icon: 'tabler-underline',
+    command: 'underline',
+    action: editor => editor.commands.toggleUnderline(),
+    tooltip: 'Underline'
+  },
+  {
+    icon: 'tabler-align-left',
+    command: { textAlign: 'left' },
+    action: editor => editor.chain().focus().setTextAlign('left').run(),
+    tooltip: 'Align left'
+  },
+  {
+    icon: 'tabler-align-center',
+    command: { textAlign: 'center' },
+    action: editor => editor.chain().focus().setTextAlign('center').run(),
+    tooltip: 'Align center'
+  },
+  {
+    icon: 'tabler-align-right',
+    command: { textAlign: 'right' },
+    action: editor => editor.chain().focus().setTextAlign('right').run(),
+    tooltip: 'Align right'
+  }
+]
 </script>
 
 <template>
-  <div>
+  <div class="message-editor">
     <div
       v-if="isEditing"
-      class="edit-mode-indicator"
+      class="edit-mode-banner"
     >
-      <span class="text-sm">Editing message...</span>
-      <VIcon
-        icon="tabler-circle-x"
-        size="16"
-        color="error"
-        class="close-reply-btn"
+      <span class="edit-mode-text">
+        <VIcon
+          size="16"
+          icon="tabler-pencil"
+          class="me-2"
+        />
+        Editing message
+      </span>
+      <VBtn
+        size="x-small"
+        variant="text"
+        color="default"
         @click="exitEditMode"
-      />
+      >
+        <VIcon size="16">tabler-x</VIcon>
+      </VBtn>
     </div>
-    <div class="reply-area" v-if="localMessageToReply">
-      <div class="chat-message-box-reply">
-        <div class="reply-content">
-          <div class="text tiptap" v-html="localMessageToReply.content" />
-        </div>
+
+    <div
+      v-if="localMessageToReply"
+      class="reply-banner"
+    >
+      <div class="reply-preview">
+        <VIcon
+          size="16"
+          icon="tabler-message-reply"
+          class="me-2"
+          color="warning"
+        />
+        <div
+          class="reply-content tiptap"
+          v-html="localMessageToReply.content"
+        />
       </div>
-      <VIcon
-        icon="tabler-circle-x"
-        size="16"
-        color="error"
-        class="close-reply-btn"
+      <VBtn
+        size="x-small"
+        variant="text"
+        color="default"
         @click="exitReplyMode"
-      />
+      >
+        <VIcon size="16">tabler-x</VIcon>
+      </VBtn>
     </div>
-    <div class="editor-container mx-5">
+
+    <div class="editor-main">
       <div
         v-if="uploadedFiles.length || uploadingFiles.length"
-        class="uploaded-files"
+        class="attachments-section"
       >
-        <div
-          v-for="file in uploadingFiles"
-          :key="file.name"
-          class="file-item uploading"
-        >
-          <div class="file-info">
-            <VIcon
-              icon="tabler-file"
-              class="file-icon"
-            />
-            <span class="file-name">{{ file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name }}</span>
-          </div>
-          <VProgressLinear
-            :value="file.progress"
-            color="primary"
-            height="6"
-            class="progress-bar"
-          />
-          <VIcon
-            v-if="file.error"
-            icon="tabler-alert-circle"
-            color="red"
-            class="error-icon"
-          />
-        </div>
+        <div class="attachments-wrapper">
+          <TransitionGroup name="attachment">
+            <div
+              v-for="file in uploadingFiles"
+              :key="`uploading-${file.name}`"
+              class="attachment-item uploading"
+            >
+              <div class="attachment-info">
+                <VIcon
+                  size="16"
+                  icon="tabler-file-upload"
+                />
+                <span class="attachment-name">{{ file.name }}</span>
+              </div>
+              <VProgressLinear
+                :model-value="file.progress"
+                color="primary"
+                height="2"
+                class="upload-progress"
+              />
+            </div>
 
-        <div
-          v-for="(file, index) in uploadedFiles"
-          :key="file.id"
-          class="file-item uploaded"
-        >
-          <div class="file-info">
-            <VIcon
-              icon="tabler-file-check"
-              class="file-icon success"
-            />
-            <a
-              :href="file.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="file-name"
-            >{{ file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name }}</a>
-          </div>
-          <div
-            class="custom-badge delete-btn"
-            @click="deleteFile(file.id, index)"
-          >
-            <VIcon icon="tabler-trash" />
-          </div>
+            <div
+              v-for="(file, index) in uploadedFiles"
+              :key="`uploaded-${file.id}`"
+              class="attachment-item"
+            >
+              <div class="attachment-info">
+                <VIcon
+                  size="16"
+                  icon="tabler-file-check"
+                  color="success"
+                />
+                <span class="attachment-name">{{ file.name }}</span>
+              </div>
+              <VBtn
+                size="x-small"
+                variant="text"
+                color="default"
+                class="delete-btn"
+                @click="deleteFile(file.id, index)"
+              >
+                <VIcon size="14">tabler-trash</VIcon>
+              </VBtn>
+            </div>
+          </TransitionGroup>
         </div>
       </div>
+
       <EditorContent
         ref="editorRef"
-        class="this-editor"
+        class="editor-content"
         :editor="editor"
       />
-      <div
-        v-if="editor"
-        class="d-flex justify-space-between align-center editor"
-      >
-        <div class="d-flex gap-2 py-1 px-2 flex-wrap align-center editor">
-          <IconBtn
-            size="x-small"
-            rounded
-            class="custom-badge-toolbar"
-            @click="$refs.fileInput.click()"
-          >
-            <VIcon icon="tabler-paperclip" />
-          </IconBtn>
+
+      <div class="editor-toolbar">
+        <div class="toolbar-actions">
           <input
             ref="fileInput"
             type="file"
             class="hidden"
             @change="uploadFile"
           >
-          <IconBtn
-            class="custom-badge-toolbar"
-            size="x-small"
-            rounded
-            :variant="editor.isActive('bold') ? 'tonal' : 'text'"
-            :color="editor.isActive('bold') ? 'primary' : 'default'"
-            @click="editor.chain().focus().toggleBold().run()"
+          <VTooltip
+            v-for="(action, index) in editorActions"
+            :key="index"
+            :text="action.tooltip"
+            location="top"
           >
-            <VIcon icon="tabler-bold" />
-          </IconBtn>
-
-          <IconBtn
-            class="custom-badge-toolbar"
-            size="x-small"
-            rounded
-            :variant="editor.isActive('underline') ? 'tonal' : 'text'"
-            :color="editor.isActive('underline') ? 'primary' : 'default'"
-            @click="editor.commands.toggleUnderline()"
-          >
-            <VIcon icon="tabler-underline" />
-          </IconBtn>
-
-          <IconBtn
-            class="custom-badge-toolbar"
-            size="x-small"
-            rounded
-            :variant="editor.isActive('italic') ? 'tonal' : 'text'"
-            :color="editor.isActive('italic') ? 'primary' : 'default'"
-            @click="editor.chain().focus().toggleItalic().run()"
-          >
-            <VIcon
-              icon="tabler-italic"
-              class="font-weight-medium"
-            />
-          </IconBtn>
-
-          <IconBtn
-            class="custom-badge-toolbar"
-            size="x-small"
-            rounded
-            :variant="editor.isActive('strike') ? 'tonal' : 'text'"
-            :color="editor.isActive('strike') ? 'primary' : 'default'"
-            @click="editor.chain().focus().toggleStrike().run()"
-          >
-            <VIcon icon="tabler-strikethrough" />
-          </IconBtn>
-
-          <IconBtn
-            class="custom-badge-toolbar"
-            size="x-small"
-            rounded
-            :variant="editor.isActive({ textAlign: 'left' }) ? 'tonal' : 'text'"
-            :color="editor.isActive({ textAlign: 'left' }) ? 'primary' : 'default'"
-            @click="editor.chain().focus().setTextAlign('left').run()"
-          >
-            <VIcon icon="tabler-align-left" />
-          </IconBtn>
-
-          <IconBtn
-            class="custom-badge-toolbar"
-            size="x-small"
-            rounded
-            :color="editor.isActive({ textAlign: 'center' }) ? 'primary' : 'default'"
-            :variant="editor.isActive({ textAlign: 'center' }) ? 'tonal' : 'text'"
-            @click="editor.chain().focus().setTextAlign('center').run()"
-          >
-            <VIcon icon="tabler-align-center" />
-          </IconBtn>
-
-          <IconBtn
-            class="custom-badge-toolbar"
-            size="x-small"
-            rounded
-            :variant="editor.isActive({ textAlign: 'right' }) ? 'tonal' : 'text'"
-            :color="editor.isActive({ textAlign: 'right' }) ? 'primary' : 'default'"
-            @click="editor.chain().focus().setTextAlign('right').run()"
-          >
-            <VIcon icon="tabler-align-right" />
-          </IconBtn>
-
-          <IconBtn
-            class="custom-badge-toolbar"
-            size="x-small"
-            rounded
-            :variant="editor.isActive({ textAlign: 'justify' }) ? 'tonal' : 'text'"
-            :color="editor.isActive({ textAlign: 'justify' }) ? 'primary' : 'default'"
-            @click="editor.chain().focus().setTextAlign('justify').run()"
-          >
-            <VIcon icon="tabler-align-justified" />
-          </IconBtn>
+            <template #activator="{ props }">
+              <VBtn
+                v-bind="props"
+                size="x-small"
+                variant="text"
+                :color="editor?.isActive(action.command) ? 'primary' : 'default'"
+                @click="action.action(editor)"
+              >
+                <VIcon :icon="action.icon" />
+              </VBtn>
+            </template>
+          </VTooltip>
         </div>
+
         <VBtn
-          color="#5062ff"
+          color="primary"
           size="small"
-          rounded-full
           :disabled="!editor || editor.isEmpty"
+          class="send-button"
           @click="sendMessage"
         >
-          <VIcon icon="tabler-arrow-up" />
+          <VIcon
+            size="18"
+            icon="tabler-send"
+          />
         </VBtn>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.reply-area{
-  background-color: #f2f3fa;
-  border-bottom: 1px solid #e2e7eb;
-  border-radius: 0;
-  align-items: center;
-  margin-top: 1px;
-  padding-left: 1px;
-  padding-right: 5px;
-  display: flex;
-  justify-content: space-between;
-}
-.chat-message-box-reply {
-  max-width: none;
-  min-height: auto;
-  max-height: 48px;
-  margin-top: 0;
-  margin-bottom: 0;
-  padding: 4px 8px;
-  font-size: 13.7px;
-  line-height: 19px;
-  overflow: auto;
-  border-left: 4px solid #FFC107;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+<style lang="scss" scoped>
+$github-colors: (
+  text-primary: #24292f,
+  text-secondary: #57606a,
+  border: #d0d7de,
+  bg-primary: #ffffff,
+  bg-secondary: #f6f8fa,
+  accent: #0969da,
+  hover: #f3f4f6,
+  warning-bg: #fff8c5,
+  warning-border: #eed888,
+  warning-text: #9a6700
+);
+
+$spacing: (
+  xs: 4px,
+  sm: 8px,
+  md: 12px,
+  lg: 16px
+);
+
+.message-editor {
+  background: map-get($github-colors, bg-primary);
+  border: 1px solid map-get($github-colors, border);
+  border-radius: 6px;
+  margin: map-get($spacing, md);
 }
 
-.reply-content {
+.edit-mode-banner,
+.reply-banner {
   display: flex;
   align-items: center;
-  width: 100%;
   justify-content: space-between;
+  padding: map-get($spacing, sm) map-get($spacing, md);
+  background: map-get($github-colors, warning-bg);
+  border-bottom: 1px solid map-get($github-colors, warning-border);
+  color: map-get($github-colors, warning-text);
+  font-size: 13px;
 }
 
-.close-reply-btn:hover {
-  color: #d32f2f;
-}
-
-.edit-mode-indicator {
-  background: rgba(255, 193, 7, 0.15);
-  color: #856404;
-  padding: 8px;
+.reply-preview {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  font-weight: 500;
-  width: 100%;
+  gap: map-get($spacing, xs);
+  max-width: 90%;
+  
+  .reply-content {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+}
+
+.attachments-section {
+  border-bottom: 1px solid map-get($github-colors, border);
+  padding: map-get($spacing, xs) map-get($spacing, sm);
+  max-height: 120px;
+  overflow: hidden;
+}
+
+.attachments-wrapper {
+  display: flex;
+  overflow-x: auto;
+  gap: map-get($spacing, xs);
+  padding-bottom: map-get($spacing, sm); // For scrollbar space
+  
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: map-get($github-colors, bg-secondary);
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: darken(map-get($github-colors, border), 10%);
+    border-radius: 4px;
+    
+    &:hover {
+      background: darken(map-get($github-colors, border), 15%);
+    }
+  }
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  background: map-get($github-colors, bg-secondary);
+  border: 1px solid map-get($github-colors, border);
+  border-radius: 4px;
+  padding: map-get($spacing, xs) map-get($spacing, sm);
+  min-width: 200px;
+  max-width: 200px;
+  position: relative;
+  
+  &.uploading {
+    padding-bottom: map-get($spacing, md);
+    
+    .upload-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      border-radius: 0 0 4px 4px;
+    }
+  }
+
+  .attachment-info {
+    display: flex;
+    align-items: center;
+    gap: map-get($spacing, sm);
+    flex: 1;
+    min-width: 0; // For text truncation
+    
+    .attachment-name {
+      font-size: 12px;
+      color: map-get($github-colors, text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .delete-btn {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    
+    &:hover {
+      opacity: 1;
+      background: rgba(map-get($github-colors, text-primary), 0.1);
+    }
+  }
+}
+
+.editor-content {
+  min-height: 100px;
+  padding: map-get($spacing, md);
+
+  :deep(.ProseMirror) {
+    min-height: 100px;
+    outline: none;
+    font-size: 14px;
+    line-height: 1.6;
+    color: map-get($github-colors, text-primary);
+
+    p {
+      margin: 0;
+    }
+
+    p.is-empty::before {
+      content: attr(data-placeholder);
+      float: left;
+      color: map-get($github-colors, text-secondary);
+      pointer-events: none;
+      height: 0;
+    }
+
+    .mention {
+      color: map-get($github-colors, accent);
+      background: rgba(map-get($github-colors, accent), 0.1);
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .attachment-placeholder {
+      opacity: 0;
+      height: 1px;
+      margin: 0;
+      padding: 0;
+      pointer-events: none;
+      user-select: none;
+    }
+  }
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: map-get($spacing, xs) map-get($spacing, sm);
+  background: map-get($github-colors, bg-secondary);
+  border-top: 1px solid map-get($github-colors, border);
+  border-radius: 0 0 6px 6px;
+
+  .toolbar-actions {
+    display: flex;
+    gap: map-get($spacing, xs);
+    flex-wrap: wrap;
+  }
+}
+
+.send-button {
+  border-radius: 999px;
+  min-width: 36px;
+  padding: 0 10px;
+}
+
+// Improve attachment transitions
+.attachment-enter-active,
+.attachment-leave-active {
+  transition: all 0.3s ease;
+  max-width: 200px;
+}
+
+.attachment-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.attachment-leave-to {
+  opacity: 0;
+  max-width: 0;
+  padding: 0;
+  margin: 0;
+  border-width: 0;
+}
+
+.hidden {
+  display: none;
 }
 </style>

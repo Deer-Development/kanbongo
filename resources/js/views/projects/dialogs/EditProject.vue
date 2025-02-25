@@ -42,10 +42,10 @@ const sendData = async () => {
       toast.success('Project updated successfully')
     }
 
-    emit("update:isDialogVisible", false)
-    emit("updated", true)
-
     await nextTick(() => {
+      emit("update:isDialogVisible", false)
+      emit("updated", true)
+
       refForm.value?.reset()
       refForm.value?.resetValidation()
     })
@@ -82,7 +82,7 @@ watch(() => props.isDialogVisible, async newVal => {
   >
     <DialogCloseBtn @click="closeDialog" />
 
-    <VCard title="Edit Agency">
+    <VCard title="Edit Project">
       <VCardText>
         <VForm
           ref="refForm"

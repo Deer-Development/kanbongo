@@ -70,7 +70,6 @@ class Activities extends BaseController
             },
         ])->findOrFail($id);
 
-
-        return $this->successResponse($model, 'Container details fetched successfully.');
+        return $this->successResponse(new ContainerResource($model), 'Container details fetched successfully.');
     }
 }

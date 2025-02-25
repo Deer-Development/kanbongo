@@ -35,6 +35,7 @@ const emit = defineEmits([
   'updateItemsState',
   'updateBoardState',
   'refreshData',
+  'openMessenger',
 ])
 
 const colors = [
@@ -134,8 +135,7 @@ const addNewItem = item => {
 
 const editKanbanItemFn = item => {
   if (item) {
-    editKanbanItem.value = item
-    isKanbanBoardEditVisible.value = true
+    emit('openMessenger', item)
   }
 }
 
@@ -310,21 +310,6 @@ defineExpose({
       </VForm>
     </div>
   </div>
-
-  <Messenger
-    ref="editDialog"
-    v-model:is-drawer-open="isKanbanBoardEditVisible"
-    :kanban-item="editKanbanItem"
-    :available-members="localAvailableMembers"
-    :is-super-admin="props.kanbanData.auth.is_super_admin"
-    :is-owner="props.kanbanData.auth.is_owner"
-    :is-member="props.kanbanData.auth.is_member"
-    :auth-id="props.kanbanData.auth.id"
-    @update:kanban-item="emitUpdatedTaskFn"
-    @edit-timer="editTimer"
-    @delete-kanban-item="deleteKanbanItemFn"
-    @refresh-kanban-data="refreshData"
-  />
 
   <EditTimerDialog
     v-model:is-dialog-visible="isEditTimerDialogVisible"

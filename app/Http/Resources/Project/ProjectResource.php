@@ -15,6 +15,13 @@ class ProjectResource extends JsonResource
             'is_active' => $this->is_active,
             'owner' => $this->owner,
             'created_at' => $this->created_at->diffForHumans(),
+            'stats' => [
+                'boards_count' => $this->containers()->count(),
+                'total_tasks' => $this->containers()
+                    ->withCount('boards')
+                    ->get()
+                    ->sum('boards_count'),
+            ]
         ];
     }
 }

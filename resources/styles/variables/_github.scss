@@ -1,0 +1,74 @@
+@import './_mixins.scss';
+
+// GitHub Colors
+$github-colors: (
+  bg-primary: #ffffff,
+  bg-secondary: #f6f8fa,
+  text-primary: #24292f,
+  text-secondary: #57606a,
+  border: #d0d7de,
+  border-dark: #afb8c1,
+  hover: #f3f4f6,
+  accent: #0969da,
+  shadow: rgba(31, 35, 40, 0.1),
+  warning: #d4a72c,
+  success: #238636,
+  error: #cf222e,
+  card-bg: linear-gradient(135deg, #f9fafb, #ffffff),
+  card-border: #d1d0d0,
+  card-header-bg: #f3f4f6,
+  card-header-border: #e5e7eb,
+  timer-active: #38a169,
+  timer-active-hover: #2f855a,
+  timer-inactive: #e53e3e,
+  timer-inactive-hover: #c53030,
+  unread: #FFA533,
+  comment-read: #6C757D,
+  comment-empty: #d2d2d5
+);
+
+// Spacing
+$spacing: (
+  xs: 4px,
+  sm: 8px,
+  md: 16px,
+  lg: 24px,
+  xl: 32px
+);
+
+// Mixins
+@mixin github-card {
+  background: map-get($github-colors, bg-primary);
+  border: 1px solid map-get($github-colors, border);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px map-get($github-colors, shadow);
+}
+
+@mixin github-hover {
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background: map-get($github-colors, hover);
+  }
+}
+
+@mixin github-focus {
+  &:focus {
+    outline: none;
+    border-color: map-get($github-colors, accent);
+    box-shadow: 0 0 0 3px rgba(map-get($github-colors, accent), 0.2);
+  }
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+}
+
+@mixin icon-size {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+} 

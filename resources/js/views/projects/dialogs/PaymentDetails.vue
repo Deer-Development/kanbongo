@@ -63,6 +63,23 @@ const totalPaidHours = computed(() => members.value.reduce((sum, member) => sum 
 const totalPending = computed(() => members.value.reduce((sum, member) => sum + member.pending_payment, 0))
 const totalUnpaidHours = computed(() => members.value.reduce((sum, member) => sum + member.total_unpaid_hours, 0))
 
+const paymentProgress = computed(() => {
+  const total = totalPaid.value + totalPending.value
+  return total > 0 ? (totalPaid.value / total) * 100 : 0
+})
+
+const getStatusClass = (member) => {
+  if (member.total_unpaid_hours === 0 && member.total_paid_hours > 0) return 'paid'
+  if (member.pending_payment > 0) return 'pending'
+  return 'not-worked'
+}
+
+const getStatusText = (member) => {
+  if (member.total_unpaid_hours === 0 && member.total_paid_hours > 0) return 'Paid'
+  if (member.pending_payment > 0) return 'Pending'
+  return 'Not Worked'
+}
+
 const confirmPayment = member => {
   memberToPay.value = member
   isConfirmDialogVisible.value = true
@@ -112,276 +129,255 @@ const goBack = () => {
     persistent
     fullscreen
     :model-value="props.isDialogVisible"
+    class="payment-details-dialog"
   >
-    <DialogCloseBtn
-      class="mt-4 mr-4"
-      @click="onReset"
-    />
     <VCard class="github-card">
-      <VCardTitle class="sticky-header">
-        <span v-if="showPaychecks">
-          Board Paychecks Details
-        </span>
-        <span v-else>
-          Board Payment Details
-        </span>
-        <span
-          v-if="selectedMember"
-          class="text-primary font-weight-bold"
-        >for {{ selectedMember.user.full_name }}</span>
-        <VRow>
-          <VCol :cols="selectedMember ? 11 : 12">
-            <div class="mb-4">
-              <label
-                for="date-picker"
-                class="form-label text-body-2"
-              >Select Date Range:</label>
-              <AppDateTimePicker
-                v-model="selectedDateRange"
-                :config="{ mode: 'range' }"
-                placeholder="Select date range"
-                clearable
-                class="input-github"
-              />
-            </div>
-          </VCol>
-          <VCol
-            v-if="selectedMember"
-            cols="1"
-          >
-            <VBtn
-              color="info"
-              class="mt-7"
-              @click="goBack"
+      <!-- Header Section -->
+      <VCardTitle class="header-section">
+        <!-- Top Bar with Close -->
+        <div class="top-bar">
+          <div class="d-flex align-center">
+            <VIcon 
+              size="20" 
+              color="primary"
+              class="mr-2"
             >
-              Back
-            </VBtn>
-          </VCol>
-        </VRow>
-        <div
-          v-if="selectedMember"
-          class="d-flex gap-2 mt-0 pt-0"
+              tabler-wallet
+            </VIcon>
+            <span class="text-body-2 text-medium-emphasis">Payment Management</span>
+          </div>
+          <VBtn
+            icon
+            variant="text"
+            size="small"
+            class="close-btn"
+            @click="onReset"
+          >
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
+        </div>
+
+        <!-- Main Header -->
+        <div class="d-flex justify-space-between align-center mb-4 mt-4">
+          <div class="title-section">
+            <h2 class="header-title">
+              {{ showPaychecks ? 'Paychecks Details' : 'Payment Details' }}
+            </h2>
+            <div class="subtitle" v-if="selectedMember">
+              <VIcon size="16" color="primary" class="mr-1">tabler-user</VIcon>
+              {{ selectedMember.user.full_name }}
+            </div>
+          </div>
+          <VBtn
+            v-if="selectedMember"
+            variant="outlined"
+            size="small"
+            class="github-btn"
+            prepend-icon="tabler-arrow-left"
+            @click="goBack"
+          >
+            Back
+          </VBtn>
+        </div>
+
+        <!-- Date Range Picker -->
+        <div class="date-range-section">
+          <AppDateTimePicker
+            v-model="selectedDateRange"
+            :config="{ mode: 'range' }"
+            placeholder="Select date range"
+            clearable
+            class="github-input"
+          />
+        </div>
+
+        <!-- Selected Payment Info -->
+        <div 
+          v-if="selectedMember && totalSelectedPayment > 0 && !showPaychecks" 
+          class="selected-payment-info"
         >
-          <div
-            v-if="totalSelectedPayment > 0 && !showPaychecks"
-            class="mt-0 pt-0"
-          >
-            <div class="custom-badge">
-              <VIcon class="me-1">
-                tabler-credit-card-pay
-              </VIcon>
-              <span>Selected Payment: <span class="text-success font-weight-bold">${{ totalSelectedPayment.toFixed(2) }}</span></span>
+          <div class="payment-stats">
+            <div class="stat-item">
+              <div class="stat-icon">
+                <VIcon size="20" color="primary">tabler-credit-card-pay</VIcon>
+              </div>
+              <div class="stat-content">
+                <span class="stat-label">Selected Amount</span>
+                <span class="stat-value">${{ totalSelectedPayment.toFixed(2) }}</span>
+              </div>
             </div>
-          </div>
-          <div
-            v-if="totalSelectedPayment > 0 && !showPaychecks"
-            class="mt-0 pt-0"
-          >
-            <div class="custom-badge">
-              <VIcon class="me-1">
-                tabler-brand-cashapp
-              </VIcon>
-              <span>Rate: <span class="text-success font-weight-bold">${{ selectedMember.billable_rate }}</span></span>
+
+            <div class="stat-item">
+              <div class="stat-icon">
+                <VIcon size="20" color="primary">tabler-currency-dollar</VIcon>
+              </div>
+              <div class="stat-content">
+                <span class="stat-label">Hourly Rate</span>
+                <span class="stat-value">${{ selectedMember.billable_rate }}/hr</span>
+              </div>
             </div>
-          </div>
-          <div
-            v-if="totalSelectedPayment > 0 && !showPaychecks"
-            class="mt-0 pt-0"
-            @click="confirmPayment(selectedMember.user.id)"
-          >
-            <div class="custom-badge bg-warning">
-              <VIcon>
-                tabler-cash-register
-              </VIcon>
-              <span class="font-weight-bold">Pay Now</span>
-            </div>
+
+            <VBtn
+              color="success"
+              size="small"
+              class="pay-btn"
+              prepend-icon="tabler-cash-register"
+              @click="confirmPayment(selectedMember.user.id)"
+            >
+              Pay
+            </VBtn>
           </div>
         </div>
       </VCardTitle>
 
-      <VCardText>
-        <div v-if="selectedMember && !showPaychecks">
-          <MemberPaymentDetails
-            :member="selectedMember"
-            :date-range="selectedDateRange"
-            :board-id="boardIdLocal"
-            :is-owner="props.isOwner"
-            :is-super-admin="props.isSuperAdmin"
-            @update:selected-payment="totalSelectedPayment = $event"
-            @update:selected-entries="selectedEntries = $event"
-          />
-        </div>
-        <div v-if="selectedMember && showPaychecks">
-          <PaycheckDetails
-            :member="selectedMember"
-            :date-range="selectedDateRange"
-            :board-id="boardIdLocal"
-            :is-owner="props.isOwner"
-            :is-super-admin="props.isSuperAdmin"
-            @update:selected-payment="totalSelectedPayment = $event"
-            @update:selected-entries="selectedEntries = $event"
-          />
-        </div>
-        <div
-          v-else-if="members.length && !selectedMember && !showPaychecks"
-          class="members-container"
-        >
+      <VDivider />
+
+      <VCardText class="content-section">
+        <!-- Members Grid -->
+        <div v-if="!selectedMember" class="members-grid">
           <div
             v-for="member in members"
             :key="member.member_id"
-            class="entry-card-github"
+            class="member-card"
           >
-            <VChip
-              :color="(member.total_unpaid_hours === 0 && member.total_paid_hours !== 0) ? 'success' : 'warning'"
-              class="payment-status-badge"
-              label
-              outlined
-            >
-              {{
-                (member.total_unpaid_hours === 0 && member.total_paid_hours !== 0) ? 'Paid' : (member.pending_payment > 0 ? 'Pending' : 'Not Worked')
-              }}
-            </VChip>
+            <!-- Status Badge -->
+            <div class="status-badge" :class="getStatusClass(member)">
+              {{ getStatusText(member) }}
+            </div>
 
-            <div class="d-flex align-items-center gap-3 mb-3 mt-7">
+            <!-- Member Info -->
+            <div class="member-header">
               <VAvatar
-                size="50"
-                class="avatar"
-                :color="$vuetify.theme.current.dark ? '#373B50' : '#F5F7FA'"
+                :size="48"
+                :color="member.user.avatar ? 'transparent' : '#f3f4f6'"
               >
-                <template v-if="member.user.avatar">
-                  <img
-                    :src="member.user.avatar"
-                    alt="Avatar"
-                  >
-                </template>
-                <template v-else>
-                  <span>{{ member.user.avatar_or_initials }}</span>
-                </template>
+                <VImg
+                  v-if="member.user.avatar"
+                  :src="member.user.avatar"
+                  alt="Avatar"
+                />
+                <span v-else class="text-subtitle-2">{{ member.user.avatar_or_initials }}</span>
               </VAvatar>
-              <div class="member-info">
-                <h3 class="fs-6 text-dark fw-bold">
-                  {{ member.member_name }}
-                </h3>
-                <p class="text-muted">
-                  {{ member.user.email }}
-                </p>
+              <div class="member-details">
+                <h3>{{ member.member_name }}</h3>
+                <span>{{ member.user.email }}</span>
               </div>
             </div>
 
-            <div class="payment-details">
-              <div class="detail">
-                <span class="label">Total Paid Hours:</span>
-                <span class="value text-success">{{ member.total_paid_hours.toFixed(2) }} hrs</span>
+            <!-- Payment Stats -->
+            <div class="payment-stats">
+              <div class="stat-row">
+                <span>Paid Hours</span>
+                <span class="text-success">{{ member.total_paid_hours.toFixed(2) }} hrs</span>
               </div>
-              <div class="detail">
-                <span class="label">Total Paid Amount:</span>
-                <span class="value text-success">${{ member.total_amount_paid.toFixed(2) }}</span>
+              <div class="stat-row">
+                <span>Unpaid Hours</span>
+                <span class="text-danger">{{ member.total_unpaid_hours.toFixed(2) }} hrs</span>
               </div>
-              <div class="detail">
-                <span class="label">Total Unpaid Hours:</span>
-                <span class="value text-danger">{{ member.total_unpaid_hours.toFixed(2) }} hrs</span>
+              <div class="stat-row">
+                <span>Paid Amount</span>
+                <span class="text-success">${{ member.total_amount_paid.toFixed(2) }}</span>
               </div>
-              <div class="detail">
-                <span class="label">Pending Payment:</span>
-                <span class="value text-danger">${{ member.pending_payment.toFixed(2) }}</span>
+              <div class="stat-row">
+                <span>Pending</span>
+                <span class="text-danger">${{ member.pending_payment.toFixed(2) }}</span>
               </div>
-              <div class="detail">
-                <span class="label">Billable Rate:</span>
-                <span class="value text-primary">${{ member.billable_rate }}/hr</span>
+              <div class="stat-row">
+                <span>Rate</span>
+                <span class="text-primary">${{ member.billable_rate || 0 }}/hr</span>
               </div>
             </div>
 
-            <div class="card-actions">
-              <div
-                v-if="(props.isSuperAdmin || props.isOwner) && member.pending_payment > 0"
-                class="custom-badge bg-warning"
-                @click="confirmPayment(member.user.id)"
-              >
-                <VIcon>
-                  tabler-cash-register
-                </VIcon>
-                <span class="font-weight-bold">Pay Now</span>
-              </div>
-              <div
-                class="custom-badge"
-                @click="handleDetails(member)"
-              >
-                <VIcon>
-                  tabler-list-details
-                </VIcon>
-                <span class="font-weight-bold">Details</span>
-              </div>
-              <div
-                v-if="member.has_paychecks"
-                class="custom-badge bg-success"
-                @click="handlePaychecks(member)"
-              >
-                <VIcon>
-                  tabler-list-details
-                </VIcon>
-                <span class="font-weight-bold">Paychecks</span>
+            <!-- Member Actions -->
+            <div class="member-actions">
+              <div class="actions-wrapper">
+                <VBtn
+                  v-if="(isSuperAdmin || isOwner) && member.pending_payment > 0"
+                  color="warning"
+                  variant="tonal"
+                  size="small"
+                  prepend-icon="tabler-cash-register"
+                  @click="confirmPayment(member.user.id)"
+                >
+                  Pay Now
+                </VBtn>
+                <VBtn
+                  variant="outlined"
+                  size="small"
+                  prepend-icon="tabler-list-details"
+                  @click="handleDetails(member)"
+                >
+                  Details
+                </VBtn>
+                <VBtn
+                  v-if="member.has_paychecks"
+                  color="success"
+                  variant="tonal"
+                  size="small"
+                  prepend-icon="tabler-receipt"
+                  @click="handlePaychecks(member)"
+                >
+                  Paychecks
+                </VBtn>
               </div>
             </div>
           </div>
         </div>
-        <div
-          v-if="!members.length && !selectedMember && !showPaychecks"
-          class="no-data"
-        >
-          No payment details available.
+
+        <!-- Member Details View -->
+        <div v-else-if="selectedMember && !showPaychecks">
+          <MemberPaymentDetails
+            :member="selectedMember"
+            :date-range="selectedDateRange"
+            :board-id="boardIdLocal"
+            :is-owner="isOwner"
+            :is-super-admin="isSuperAdmin"
+            @update:selected-payment="totalSelectedPayment = $event"
+            @update:selected-entries="selectedEntries = $event"
+          />
         </div>
 
-        <div class="summary-container" v-if="!selectedMember">
-          <h4 class="summary-title">Payment Summary</h4>
+        <!-- Paychecks View -->
+        <div v-else-if="showPaychecks">
+          <PaycheckDetails
+            :member="selectedMember"
+            :date-range="selectedDateRange"
+            :board-id="boardIdLocal"
+            :is-owner="isOwner"
+            :is-super-admin="isSuperAdmin"
+          />
+        </div>
 
-          <div class="summary-content">
-            <div class="summary-item">
-              <span class="label">Total Paid Amount:</span>
-              <span class="value text-success">${{ totalPaid.toFixed(2) }}</span>
+        <!-- Payment Summary -->
+        <div v-if="!selectedMember" class="payment-summary">
+          <h3>Payment Summary</h3>
+          <div class="summary-stats">
+            <div class="summary-stat">
+              <span>Total Paid</span>
+              <span class="text-success">${{ totalPaid.toFixed(2) }}</span>
             </div>
+            <div class="summary-stat">
+              <span>Total Pending</span>
+              <span class="text-danger">${{ totalPending.toFixed(2) }}</span>
+            </div>
+            <div class="summary-stat">
+              <span>Paid Hours</span>
+              <span class="text-success">{{ totalPaidHours.toFixed(2) }} hrs</span>
+            </div>
+            <div class="summary-stat">
+              <span>Unpaid Hours</span>
+              <span class="text-danger">{{ totalUnpaidHours.toFixed(2) }} hrs</span>
+            </div>
+          </div>
 
-            <div class="summary-item">
-              <span class="label">Total Pending Amount:</span>
-              <span class="value text-danger">${{ totalPending.toFixed(2) }}</span>
-            </div>
-
-            <div class="progress-bar-container">
-              <VProgressLinear
-                :model-value="(totalPaid / (totalPaid + totalPending)) * 100"
-                color="#0969da"
-                height="12"
-                rounded
-              >
-              </VProgressLinear>
-              <div class="progress-text">
-                {{ ((totalPaid / (totalPaid + totalPending)) * 100).toFixed(1) }}% Paid
-              </div>
-            </div>
-
-            <div class="summary-row">
-              <div class="summary-item flex-column">
-                <span class="label">Total Paid Hours:</span>
-                <span class="value text-success">{{ totalPaidHours.toFixed(2) }} hrs</span>
-              </div>
-              <div class="summary-item flex-column">
-                <span class="label">Total Unpaid Hours:</span>
-                <span class="value text-danger">{{ totalUnpaidHours.toFixed(2) }} hrs</span>
-              </div>
-            </div>
-
-            <div class="summary-status">
-              <VChip
-                :color="totalPending > 0 ? 'warning' : 'success'"
-                variant="elevated"
-                class="status-chip"
-              >
-                {{
-                  totalPending > 0
-                    ? `⚠️ Pending Payments: $${totalPending.toFixed(2)}`
-                    : "✅ All Payments Cleared"
-                }}
-              </VChip>
-            </div>
+          <div class="progress-section mt-4">
+            <VProgressLinear
+              :model-value="paymentProgress"
+              color="success"
+              height="8"
+              rounded
+            />
+            <span class="progress-label">{{ paymentProgress.toFixed(1) }}% Paid</span>
           </div>
         </div>
       </VCardText>
@@ -400,225 +396,308 @@ const goBack = () => {
 </template>
 
 <style lang="scss" scoped>
-.sticky-header {
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 10;
-  padding: 1rem;
-  border-bottom: 1px solid #d0d7de;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-.github-dialog {
-  .v-card {
-    background-color: #f6f8fa;
-    border: 1px solid #d0d7de;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  }
-}
-
-.github-card {
-  //padding: 1rem;
-}
-
-.members-container {
-  display: grid;
-  gap: 0.8rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.entry-card-github {
-  position: relative;
-  background-color: #ffffff;
-  border: 1px solid #d0d7de;
-  border-radius: 8px;
-  padding: 1rem;
-  transition: all 0.2s ease-in-out;
-
-  &:hover {
-    background-color: #f3f4f6;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+.payment-details-dialog {
+  .github-card {
+    background: #f6f8fa;
+    border: none;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
-  .payment-status-badge {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.3rem 0.6rem;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
+  .header-section {
+    background: #ffffff;
+    padding: 1.5rem;
+    border-bottom: 1px solid #d0d7de;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 
-  .member-info {
-    h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #24292e;
-      margin-bottom: 2px;
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #d0d7de;
+      margin-bottom: 1rem;
+
+      .close-btn {
+        color: #57606a;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: #24292f;
+          background: #f3f4f6;
+        }
+      }
     }
-    p {
+
+    .title-section {
+      .header-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #24292f;
+        margin: 0;
+        line-height: 1.4;
+      }
+
+      .subtitle {
+        display: flex;
+        align-items: center;
+        font-size: 0.875rem;
+        color: #0969da;
+        margin-top: 0.25rem;
+        
+        .v-icon {
+          opacity: 0.8;
+        }
+      }
+    }
+
+    .github-btn {
+      border-color: #d0d7de;
+      color: #24292f;
       font-size: 0.875rem;
-      color: #57606a;
+      height: 32px;
+      
+      &:hover {
+        border-color: #0969da;
+        background: #f3f4f6;
+      }
     }
   }
 
-  .payment-details {
-    margin-bottom: 0.75rem;
-    .detail {
+  .content-section {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+  }
+
+  .members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1rem;
+  }
+
+  .member-card {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 1.25rem;
+    position: relative;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #0969da;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .status-badge {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 2rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+
+      &.paid {
+        background: #dafbe1;
+        color: #1a7f37;
+      }
+
+      &.pending {
+        background: #fff8c5;
+        color: #9a6700;
+      }
+
+      &.not-worked {
+        background: #f6f8fa;
+        color: #57606a;
+      }
+    }
+
+    .member-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+
+      .actions-wrapper {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        
+        .v-btn {
+          flex: 0 1 auto;
+          min-width: auto;
+        }
+      }
+    }
+  }
+
+  .member-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+
+    .member-details {
+      h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #24292f;
+        margin-bottom: 0.25rem;
+      }
+
+      span {
+        font-size: 0.875rem;
+        color: #57606a;
+      }
+    }
+  }
+
+  .payment-stats {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+
+    .stat-row {
       display: flex;
       justify-content: space-between;
       font-size: 0.875rem;
-      margin-bottom: 0.4rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #d8dee4;
 
-      .label {
-        color: #6c757d;
+      &:last-child {
+        border-bottom: none;
       }
-      .value {
-        font-weight: bold;
-      }
-    }
-  }
 
-  .card-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.4rem;
-
-    .btn-github {
-      font-weight: 600;
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
-      transition: all 0.2s ease-in-out;
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      span:first-child {
+        color: #57606a;
       }
     }
   }
-}
 
-.input-github {
-  .v-input {
+  .payment-summary {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
     border-radius: 6px;
-    padding: 0.4rem;
-    transition: border-color 0.2s;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    width: 100%;
 
-    &:focus-within {
-      border-color: #0969da;
-      box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.3);
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #24292f;
+      margin-bottom: 1rem;
+    }
+
+    .summary-stats {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: nowrap;
+    }
+
+    .summary-stat {
+      flex: 1;
+      background: #f6f8fa;
+      padding: 1rem;
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      min-width: 150px;
+
+      span:first-child {
+        font-size: 0.875rem;
+        color: #57606a;
+        display: block;
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+      }
+
+      span:last-child {
+        font-size: 1.125rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .selected-payment-info {
+    margin-top: 1rem;
+    
+    .payment-stats {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: #f6f8fa;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          border-color: #0969da;
+          background: #f3f4f6;
+        }
+
+        .stat-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          background: #ffffff;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-content {
+          display: flex;
+          flex-direction: column;
+
+          .stat-label {
+            font-size: 0.75rem;
+            color: #57606a;
+            margin-bottom: 0.25rem;
+          }
+
+          .stat-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0969da;
+          }
+        }
+      }
+
+      .pay-btn {
+        margin-left: auto;
+        padding: 0 1.5rem;
+        height: 36px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+      }
     }
   }
 }
 
-.global-stats {
-  padding: 1rem;
-  border-top: 1px solid #d0d7de;
-  margin-top: 1rem;
-
-  h4 {
-    font-size: 1.1rem;
-    font-weight: bold;
-    margin-bottom: 0.75rem;
-  }
-
-  div {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-
-    span:last-child {
-      font-weight: bold;
-      color: #0969da;
-    }
-  }
-}
-
-.summary-container {
-  padding: 1.5rem;
-  border-radius: 10px;
-  margin-top: 1.5rem;
-  background: #ffffff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  border-left: 6px solid #1466d4;
-  width: 50%;
-}
-
-.summary-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #24292e;
-  margin-bottom: 1rem;
-}
-
-.summary-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.summary-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  font-weight: 500;
-
-  .label {
-    color: #6c757d;
-  }
-
-  .value {
-    font-weight: 700;
-  }
-}
-
-.progress-bar-container {
-  position: relative;
-  margin: 1rem 0;
-
-  .progress-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.6rem;
-    font-weight: 600;
-    color: #b1b0b0;
-  }
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.status-chip {
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.6rem 1.2rem;
-  text-align: center;
-}
-
-.no-data {
-  text-align: center;
-  font-size: 0.95rem;
-  color: #6c757d;
-  margin-top: 1.5rem;
-}
-
-.text-danger {
-  color: #cf222e;
-}
-
-.text-primary {
-  color: #0969da;
-}
+.text-success { color: #1a7f37; }
+.text-danger { color: #cf222e; }
+.text-primary { color: #0969da; }
 </style>
 

@@ -7,6 +7,7 @@ import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 import { useToast } from "vue-toastification"
 import PriorityFilterDropdown from "@core/components/app-form-elements/PriorityFilterDropdown.vue"
 import GeneralMessenger from "@/views/kanban/components/GeneralMessenger.vue"
+import Messenger from "@/views/kanban/components/Messenger.vue"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -25,6 +26,8 @@ const saveFilters = ref(false)
 const userData = computed(() => useCookie('userData', { default: null }).value)
 const userTimers = reactive({})
 const isActiveUsersMenuOpen = ref(false)
+const isMessengerDrawerOpen = ref(false)
+const selectedKanbanItem = ref(null)
 
 const refetchKanban = async () => {
   const res = await $api(`/container/${ route.params.containerId }`, {
@@ -117,7 +120,10 @@ const addNewItem = async newItem => {
 }
 
 const editItemFn = async editItem => {
-  console.log(editItem)
+  if (editItem) {
+    selectedKanbanItem.value = editItem
+    isMessengerDrawerOpen.value = true
+  }
 }
 
 const membersEdited = async () => {
@@ -299,265 +305,315 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearUserTimers()
 })
+
+const openMessenger = (item) => {
+  selectedKanbanItem.value = item
+
+  isMessengerDrawerOpen.value = true
+}
+
+const openBoardMessenger = (itemOpen, type) => {
+  if(type === 'board') {
+    selectedKanbanItem.value = null
+  } else if(type === 'task') {
+    selectedKanbanItem.value = {
+      item: itemOpen
+    }
+  }
+  isMessagesDialogVisible.value = false
+  isMessengerDrawerOpen.value = true
+}
+
+const handleMessengerUpdate = (updatedItem) => {
+  if (updatedItem) {
+    refetchKanban()
+  }
+}
+
+const editTimer = (member, id, name) => {
+  memberDetails.value = member
+  taskId.value = id
+  taskName.value = name
+  isEditTimerDialogVisible.value = true
+}
+
+const deleteKanbanItemFn = async (item) => {
+  if (item?.item?.id) {
+    await $api(`/task/${item.item.id}`, {
+      method: 'DELETE',
+    })
+    refetchKanban()
+    isMessengerDrawerOpen.value = false
+  }
+}
 </script>
 
 <template>
-  <section>
-    <div
-      v-if="kanban"
-      class="d-flex justify-md-space-between flex-column flex-md-row align-center mb-1 mb-md-0"
-    >
-      <VBreadcrumbs :items="breadcumItems">
-        <template #divider>
-          <VIcon>
-            tabler-chevron-right
-          </VIcon>
-        </template>
-      </VBreadcrumbs>
-      <div class="d-flex gap-1 align-center">
-        <VBadge
-          location="top start"
-          bordered
-          :color="priorityFilter.length || usersFilter.length || tagsFilter.length || searchFilter ? 'primary' : ''"
-        >
-          <template #badge>
-            <VIcon
-              icon="tabler-filter"
-              size="12"
-            />
+  <div class="kanban-page">
+    <!-- Header Section -->
+    <div class="kanban-header">
+      <div 
+        v-if="kanban"
+        class="d-flex justify-md-space-between flex-column flex-md-row align-center mb-1 mb-md-0"
+      >
+        <VBreadcrumbs :items="breadcumItems">
+          <template #divider>
+            <VIcon>
+              tabler-chevron-right
+            </VIcon>
           </template>
-
-          <div class="d-flex align-center gap-2 filters-container">
-            <PriorityFilterDropdown
-              :model-value="priorityFilter"
-              @update:model-value="setPriority($event)"
-            />
-
-            <UserFilterDropdown
-              :model-value="usersFilter"
-              @update:model-value="setUsersFilter($event)"
-            />
-
-            <TagsFilterDropdown
-              :model-value="tagsFilter"
-              @update:model-value="setTagsFilter($event)"
-            />
-
-            <SearchFilterDropdown
-              :model-value="searchFilter"
-              @update:model-value="setSearchFilter($event)"
-            />
-          </div>
-        </VBadge>
-
-        <VMenu
-          v-model="activeUsersMenu"
-          offset-y
-        >
-          <template #activator="{ props }">
-            <VChip
-              v-bind="props"
-              size="small"
-              :color="kanban?.active_users?.length ? 'rgb(56, 161, 105)' : ''"
-              variant="elevated"
-              class="cursor-pointer"
-            >
+        </VBreadcrumbs>
+        <div class="d-flex gap-1 align-center">
+          <VBadge
+            location="top start"
+            bordered
+            :color="priorityFilter.length || usersFilter.length || tagsFilter.length || searchFilter ? 'primary' : ''"
+          >
+            <template #badge>
               <VIcon
-                left
-                size="16"
-              >
-                tabler-hourglass
-              </VIcon>
-            </VChip>
-          </template>
+                icon="tabler-filter"
+                size="12"
+              />
+            </template>
 
-          <div class="users-box">
-            <!-- Active Users -->
-            <div
-              v-if="kanban?.active_users?.length"
-              class="users-section active-users"
-            >
-              <h4>Active Users</h4>
-              <div
-                v-for="entry in kanbanData.active_users"
-                :key="entry.user.id"
-                class="user-item"
+            <div class="d-flex align-center gap-2 filters-container">
+              <PriorityFilterDropdown
+                :model-value="priorityFilter"
+                @update:model-value="setPriority($event)"
+              />
+
+              <UserFilterDropdown
+                :model-value="usersFilter"
+                @update:model-value="setUsersFilter($event)"
+              />
+
+              <TagsFilterDropdown
+                :model-value="tagsFilter"
+                @update:model-value="setTagsFilter($event)"
+              />
+
+              <SearchFilterDropdown
+                :model-value="searchFilter"
+                @update:model-value="setSearchFilter($event)"
+              />
+            </div>
+          </VBadge>
+
+          <VMenu
+            v-model="activeUsersMenu"
+            offset-y
+          >
+            <template #activator="{ props }">
+              <VChip
+                v-bind="props"
+                size="small"
+                :color="kanban?.active_users?.length ? 'rgb(56, 161, 105)' : ''"
+                variant="elevated"
+                class="cursor-pointer"
               >
-                <div class="d-flex flex-column">
+                <VIcon
+                  left
+                  size="16"
+                >
+                  tabler-hourglass
+                </VIcon>
+              </VChip>
+            </template>
+
+            <div class="users-box">
+              <!-- Active Users -->
+              <div
+                v-if="kanban?.active_users?.length"
+                class="users-section active-users"
+              >
+                <h4>Active Users</h4>
+                <div
+                  v-for="entry in kanbanData.active_users"
+                  :key="entry.user.id"
+                  class="user-item"
+                >
+                  <div class="d-flex flex-column">
+                    <VAvatar
+                      size="24"
+                      class="avatar"
+                    >
+                      {{ entry.user.avatar_or_initials }}
+                    </VAvatar>
+                    <div
+                      v-if="entry.user.id === userData.id"
+                      class="mt-1 pl-1 mb-1"
+                    >
+                      <button
+                        class="timer-btn"
+                        :class="{
+                          'timer-btn-active': entry.time_entry?.start,
+                        }"
+                        @click="toggleTimerFn({
+                          user_id: entry.user.id,
+                          task_id: entry.time_entry.task_id,
+                        }, entry.time_entry.task_id)"
+                      >
+                        <VIcon
+                          :icon="entry.time_entry?.start ? 'tabler-pause' : 'tabler-play'"
+                          size="14"
+                        />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="user-details">
+                    <span class="user-name">{{ entry.user.full_name }}</span>
+                    <span class="user-time">{{ userTimers[entry.user.id]?.time || 'Loading...' }}</span>
+                    <span
+                      v-if="entry.time_entry"
+                      class="user-task"
+                    >Task #{{ entry.time_entry.task_id }}</span>
+                    <span
+                      v-if="!entry.has_weekly_limit"
+                      class="progress-text"
+                    >
+                      Worked this week: {{ entry.weekly_tracked.total_display }}
+                    </span>
+                    <div
+                      v-if="entry.has_weekly_limit"
+                      class="weekly-limit"
+                    >
+                      <span class="weekly-limit-label">Weekly limit active</span>
+                      <VProgressLinear
+                        :model-value="(entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100"
+                        height="4"
+                        color="success"
+                        class="progress-bar"
+                      />
+                      <span class="progress-text">
+                        {{ entry.weekly_tracked.total_display }} / {{ entry.weekly_limit_hours }}h
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Inactive Users -->
+              <div
+                v-if="kanban?.inactive_users?.length"
+                class="users-section inactive-users"
+              >
+                <h4>Inactive Users</h4>
+                <div
+                  v-for="entry in kanbanData.inactive_users"
+                  :key="entry.user.id"
+                  class="user-item"
+                >
                   <VAvatar
                     size="24"
                     class="avatar"
                   >
                     {{ entry.user.avatar_or_initials }}
                   </VAvatar>
-                  <div
-                    v-if="entry.user.id === userData.id"
-                    class="mt-1 pl-1 mb-1"
-                  >
-                    <button
-                      class="timer-btn"
-                      :class="{
-                        'timer-btn-active': entry.time_entry?.start,
-                      }"
-                      @click="toggleTimerFn({
-                        user_id: entry.user.id,
-                        task_id: entry.time_entry.task_id,
-                      }, entry.time_entry.task_id)"
+                  <div class="user-details">
+                    <span class="user-name">{{ entry.user.full_name }}</span>
+                    <span class="user-email">{{ entry.user.email }}</span>
+                    <span
+                      v-if="entry.last_time_entry"
+                      class="user-task"
                     >
-                      <VIcon
-                        :icon="entry.time_entry?.start ? 'tabler-pause' : 'tabler-play'"
-                        size="14"
+                      Last Task #{{ entry.last_time_entry.task_id }}
+                      <span v-if="entry.last_time_entry.end">
+                        (Ended {{ formatDistanceToNow(parseISO(entry.last_time_entry.end)) }} ago)
+                        {{ format(new Date(entry.last_time_entry.end), "MMM d, yyyy h:mm:ss a") }}
+                      </span>
+                    </span>
+                    <span
+                      v-if="!entry.has_weekly_limit"
+                      class="progress-text"
+                    >
+                      Worked this week: {{ entry.weekly_tracked.total_display }}
+                    </span>
+                    <div
+                      v-if="entry.has_weekly_limit"
+                      class="weekly-limit"
+                    >
+                      <span class="weekly-limit-label">Weekly limit active</span>
+                      <VProgressLinear
+                        :model-value="(entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100"
+                        height="4"
+                        color="info"
+                        class="progress-bar"
                       />
-                    </button>
-                  </div>
-                </div>
-                <div class="user-details">
-                  <span class="user-name">{{ entry.user.full_name }}</span>
-                  <span class="user-time">{{ userTimers[entry.user.id]?.time || 'Loading...' }}</span>
-                  <span
-                    v-if="entry.time_entry"
-                    class="user-task"
-                  >Task #{{ entry.time_entry.task_id }}</span>
-                  <span
-                    v-if="!entry.has_weekly_limit"
-                    class="progress-text"
-                  >
-                    Worked this week: {{ entry.weekly_tracked.total_display }}
-                  </span>
-                  <div
-                    v-if="entry.has_weekly_limit"
-                    class="weekly-limit"
-                  >
-                    <span class="weekly-limit-label">Weekly limit active</span>
-                    <VProgressLinear
-                      :model-value="(entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100"
-                      height="4"
-                      color="success"
-                      class="progress-bar"
-                    />
-                    <span class="progress-text">
-                      {{ entry.weekly_tracked.total_display }} / {{ entry.weekly_limit_hours }}h
-                    </span>
+                      <span class="progress-text">
+                        {{ entry.weekly_tracked.total_display }} / {{ entry.weekly_limit_hours }}h
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+          </VMenu>
 
-            <!-- Inactive Users -->
-            <div
-              v-if="kanban?.inactive_users?.length"
-              class="users-section inactive-users"
+          <VChip
+            v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id || kanban.members.find(member => member.user.id === userData.id && member.is_admin)"
+            size="small"
+            variant="elevated"
+            @click="isEditContainerDialogVisible = true"
+          >
+            <VIcon
+              left
+              size="16"
             >
-              <h4>Inactive Users</h4>
-              <div
-                v-for="entry in kanbanData.inactive_users"
-                :key="entry.user.id"
-                class="user-item"
-              >
-                <VAvatar
-                  size="24"
-                  class="avatar"
-                >
-                  {{ entry.user.avatar_or_initials }}
-                </VAvatar>
-                <div class="user-details">
-                  <span class="user-name">{{ entry.user.full_name }}</span>
-                  <span class="user-email">{{ entry.user.email }}</span>
-                  <span
-                    v-if="entry.last_time_entry"
-                    class="user-task"
-                  >
-                    Last Task #{{ entry.last_time_entry.task_id }}
-                    <span v-if="entry.last_time_entry.end">
-                      (Ended {{ formatDistanceToNow(parseISO(entry.last_time_entry.end)) }} ago)
-                      {{ format(new Date(entry.last_time_entry.end), "MMM d, yyyy h:mm:ss a") }}
-                    </span>
-                  </span>
-                  <span
-                    v-if="!entry.has_weekly_limit"
-                    class="progress-text"
-                  >
-                    Worked this week: {{ entry.weekly_tracked.total_display }}
-                  </span>
-                  <div
-                    v-if="entry.has_weekly_limit"
-                    class="weekly-limit"
-                  >
-                    <span class="weekly-limit-label">Weekly limit active</span>
-                    <VProgressLinear
-                      :model-value="(entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100"
-                      height="4"
-                      color="info"
-                      class="progress-bar"
-                    />
-                    <span class="progress-text">
-                      {{ entry.weekly_tracked.total_display }} / {{ entry.weekly_limit_hours }}h
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </VMenu>
+              tabler-user-edit
+            </VIcon>
+          </VChip>
 
-        <VChip
-          v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id || kanban.members.find(member => member.user.id === userData.id && member.is_admin)"
-          size="small"
-          variant="elevated"
-          @click="isEditContainerDialogVisible = true"
-        >
-          <VIcon
-            left
-            size="16"
+          <VChip
+            size="small"
+            variant="elevated"
+            class="comments-chip"
+            @click="isMessagesDialogVisible = true"
           >
-            tabler-user-edit
-          </VIcon>
-        </VChip>
+            <VIcon
+              left
+              size="16"
+            >
+              tabler-message
+            </VIcon>
+          </VChip>
 
-        <VChip
-          size="small"
-          variant="elevated"
-          class="comments-chip"
-          @click="isMessagesDialogVisible = true"
-        >
-          <VIcon
-            left
-            size="16"
+          <VChip
+            size="small"
+            variant="elevated"
+            class="comments-chip"
+            @click="isPaymentDetailsDialogVisible = true"
           >
-            tabler-message
-          </VIcon>
-        </VChip>
-
-        <VChip
-          size="small"
-          variant="elevated"
-          class="comments-chip"
-          @click="isPaymentDetailsDialogVisible = true"
-        >
-          <VIcon
-            left
-            size="16"
-          >
-            tabler-credit-card
-          </VIcon>
-        </VChip>
+            <VIcon
+              left
+              size="16"
+            >
+              tabler-credit-card
+            </VIcon>
+          </VChip>
+        </div>
       </div>
     </div>
-    <KanbanBoardComp
-      v-if="kanban"
-      ref="kanbanBoard"
-      :kanban-data="kanban"
-      @add-new-board="addNewBoard"
-      @delete-board="deleteBoard"
-      @rename-board="renameTheBoard"
-      @add-new-item="addNewItem"
-      @edit-item="editItemFn"
-      @delete-item="persistDelete"
-      @toggle-timer="toggleTimerFn"
-      @refresh-data="refetchKanban"
-      @update-items-state="updateItemState"
-      @update-board-state="updateBoardState"
-    />
+
+    <!-- Kanban Board Section -->
+    <div class="kanban-container">
+      <KanbanBoardComp
+        v-if="kanban"
+        ref="kanbanBoard"
+        :kanban-data="kanban"
+        @add-new-board="addNewBoard"
+        @delete-board="deleteBoard"
+        @rename-board="renameTheBoard"
+        @add-new-item="addNewItem"
+        @edit-item="editItemFn"
+        @delete-item="persistDelete"
+        @toggle-timer="toggleTimerFn"
+        @refresh-data="refetchKanban"
+        @update-items-state="updateItemState"
+        @update-board-state="updateBoardState"
+        @open-messenger="openMessenger"
+      />
+    </div>
+
     <ConfirmDialog
       v-model:isDialogVisible="isDeleteModalVisible"
       cancel-title="Cancel"
@@ -571,6 +627,7 @@ onBeforeUnmount(() => {
       <GeneralMessenger
         v-model:is-drawer-open="isMessagesDialogVisible"
         :board-id="kanban.id"
+        @open-board-chat="openBoardMessenger"
       />
       <PaymentDetails
         v-model:board-id="boardId"
@@ -585,17 +642,57 @@ onBeforeUnmount(() => {
         @form-submitted="membersEdited"
       />
     </div>
-  </section>
+    <Messenger
+      v-if="kanban"
+      v-model:is-drawer-open="isMessengerDrawerOpen"
+      :kanban-item="selectedKanbanItem || { item: { id: null, name: 'Board Chat' } }"
+      :container-id="selectedKanbanItem?.item?.id ? null : kanban.id"
+      :available-members="kanban.members"
+      :is-super-admin="kanban.auth.is_super_admin"
+      :is-owner="kanban.auth.is_owner"
+      :is-member="kanban.auth.is_member"
+      :auth-id="kanban.auth.id"
+      @update:kanban-item="handleMessengerUpdate"
+      @edit-timer="editTimer"
+      @delete-kanban-item="deleteKanbanItemFn"
+      @refresh-kanban-data="refetchKanban"
+    />
+  </div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
+.kanban-page {
+  background: #f8f9fa;
+
+  .kanban-header {
+    background: #ffffff;
+    padding: 0.2rem 0.85rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #e1e4e8;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+    .v-chip {
+      height: 28px;
+      font-size: 0.8125rem;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      color: #57606a;
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: #0969da;
+        color: #0969da;
+        background: #f3f4f6;
+      }
+    }
+  }
+}
+
 .filters-container {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   background: #ffffff;
-  padding: 3px;
+  padding: 4px;
   border-radius: 6px;
+  border: 1px solid #d0d7de;
 }
 
 .filter-chip {
@@ -610,7 +707,6 @@ onBeforeUnmount(() => {
 .filter-icon {
   color: #6c757d;
 }
-
 
 .users-container {
   display: flex;

@@ -49,4 +49,9 @@ class Container extends Model
     {
         return $this->hasMany(Paycheck::class);
     }
+
+    public function comments(): MorphMany
+    {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
 }

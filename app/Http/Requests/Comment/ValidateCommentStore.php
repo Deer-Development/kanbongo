@@ -25,7 +25,7 @@ class ValidateCommentStore extends FormRequest
     public function rules()
     {
         return [
-            'content' => 'required|string',
+            'content' => 'nullable|string',
             'commentable_id' => 'required|integer',
             'commentable_type' => 'required|string',
             'temporary_uploads' => 'nullable|array',

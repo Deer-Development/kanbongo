@@ -1,5 +1,5 @@
 <script setup>
-import { defineExpose, ref, watch } from "vue"
+import { defineExpose, ref, watch, computed } from "vue"
 import { watchDebounced } from '@vueuse/core'
 
 const props = defineProps({
@@ -16,6 +16,7 @@ const props = defineProps({
 const emit = defineEmits([
   "update:isDrawerOpen",
   "refreshKanbanData",
+  "openBoardChat"
 ])
 
 const chatLogPS = ref()
@@ -49,6 +50,14 @@ const closeNavigationDrawer = () => {
   emit("refreshKanbanData")
 }
 
+const openBoardChat = (boardId) => {
+  emit('openBoardChat', boardId, 'board')
+}
+
+const openTaskChat = (task) => {
+  emit('openBoardChat', task, 'task')
+}
+
 watch(() => props.isDrawerOpen, async val => {
   if (val) {
     await fetchBoardActivities()
@@ -61,210 +70,422 @@ watchDebounced(
   { debounce: 500, maxWait: 1000 },
 )
 
+const getTotalTasks = computed(() => {
+  return boardData.value.boards?.reduce((acc, board) => 
+    acc + (board.tasks?.length || 0), 0) || 0
+})
+
+const getTotalTrackedTime = computed(() => {
+  return boardData.value.boards?.reduce((acc, board) => {
+    return acc + board.tasks?.reduce((taskAcc, task) => 
+      taskAcc + (task.tracked_time?.trackedTime || 0), 0) || 0
+  }, 0) || 0
+})
+
+const getTotalComments = computed(() => {
+  return boardData.value.boards?.reduce((acc, board) => {
+    return acc + board.tasks?.reduce((taskAcc, task) => 
+      taskAcc + (task.comments_count || 0), 0) || 0
+  }, 0) || 0
+})
+
+const formatTime = (seconds) => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (hours >= 1000) {
+    return `${(hours/1000).toFixed(1)}k h`
+  }
+  return `${hours}h`
+}
+
 defineExpose({ fetchBoardActivities })
 </script>
 
 <template>
   <VNavigationDrawer
+    :model-value="isDrawerOpen"
     temporary
-    persistent
-    :width="750"
-    location="end"
-    class="scrollable-content elegant-shadow"
-    :model-value="props.isDrawerOpen"
-    @update:model-value="handleDrawerModelValueUpdate"
+    location="right"
+    width="750"
+    class="messages-drawer"
   >
-    <AppDrawerHeaderSection
-      title="Board Activities"
-      class="drawer-header"
-      @cancel="closeNavigationDrawer"
-    />
-
-    <div class="filter-search-container">
-      <VSelect
-        v-model="filterOption"
-        :items="filtersContent"
-        item-title="title"
-        item-value="value"
-        label="Filter"
-        color="primary"
-        @update:model-value="fetchBoardActivities"
-      />
-      <VTextField
-        v-model="ticketSearch"
-        label="Search Tickets"
-        append-icon="mdi-magnify"
-        clearable
-      />
-    </div>
-    <VDivider />
-
-    <div
-      ref="chatLogPS"
-      class="flex-grow-1 board-container"
-    >
-      <div v-if="boardData && boardData.boards.length">
-        <div class="board">
-          <div
-            class="board-header"
-            :style="{ backgroundColor: '#f6f8fa' }"
+    <div class="drawer-header">
+      <div class="d-flex justify-space-between align-center px-4 py-3">
+        <h2 class="text-h6 font-weight-medium mb-0">Board Activities</h2>
+        <div class="d-flex gap-2">
+          <VBtn
+            icon
+            variant="text"
+            size="small"
+            @click="fetchBoardActivities"
           >
-            General Chat
-          </div>
-          <ul class="task-list">
-            <li
-              class="task-item"
-              @click=""
-            >
-              <span class="task-icon">💬</span>
-              <span class="task-text font-weight-bold">Access Board Chat</span>
-              <span class="task-arrow">→</span>
-            </li>
-          </ul>
-        </div>
-        <div
-          v-for="board in boardData.boards"
-          :key="board.id"
-          class="board"
-        >
-          <div
-            class="board-header"
-            :style="{ backgroundColor: `${board.color}25` || '#f6f8fa' }"
+            <VIcon>tabler-refresh</VIcon>
+          </VBtn>
+          <VBtn
+            icon
+            variant="text"
+            size="small"
+            @click="closeNavigationDrawer"
           >
-            {{ board.name }}
-          </div>
-          <ul class="task-list">
-            <li
-              v-for="task in board.tasks"
-              :key="task.id"
-              class="task-item"
-              @click=""
-            >
-              <span class="task-icon">💬</span>
-              <span class="task-text">{{ task.name }}</span>
-              <span class="task-arrow">→</span>
-            </li>
-          </ul>
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
         </div>
       </div>
-      <div
-        v-else
-        class="no-activities"
-      >
-        No activities found.
+
+      <VDivider />
+
+      <!-- Filters Section -->
+      <div class="filters-section px-4 py-3">
+        <div class="d-flex gap-3 align-center">
+          <VSelect
+            v-model="filterOption"
+            :items="filtersContent"
+            item-title="title"
+            item-value="value"
+            density="compact"
+            hide-details
+            class="filter-select"
+            @update:model-value="fetchBoardActivities"
+          />
+          <VTextField
+            v-model="ticketSearch"
+            placeholder="Search tasks..."
+            prepend-inner-icon="tabler-search"
+            density="compact"
+            hide-details
+            class="search-field"
+          />
+        </div>
+      </div>
+    </div>
+
+    <VDivider />
+
+    <!-- Content Section -->
+    <div class="drawer-content">
+      <!-- Board Chat Section -->
+      <div class="board-chat-section px-4 py-3">
+        <div 
+          class="board-chat-card"
+          @click="openBoardChat(null, 'board')"
+        >
+          <div class="chat-content">
+            <div class="chat-icon">
+              <VIcon size="20" color="primary">tabler-messages</VIcon>
+            </div>
+            <div class="chat-info">
+              <h3 class="chat-title">Board Chat</h3>
+              <span class="chat-description">General discussion for all members</span>
+            </div>
+          </div>
+          <VIcon size="16" class="arrow-icon">tabler-chevron-right</VIcon>
+        </div>
+      </div>
+
+      <VDivider />
+
+      <!-- Board Stats -->
+      <div class="board-stats px-4 py-3">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" :style="{ backgroundColor: '#E3F2FD' }">
+              <VIcon color="primary">tabler-list-check</VIcon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value">{{ boardData.boards?.length || 0 }}</span>
+              <span class="stat-label">Lists</span>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon" :style="{ backgroundColor: '#F3E5F5' }">
+              <VIcon color="purple">tabler-clipboard-list</VIcon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value">{{ getTotalTasks }}</span>
+              <span class="stat-label">Tasks</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon" :style="{ backgroundColor: '#E8F5E9' }">
+              <VIcon color="success">tabler-clock-play</VIcon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value time-value">{{ formatTime(getTotalTrackedTime) }}</span>
+              <span class="stat-label">Total Time</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon" :style="{ backgroundColor: '#FFF3E0' }">
+              <VIcon color="warning">tabler-messages</VIcon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value">{{ getTotalComments }}</span>
+              <span class="stat-label">Comments</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <VDivider />
+
+      <!-- Tasks List -->
+      <div class="tasks-section px-4 py-3">
+        <template v-for="board in boardData.boards" :key="board.id">
+          <div class="board-section mb-4">
+            <div class="board-header d-flex align-center gap-2 mb-2">
+              <div 
+                class="color-dot" 
+                :style="{ backgroundColor: board.color }"
+              />
+              <h3 class="text-subtitle-2 font-weight-medium mb-0">
+                {{ board.name }}
+                <span class="text-caption text-medium-emphasis">
+                  ({{ board.tasks?.length || 0 }} tasks)
+                </span>
+              </h3>
+            </div>
+
+            <div class="tasks-list">
+              <div 
+                v-for="task in board.tasks" 
+                :key="task.id"
+                class="task-item"
+                @click="openTaskChat(task)"
+              >
+                <div class="task-content">
+                  <div class="d-flex align-center gap-2">
+                    <VIcon 
+                      size="16"
+                      :color="task.has_unread_comments ? 'warning' : 'grey'"
+                    >
+                      {{ task.has_unread_comments ? 'tabler-message-circle-2-filled' : 'tabler-message-circle' }}
+                    </VIcon>
+                    <span class="task-name">{{ task.name }}</span>
+                  </div>
+                  
+                  <div class="task-meta">
+                    <div class="meta-item" v-if="task.tracked_time">
+                      <VIcon size="14" color="success">tabler-clock</VIcon>
+                      <span>{{ task.tracked_time.trackedTimeDisplay }}</span>
+                    </div>
+                    <div class="meta-item" v-if="task.comments_count">
+                      <VIcon size="14">tabler-messages</VIcon>
+                      <span>{{ task.comments_count }}</span>
+                    </div>
+                    <div class="meta-item" v-if="task.members?.length">
+                      <VIcon size="14">tabler-users</VIcon>
+                      <span>{{ task.members.length }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <VIcon size="16" class="arrow-icon">tabler-chevron-right</VIcon>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </VNavigationDrawer>
 </template>
 
-<style scoped>
-:root {
-  --primary-color: #24292e;
-  --secondary-color: #586069;
-  --border-color: #e1e4e8;
-  --background-color: #ffffff;
-  --hover-background: #f6f8fa;
-  --accent-color: #0366d6;
-  --shadow-color: rgba(27, 31, 35, 0.08);
-}
+<style lang="scss" scoped>
+.messages-drawer {
+  .drawer-header {
+    background-color: #fff;
+    border-bottom: 1px solid #e5e7eb;
+  }
 
-.elegant-shadow {
-  box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.1);
-}
+  .filters-section {
+    .filter-select {
+      max-width: 200px;
+    }
+  }
 
-.drawer-header {
-  background-color: var(--background-color);
-  padding: 16px;
-  font-size: 18px;
-  font-weight: bold;
-  border-bottom: 2px solid var(--border-color);
-}
+  .drawer-content {
+    height: calc(100vh - 180px);
+    overflow-y: auto;
+  }
 
-.filter-search-container {
-  display: flex;
-  gap: 12px;
-  padding: 12px 16px;
-  align-items: center;
-}
+  .board-stats {
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+    }
 
-.board-container {
-  height: calc(100% - 64px);
-  overflow-y: auto;
-  padding: 16px;
-}
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
 
-.board {
-  background-color: var(--background-color);
-  border-radius: 8px;
-  margin-bottom: 20px;
-  border: 1px solid var(--border-color);
-  transition: box-shadow 0.3s ease;
-}
+      .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-.board-header {
-  background-color: var(--hover-background);
-  padding: 12px 16px;
-  font-weight: 600;
-  font-size: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
+      .stat-info {
+        display: flex;
+        flex-direction: column;
 
-.task-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
+        .stat-value {
+          font-size: 1.25rem;
+          font-weight: 600;
+          line-height: 1;
+        }
 
-.task-item {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.1s ease;
-  color: var(--primary-color);
-  position: relative;
-}
+        .stat-label {
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
 
-.task-item:hover {
-  background-color: var(--hover-background);
-  transform: translateX(6px);
-}
+        .time-value {
+          font-size: 1.1rem;
+          letter-spacing: -0.5px;
+        }
+      }
+    }
+  }
 
-.task-item:last-child {
-  border-bottom: none;
-}
+  .tasks-section {
+    .board-header {
+      .color-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+    }
 
-.task-icon {
-  font-size: 18px;
-  margin-right: 10px;
-  opacity: 0.7;
-}
+    .task-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
 
-.task-text {
-  flex-grow: 1;
-}
+      &:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+        transform: translateX(4px);
 
-.task-arrow {
-  font-size: 14px;
-  color: var(--accent-color);
-  font-weight: bold;
-  transition: transform 0.3s ease;
-}
+        .arrow-icon {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
 
-.task-item:hover .task-arrow {
-  transform: translateX(4px);
-}
+      .task-content {
+        flex: 1;
+        min-width: 0;
 
-.no-activities {
-  text-align: center;
-  color: var(--secondary-color);
-  padding: 20px;
-  font-style: italic;
-}
+        .task-name {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #111827;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
 
-.scrollable-content {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+        .task-meta {
+          display: flex;
+          gap: 12px;
+          margin-top: 4px;
+
+          .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            color: #6b7280;
+          }
+        }
+      }
+
+      .arrow-icon {
+        opacity: 0;
+        transform: translateX(-4px);
+        transition: all 0.2s ease;
+      }
+    }
+  }
+
+  .board-chat-section {
+    .board-chat-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: #0969da;
+        background: #f6f8fa;
+        transform: translateX(4px);
+
+        .arrow-icon {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .chat-content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+
+        .chat-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          background: #e3f2fd;
+          border-radius: 8px;
+        }
+
+        .chat-info {
+          .chat-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #24292f;
+            margin: 0;
+          }
+
+          .chat-description {
+            font-size: 0.75rem;
+            color: #57606a;
+          }
+        }
+      }
+
+      .arrow-icon {
+        opacity: 0;
+        transform: translateX(-4px);
+        transition: all 0.2s ease;
+        color: #57606a;
+      }
+    }
+  }
 }
 </style>
