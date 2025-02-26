@@ -1,7 +1,7 @@
 <script setup>
 import KanbanBoardComp from './components/KanbanBoard.vue'
 import { differenceInSeconds, format, formatDistanceToNow, parse, parseISO } from 'date-fns'
-import { watch } from "vue"
+import { watch, onMounted, onBeforeUnmount } from "vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 import { useToast } from "vue-toastification"
@@ -9,6 +9,7 @@ import PriorityFilterDropdown from "@core/components/app-form-elements/PriorityF
 import GeneralMessenger from "@/views/kanban/components/GeneralMessenger.vue"
 import Messenger from "@/views/kanban/components/Messenger.vue"
 import { useRouter } from "vue-router"
+import { useTimerStore } from '@/stores/useTimerStore'
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -32,6 +33,7 @@ const selectedKanbanItem = ref(null)
 const router = useRouter()
 const shouldOpenMessenger = ref(false)
 const initialQueryParams = ref(null)
+const timerStore = useTimerStore()
 
 const refetchKanban = async () => {
   const wasOpen = isMessengerDrawerOpen.value
@@ -188,25 +190,6 @@ const updateBoardState = async kanbanBoardIds => {
   })
 }
 
-const calculateTrackedTime = start => {
-  try {
-    const startDate = parseISO(start)
-    const now = new Date()
-    const seconds = differenceInSeconds(now, startDate)
-
-    if (seconds < 0) return 'Invalid Time'
-
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const remainingSeconds = seconds % 60
-
-    return `${hours}h ${minutes}m ${remainingSeconds}s`
-  } catch (error) {
-
-    return 'Error calculating time'
-  }
-}
-
 const userToggleStatus = reactive({})
 const toast = useToast()
 
@@ -251,31 +234,13 @@ const updateUserTimers = () => {
       return
     }
 
-    if (userTimers[entry.user.id]?.intervalId) {
-      clearInterval(userTimers[entry.user.id].intervalId)
-    }
-
-    userTimers[entry.user.id] = {
-      time: calculateTrackedTime(entry.time_entry.start),
-      intervalId: null,
-    }
-
-    const intervalId = setInterval(() => {
-      userTimers[entry.user.id].time = calculateTrackedTime(entry.time_entry.start)
-      checkWeeklyLimitAndToggle(entry)
-    }, 1000)
-
-    userTimers[entry.user.id].intervalId = intervalId
+    timerStore.startTimer(entry.user.id, entry.time_entry, true)
   })
 }
 
-
 const clearUserTimers = () => {
-  Object.keys(userTimers).forEach(userId => {
-    if (userTimers[userId]?.intervalId) {
-      clearInterval(userTimers[userId].intervalId)
-    }
-    delete userTimers[userId]
+  timerStore.clearAllTimers(true)
+  Object.keys(userToggleStatus).forEach(userId => {
     delete userToggleStatus[userId]
   })
 }
@@ -540,7 +505,7 @@ watch(() => route.query, (newQuery) => {
                   </div>
                   <div class="user-details">
                     <span class="user-name">{{ entry.user.full_name }}</span>
-                    <span class="user-time">{{ userTimers[entry.user.id]?.time || 'Loading...' }}</span>
+                    <span class="user-time">{{ timerStore.getTimer(entry.user.id, true) || 'Loading...' }}</span>
                     <span
                       v-if="entry.time_entry"
                       class="user-task"

@@ -44,6 +44,7 @@ const emit = defineEmits([
 
 const dueDate = ref(null)
 const hasLocalActiveTimer = ref(props.hasActiveTimer)
+const localItem = ref(props.item)
 const authDetails = ref(props.auth)
 const localAvailableMembers = ref([...props.availableMembers])
 const localActiveUsers = ref([...props.activeUsers])
@@ -79,6 +80,7 @@ watch(
   () => props.item,
   () => {
     selectedTags.value = props.item.tags
+    localItem.value = props.item
   },
   { deep: true, immediate: true },
 )
@@ -154,7 +156,7 @@ watchDebounced(
             v-bind="props"
             class="custom-badge pl-0 pt-0 align-self-end"
           >
-            <span class="pr-1">{{ item.sequence_id }}</span>
+            <span class="pr-1">{{ item.id }}</span>
             <VIcon
               size="14"
               color="#374151"
@@ -266,10 +268,10 @@ watchDebounced(
         <!--        /> -->
 
         <TimerBadge
-          :task="item"
+          :task="localItem"
           :auth="authDetails"
           :has-active-timer="hasLocalActiveTimer"
-          :member="item.members.find(member => auth.id === member.user_id)"
+          :member="localItem.members.find(member => auth.id === member.user_id)"
           :active-users="localActiveUsers"
           @toggle-timer="toggleTimer"
           @refresh-kanban-data="emit('refreshKanbanData')"

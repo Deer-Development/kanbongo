@@ -222,6 +222,7 @@
 <script setup>
 import { ref, watch, defineProps, defineEmits, computed, onUnmounted } from 'vue'
 import { differenceInSeconds, parseISO, format, parse } from "date-fns"
+import { useTimerStore } from '@/stores/useTimerStore'
 
 const props = defineProps({
   task: { type: Object, required: true },
@@ -251,7 +252,9 @@ const loading = ref(false)
 const activeTimer = ref(null)
 const allEntries = ref([])
 const authDetails = ref(props.auth)
-
+const timerStore = useTimerStore()
+const localActiveUsers = ref([...props.activeUsers])
+const localMember = ref(props.member)
 const calculateTrackedTime = start => {
   try {
     const startDate = parseISO(start)
@@ -271,13 +274,21 @@ const calculateTrackedTime = start => {
   }
 }
 
+watch(() => props.activeUsers, () => {
+  localActiveUsers.value = [...props.activeUsers]
+
+}, { deep: true, immediate: true })
+
+watch(() => props.member, () => {
+  localMember.value = props.member
+}, { deep: true, immediate: true })
+
 watch(
-  () => props.activeUsers,
+  () => localActiveUsers.value,
   (newValue, oldValue) => {
     if(newValue.length === 0) {
       isTiming.value = false
       activeTimer.value = null
-      
       return
     }
 
@@ -289,14 +300,11 @@ watch(
       const trackedTime = newValue.find(
         user => user.user.id === props.auth.id && user.time_entry?.task_id === props.task.id,
       )
-
-      activeTimer.value = calculateTrackedTime(trackedTime.time_entry.start)
-
-      const intervalId = setInterval(() => {
-        activeTimer.value = calculateTrackedTime(trackedTime.time_entry.start)
-      }, 1000)
-
-      trackedTime.user.intervalId = intervalId
+      
+      if (trackedTime) {
+        timerStore.startTimer(props.auth.id, trackedTime.time_entry)
+        activeTimer.value = computed(() => timerStore.timers[props.auth.id])
+      }
     }
   },
   { deep: true, immediate: true },
@@ -338,7 +346,14 @@ watch(
 )
 
 const toggleTimer = () => {
-  emit('toggleTimer', props.member)
+  if (localMember.value?.intervalId) {
+    timerStore.clearTimer(props.auth.id)
+    localMember.value.intervalId = null
+  }
+
+  isTiming.value = false
+  activeTimer.value = null
+  emit('toggleTimer', localMember.value)
 }
 
 const updateTimeEntries = async () => {
@@ -428,27 +443,27 @@ const deleteEntry = (entry, timeEntry) => {
 
 const isTimerDisabled = computed(() => {
   return (props.hasActiveTimer && !isTiming.value) || 
-         !props.member || 
+         !localMember.value || 
          (props.auth.has_weekly_limit && 
           props.auth.weekly_limit_seconds <= props.auth.weekly_tracked.total_seconds)
 })
 
 const getTimerIcon = computed(() => { 
   if (isTiming.value) return 'tabler-player-pause-filled'
-  if (!props.member) return 'tabler-hourglass-filled'
+  if (!localMember.value) return 'tabler-hourglass-filled'
   return 'tabler-player-play-filled'
 })
 
 const getTimerColor = computed(() => {
-  if (isTimerDisabled.value) return '#9CA3AF' // gray-400
-  if (isTiming.value) return '#059669' // green-600
-  return '#2563EB' // blue-600
+  if (isTimerDisabled.value) return '#9CA3AF'
+  if (isTiming.value) return '#059669'
+  return '#2563EB'
 })
 
 onUnmounted(() => {
-  if (props.member?.intervalId) {
-    clearInterval(props.member.intervalId)
-    props.member.intervalId = null
+  if (localMember.value?.intervalId) {
+    timerStore.clearTimer(props.auth.id)
+    localMember.value.intervalId = null
   }
 
   isTiming.value = false
