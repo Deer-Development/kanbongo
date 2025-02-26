@@ -186,20 +186,6 @@ const updateNotifications = (newNotification) => {
   max-height: 420px;
 }
 
-.notification-item {
-  padding: 16px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: rgb(var(--v-theme-surface-variant));
-  }
-
-  &.unseen {
-    background-color: rgb(var(--v-theme-primary), 0.05);
-  }
-}
-
 .notification-section {
   padding: 16px;
 }
