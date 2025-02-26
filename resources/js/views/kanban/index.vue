@@ -398,6 +398,32 @@ watch(() => kanban.value, (newVal) => {
     }
   }
 }, { immediate: true })
+
+watch(() => route.query, (newQuery) => {
+  if (newQuery.openMessenger === 'true' && newQuery.taskId) {
+    initialQueryParams.value = { ...newQuery }
+    
+    const taskId = parseInt(newQuery.taskId)
+
+    if (taskId) {
+      const task = kanban.value.boards?.flatMap(board => board.tasks)
+        .find(item => item.id === taskId)
+        
+      if (task) {
+        selectedKanbanItem.value = {
+          item: task,
+          boardId: task.board_id,
+          boardName: kanban.value.boards.find(b => b.id === task.board_id)?.name
+        }
+      }
+
+      nextTick(() => {
+        isMessengerDrawerOpen.value = true
+        initialQueryParams.value = null
+      })
+    }
+  }
+},{ deep: true })
 </script>
 
 <template>

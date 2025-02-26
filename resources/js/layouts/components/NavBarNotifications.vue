@@ -1,40 +1,13 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
 import Notifications from '@core/components/Notifications.vue'
-import { $api } from '@/utils/api'
+import { useNotificationStore } from '@/stores/useNotificationStore'
 
-const router = useRouter()
 const userData = useCookie('userData')
-const notifications = ref([])
 let channel = null
 
-// Fetch initial notifications
-const fetchNotifications = async () => {
-  try {
-    const res = await $api('/notifications', {
-      method: 'GET',
-    })
-    
-    if (res?.data) {
-      notifications.value = res.data.map(mapNotification)
-    }
-  } catch (error) {
-    console.error('Error fetching notifications:', error)
-  }
-}
-
-const mapNotification = (notification) => ({
-  id: notification.id,
-  title: notification.title,
-  subtitle: notification.content,
-  time: notification.created_at,
-  color: notification.type === 'mention' ? 'info' : 'primary',
-  isSeen: notification.is_seen,
-  icon: notification.type === 'mention' ? 'tabler-at' : 'tabler-message',
-  data: notification.data,
-  type: notification.type
-})
+const notificationStore = useNotificationStore()
+const isMenuOpen = ref(false)
 
 const subscribeToNotifications = () => {
   if (!window.Echo || !userData.value?.id) {
@@ -43,43 +16,40 @@ const subscribeToNotifications = () => {
   }
 
   try {
-    // Unsubscribe from any existing subscription
     if (channel) {
       channel.unsubscribe()
     }
 
-    // Create new subscription
     channel = window.Echo.private(`notifications.${userData.value.id}`)
 
     channel
       .listen('.NewNotification', (data) => {
-        console.log('Raw event data:', data);
-        console.log('Channel:', channel.name);
-        console.log('Event name:', '.NewNotification');
+        console.log('Raw event data:', data)
+        console.log('Channel:', channel.name)
+        console.log('Event name:', '.NewNotification')
         
         if (!data.notification) {
-          console.error('Invalid notification data received:', data);
-          return;
+          console.error('Invalid notification data received:', data)
+          return
         }
         
-        const newNotification = mapNotification(data.notification);
-        notifications.value = [newNotification, ...notifications.value];
+        notificationStore.addNotification(data.notification)
         
-        console.log('Notifications updated:', notifications.value);
+        console.log('Notifications updated:', notificationStore.notifications)
       })
       .error((error) => {
-        console.error('Echo channel error:', error);
-        setTimeout(subscribeToNotifications, 5000);
-      });
+        console.error('Echo channel error:', error)
+        setTimeout(subscribeToNotifications, 5000)
+      })
 
     channel.subscribed(() => {
-      console.log('Successfully subscribed to notifications channel');
-    });
+      console.log('Successfully subscribed to notifications channel')
+    })
 
-    console.log('Echo listener setup complete');
+    console.log('Echo listener setup complete')
   } catch (error) {
-    console.error('Error setting up Echo listener:', error);
-    setTimeout(subscribeToNotifications, 5000);
+    console.error('Error setting up Echo listener:', error)
+    setTimeout(subscribeToNotifications, 5000)
   }
 }
 
@@ -92,13 +62,10 @@ const handleConnectionStateChange = (state) => {
 }
 
 onMounted(() => {
-  fetchNotifications()
+  notificationStore.fetchNotifications()
   
   if (window.Echo) {
-    // Subscribe initially
     subscribeToNotifications()
-
-    // Listen for connection state changes
     window.Echo.connector.pusher.connection.bind('state_change', ({ current }) => {
       handleConnectionStateChange(current)
     })
@@ -106,7 +73,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  // Cleanup subscriptions
   if (channel) {
     channel.unsubscribe()
     channel = null
@@ -116,62 +82,15 @@ onBeforeUnmount(() => {
     window.Echo.connector.pusher.connection.unbind('state_change')
   }
 })
-
-const handleRemove = async (notificationId) => {
-  try {
-    await $api(`/notifications/${notificationId}`, {
-      method: 'DELETE',
-    })
-    notifications.value = notifications.value.filter(n => n.id !== notificationId)
-  } catch (error) {
-    console.error('Error removing notification:', error)
-  }
-}
-
-const handleToggleReadStatus = async (notification) => {
-  try {
-    const endpoint = notification.isSeen 
-      ? `/notifications/${notification.id}/mark-as-unread`
-      : `/notifications/${notification.id}/mark-as-read`;
-    
-    await $api(endpoint, {
-      method: 'PATCH',
-    });
-
-    // Toggle the isSeen status locally
-    const notif = notifications.value.find(n => n.id === notification.id);
-    if (notif) {
-      notif.isSeen = !notif.isSeen;
-    }
-  } catch (error) {
-    console.error('Error toggling notification read status:', error);
-  }
-};
-
-const handleMarkAllAsRead = async () => {
-  try {
-    await $api('/notifications/mark-all-as-read', {
-      method: 'PATCH',
-    })
-    notifications.value.forEach(notification => {
-      notification.isSeen = true
-    })
-  } catch (error) {
-    console.error('Error marking all notifications as read:', error)
-  }
-}
-
-const updateNotifications = (newNotification) => {
-  notifications.value = [newNotification, ...notifications.value];
-}
 </script>
 
 <template>
   <Notifications
-    :notifications="notifications"
-    @remove="handleRemove"
-    @toggle-read-status="handleToggleReadStatus"
-    @mark-all-as-read="handleMarkAllAsRead"
+    :notifications="notificationStore.notifications"
+    v-model="isMenuOpen"
+    @remove="notificationStore.removeNotification"
+    @toggle-read-status="notificationStore.toggleReadStatus"
+    @mark-all-as-read="notificationStore.markAllAsRead"
   />
 </template>
 

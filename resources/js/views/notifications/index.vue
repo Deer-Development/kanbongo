@@ -1,36 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useNotificationStore } from '@/stores/useNotificationStore'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
-const notifications = ref([])
-const loading = ref(true)
-const currentPage = ref(1)
-const totalPages = ref(1)
+const notificationStore = useNotificationStore()
 
-const fetchNotifications = async (page = 1) => {
-  try {
-    loading.value = true
-    const response = await $api(`/notifications?page=${page}`, {
-      method: 'GET'
-    })
-    
-    if (response.meta) {
-      notifications.value = response.data
-      currentPage.value = response.meta.current_page
-      totalPages.value = response.meta.last_page
-    } else {
-      notifications.value = response.data || []
-      currentPage.value = 1
-      totalPages.value = 1
-    }
-  } catch (error) {
-    console.error('Error fetching notifications:', error)
-    notifications.value = []
-  } finally {
-    loading.value = false
-  }
-}
+const { notifications, loading } = storeToRefs(notificationStore)
 
 const handleToggleReadStatus = async (notification) => {
   try {
@@ -53,7 +30,7 @@ const handleRemove = async (notificationId) => {
     await $api(`/notifications/${notificationId}`, {
       method: 'DELETE'
     })
-    notifications.value = notifications.value.filter(n => n.id !== notificationId)
+    notificationStore.notifications = notificationStore.notifications.filter(n => n.id !== notificationId)
   } catch (error) {
     console.error('Error removing notification:', error)
   }
@@ -64,7 +41,7 @@ const handleMarkAllAsRead = async () => {
     await $api('/notifications/mark-all-as-read', {
       method: 'PATCH'
     })
-    notifications.value.forEach(notification => {
+    notificationStore.notifications.forEach(notification => {
       notification.isSeen = true
     })
   } catch (error) {
@@ -77,7 +54,9 @@ const handleActionClick = (notification) => {
     return
   }
 
-  handleToggleReadStatus(notification)
+  if(!notification.isSeen) {
+    notificationStore.toggleReadStatus(notification)
+  }
 
   router.push({
     path: `/projects/${notification.data.project_id}/container/${notification.data.container_id}`,
@@ -90,7 +69,7 @@ const handleActionClick = (notification) => {
 }
 
 onMounted(() => {
-  fetchNotifications()
+  notificationStore.fetchNotifications()
 })
 </script>
 
@@ -250,19 +229,6 @@ onMounted(() => {
             <VDivider />
           </template>
         </VList>
-
-        <!-- Pagination -->
-        <div 
-          v-if="totalPages > 1"
-          class="d-flex justify-center py-4"
-        >
-          <VPagination
-            v-model="currentPage"
-            :length="totalPages"
-            :total-visible="7"
-            @update:model-value="fetchNotifications"
-          />
-        </div>
       </template>
     </VCardText>
   </VCard>

@@ -14,6 +14,11 @@ const props = defineProps({
     required: false,
     default: 'bottom end',
   },
+  modelValue: {
+    type: Boolean,
+    required: false,
+    default: false
+  }
 })
 
 const emit = defineEmits([
@@ -21,6 +26,7 @@ const emit = defineEmits([
   'toggle-read-status',
   'mark-all-as-read',
   'click:notification',
+  'update:modelValue'
 ])
 
 const totalUnseenNotifications = computed(() => {
@@ -42,7 +48,10 @@ const handleActionClick = (notification) => {
     return
   }
 
-  emit('toggle-read-status', notification)
+  if(!notification.isSeen) {
+    emit('toggle-read-status', notification)
+  }
+  emit('update:modelValue', false)
 
   router.push({
     path: `/projects/${notification.data.project_id}/container/${notification.data.container_id}`,
@@ -50,7 +59,8 @@ const handleActionClick = (notification) => {
       openMessenger: 'true',
       taskId: notification.data?.task_id,
       taskName: notification.data?.task_name
-    }
+    },
+    replace: true
   })
 }
 </script>
@@ -74,6 +84,8 @@ const handleActionClick = (notification) => {
       :location="location"
       offset="12"
       :close-on-content-click="false"
+      :model-value="modelValue"
+      @update:model-value="$emit('update:modelValue', $event)"
     >
       <VCard class="notifications-card">
         <!-- Header -->
