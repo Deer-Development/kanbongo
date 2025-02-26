@@ -47,10 +47,6 @@ class CommentService extends BaseService
         $currentUser = Auth::user();
         
         if (!$currentUser) {
-            Log::error('No authenticated user found when creating comment', [
-                'comment_id' => $comment->id,
-                'task_id' => $task->id
-            ]);
             return $comment;
         }
 
@@ -172,25 +168,12 @@ class CommentService extends BaseService
                 'data' => $data
             ]);
 
-            Log::info('Broadcasting notification', [
-                'notification_id' => $notification->id,
-                'user_id' => $userId,
-                'type' => $type,
-                'channel' => 'notifications.' . $userId
-            ]);
-
             broadcast(new NewNotification($notification))->toOthers();
             
             DB::commit();
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error creating notification', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId,
-                'type' => $type
-            ]);
         }
     }
 }

@@ -20,20 +20,10 @@ class NewNotification implements ShouldBroadcast
     public function __construct(
         public Notification $notification
     ) {
-        Log::info('NewNotification event constructed', [
-            'notification_id' => $notification->id,
-            'user_id' => $notification->user_id
-        ]);
     }
 
     public function broadcastOn(): array
     {
-        Log::info('Broadcasting to channel', [
-            'channel' => 'notifications.' . $this->notification->user_id,
-            'event' => 'NewNotification',
-            'notification' => $this->notification->toArray()
-        ]);
-
         return [
             new PrivateChannel('notifications.' . $this->notification->user_id)
         ];
@@ -61,8 +51,6 @@ class NewNotification implements ShouldBroadcast
                 ]
             ]
         ];
-
-        Log::info('Broadcasting data', $data);
 
         return $data;
     }
