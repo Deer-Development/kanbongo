@@ -102,7 +102,7 @@
                     variant="flat"
                   >
                     <VListItemAction class="d-flex flex-column">
-                      <div class="d-flex justify-end gap-2">
+                      <div class="d-flex justify-end gap-2 mb-2">
                         <div
                           class="custom-badge-edit"
                           @click="updateTimeEntries"
