@@ -128,19 +128,25 @@ const handleRemove = async (notificationId) => {
   }
 }
 
-const handleMarkAsRead = async (notification) => {
+const handleToggleReadStatus = async (notification) => {
   try {
-    await $api(`/notifications/${notification.id}/mark-as-read`, {
+    const endpoint = notification.isSeen 
+      ? `/notifications/${notification.id}/mark-as-unread`
+      : `/notifications/${notification.id}/mark-as-read`;
+    
+    await $api(endpoint, {
       method: 'PATCH',
-    })
-    const notif = notifications.value.find(n => n.id === notification.id)
+    });
+
+    // Toggle the isSeen status locally
+    const notif = notifications.value.find(n => n.id === notification.id);
     if (notif) {
-      notif.isSeen = true
+      notif.isSeen = !notif.isSeen;
     }
   } catch (error) {
-    console.error('Error marking notification as read:', error)
+    console.error('Error toggling notification read status:', error);
   }
-}
+};
 
 const handleMarkAllAsRead = async () => {
   try {
@@ -155,17 +161,6 @@ const handleMarkAllAsRead = async () => {
   }
 }
 
-const handleNotificationClick = async (notification) => {
-  if (!notification.isSeen) {
-    await handleMarkAsRead(notification)
-  }
-  
-  if (notification.data?.task_id) {
-    router.push(`/tasks/${notification.data.task_id}`)
-  }
-}
-
-// Adăugăm o metodă pentru a forța actualizarea notificărilor
 const updateNotifications = (newNotification) => {
   notifications.value = [newNotification, ...notifications.value];
 }
@@ -175,9 +170,8 @@ const updateNotifications = (newNotification) => {
   <Notifications
     :notifications="notifications"
     @remove="handleRemove"
-    @mark-as-read="handleMarkAsRead"
+    @toggle-read-status="handleToggleReadStatus"
     @mark-all-as-read="handleMarkAllAsRead"
-    @click:notification="handleNotificationClick"
   />
 </template>
 

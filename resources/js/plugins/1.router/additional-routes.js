@@ -102,4 +102,14 @@ export const routes = [
       public: true,
     },
   },
+  {
+    path: '/notifications',
+    name: 'notifications',
+    component: () => import('@/views/notifications/index.vue'),
+    meta: {
+      layout: 'default',
+      requiresAuth: true,
+      title: 'Notifications'
+    }
+  },
 ]

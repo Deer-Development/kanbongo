@@ -18,7 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'remove',
-  'mark-as-read',
+  'toggle-read-status',
   'mark-all-as-read',
   'click:notification',
 ])
@@ -34,16 +34,24 @@ const isAllMarkRead = computed(() => {
 const router = useRouter();
 
 const handleNotificationClick = (notification) => {
-  emit('mark-as-read', notification);
+  emit('toggle-read-status', notification);
 }
 
 const handleActionClick = (notification) => {
   if (!notification?.data?.project_id || !notification?.data?.container_id) {
-    return;
+    return
   }
 
-  const route = `/project/${notification.data.project_id}/container/${notification.data.container_id}`;
-  router.push(route);
+  emit('toggle-read-status', notification)
+
+  router.push({
+    path: `/projects/${notification.data.project_id}/container/${notification.data.container_id}`,
+    query: { 
+      openMessenger: 'true',
+      taskId: notification.data?.task_id,
+      taskName: notification.data?.task_name
+    }
+  })
 }
 </script>
 
@@ -126,6 +134,12 @@ const handleActionClick = (notification) => {
                 :class="{ 'unseen': !notification.isSeen }"
                 @click="handleNotificationClick(notification)"
               >
+                <VTooltip
+                  activator="parent"
+                  location="start"
+                >
+                  Click to toggle read/unread
+                </VTooltip>
                 <template #prepend>
                   <div class="notification-icon-wrapper">
                     <VAvatar
@@ -149,7 +163,7 @@ const handleActionClick = (notification) => {
                       {{ notification.data?.context?.emoji || '📌' }}
                     </div>
                     <VListItemTitle class="title-wrapper">
-                      <span class="font-weight-medium">{{ notification.title }}</span>
+                      <span class="notification-title">{{ notification.title }}</span>
                     </VListItemTitle>
                   </div>
                   
@@ -160,9 +174,8 @@ const handleActionClick = (notification) => {
                   <div class="notification-context mb-2">
                     <VChip
                       size="small"
-                      :color="notification.data?.context?.color || 'primary'"
                       variant="flat"
-                      class="me-2"
+                      class="task-id-chip me-2"
                     >
                       #{{ notification.data?.task_sequence_id }}
                     </VChip>
@@ -189,20 +202,24 @@ const handleActionClick = (notification) => {
                         size="small"
                         :color="notification.data?.context?.color || 'primary'"
                         variant="text"
-                        class="me-2"
+                        class="action-btn me-2"
                         :prepend-icon="notification.data?.action?.icon || 'tabler-eye'"
                         @click.stop="handleActionClick(notification)"
                       >
                         {{ notification.data?.action?.text || 'View' }}
                       </VBtn>
                       <VBtn
-                        size="x-small"
+                        icon
+                        size="small"
                         variant="text"
-                        color="medium-emphasis"
-                        class="remove-btn"
+                        class="delete-btn"
+                        color="error"
                         @click.stop="$emit('remove', notification.id)"
                       >
-                        <VIcon size="16" icon="tabler-x" />
+                        <VIcon size="16" icon="tabler-trash" />
+                        <VTooltip activator="parent">
+                          Delete notification
+                        </VTooltip>
                       </VBtn>
                     </div>
                   </div>
@@ -255,102 +272,185 @@ const handleActionClick = (notification) => {
 
 <style lang="scss" scoped>
 .notifications-card {
-  border: 1px solid rgba(var(--v-border-color), 0.08);
-  box-shadow: 0 8px 24px rgba(var(--v-shadow-key-umbra-color), 0.12);
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  box-shadow: 0 8px 24px rgba(27, 31, 35, 0.12);
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .notification-header {
-  background-color: rgb(var(--v-theme-background));
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.12);
+  padding: 12px 16px !important;
+
+  .text-h6 {
+    font-size: 1rem !important;
+    letter-spacing: -0.25px;
+  }
 }
 
 .notification-scroll {
-  max-height: 420px;
-  background-color: rgb(var(--v-theme-background));
+  max-height: 480px;
+  background-color: #ffffff;
 }
 
 .notification-item {
   padding: 16px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
   position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: 3px;
-    background-color: transparent;
-    transition: all 0.25s ease;
-  }
+  border-left: 2px solid transparent;
 
   &:hover {
-    background-color: rgba(var(--v-theme-primary), 0.04);
-    transform: translateX(4px);
+    background-color: #f6f8fa;
 
-    .remove-btn {
+    .delete-btn {
+      opacity: 0.7;
+    }
+
+    .notification-actions {
       opacity: 1;
       transform: translateX(0);
     }
 
-    .notification-icon-wrapper {
-      transform: scale(1.05);
+    &::after {
+      content: '';
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: rgba(var(--v-theme-primary), 0.5);
+      transition: all 0.2s ease;
     }
   }
 
   &.unseen {
-    background-color: rgba(var(--v-theme-primary), 0.04);
+    background-color: #f1f8ff;
+    border-left-color: #0969da;
 
-    &::before {
-      background-color: rgb(var(--v-theme-primary));
+    .notification-title {
+      color: #0969da;
+      font-weight: 600;
     }
 
-    .title-wrapper {
-      font-weight: 600;
-      color: rgb(var(--v-theme-primary));
+    &:hover::after {
+      background-color: rgba(var(--v-theme-primary), 0.8);
     }
   }
 
   .notification-icon-wrapper {
     margin-right: 16px;
-    transition: transform 0.25s ease;
+
+    .v-avatar {
+      border: 1px solid rgba(var(--v-border-color), 0.12);
+    }
   }
 
   .notification-content {
     flex: 1;
     min-width: 0;
 
-    .title-wrapper {
-      font-size: 0.9375rem;
-      line-height: 1.3;
-      color: rgb(var(--v-theme-on-background));
+    .notification-header {
+      background: transparent;
+      border: none;
+      padding: 0 !important;
+      margin-bottom: 8px;
+
+      .notification-emoji {
+        font-size: 16px;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f6f8fa;
+        border-radius: 6px;
+        border: 1px solid rgba(27, 31, 35, 0.15);
+      }
+
+      .notification-title {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #24292f;
+        line-height: 1.4;
+      }
     }
 
     .subtitle-wrapper {
-      font-size: 0.875rem;
-      line-height: 1.5;
-      color: rgba(var(--v-theme-on-background), 0.7);
+      font-size: 0.8125rem;
+      line-height: 1.4;
+      color: #57606a;
+      margin-bottom: 8px;
     }
 
-    .notification-meta {
-      .time-wrapper {
-        display: flex;
-        align-items: center;
-        font-size: 0.8125rem;
+    .notification-context {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+
+      .task-id-chip {
+        height: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background-color: #f6f8fa !important;
+        border: 1px solid #d0d7de;
+        color: #24292f !important;
+        padding: 0 8px;
+
+        &:hover {
+          background-color: #f3f4f6 !important;
+          border-color: #1b1f2326;
+        }
       }
 
-      .remove-btn {
-        opacity: 0;
-        transform: translateX(-8px);
-        transition: all 0.25s ease;
+      .text-medium-emphasis {
+        font-size: 0.75rem;
+        color: #57606a;
+        font-weight: 500;
+      }
+    }
+
+    .notification-preview {
+      background-color: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.8125rem;
+      color: #57606a;
+      margin-bottom: 12px;
+    }
+
+    .notification-actions {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      .action-btn {
+        font-size: 0.75rem;
+        height: 24px;
+        padding: 0 8px;
+        color: #0969da;
+        font-weight: 500;
+
+        &:hover {
+          background-color: #f3f4f6;
+        }
+      }
+
+      .delete-btn {
+        opacity: 0.7;
+        transition: all 0.2s ease;
+        margin-left: 4px;
         
         &:hover {
-          color: rgb(var(--v-theme-error)) !important;
-          background-color: rgba(var(--v-theme-error), 0.1);
+          opacity: 1;
+          background-color: rgb(var(--v-theme-error), 0.12);
         }
       }
     }
@@ -358,61 +458,56 @@ const handleActionClick = (notification) => {
 }
 
 .notification-footer {
-  background-color: rgb(var(--v-theme-background));
-  border-top: 1px solid rgba(var(--v-border-color), 0.08);
+  background-color: #f8f9fa;
+  border-top: 1px solid rgba(var(--v-border-color), 0.12);
+  padding: 12px 16px !important;
 
   .view-all-btn {
-    font-weight: 600;
-    letter-spacing: 0.5px;
     text-transform: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    height: 32px;
+    background-color: #f6f8fa;
+    box-shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
     
     &:hover {
-      transform: translateY(-1px);
+      background-color: #f3f4f6;
+      border-color: rgba(27, 31, 35, 0.15);
     }
   }
 }
 
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 2rem 1rem;
-  background-color: rgb(var(--v-theme-background));
+  padding: 32px 16px;
+  background-color: #ffffff;
+  text-align: center;
+
+  .v-icon {
+    color: #8b949e;
+    margin-bottom: 8px;
+  }
+
+  .text-h6 {
+    font-size: 0.875rem !important;
+    color: #24292f;
+    margin-bottom: 4px;
+  }
+
+  .text-body-2 {
+    font-size: 0.8125rem;
+    color: #57606a;
+  }
 }
 
-// Utility classes for notification icons
+// Utility classes
 .bg-primary-subtle {
-  background-color: rgba(var(--v-theme-primary), 0.12) !important;
-}
-
-.bg-success-subtle {
-  background-color: rgba(var(--v-theme-success), 0.12) !important;
-}
-
-.bg-warning-subtle {
-  background-color: rgba(var(--v-theme-warning), 0.12) !important;
-}
-
-.bg-error-subtle {
-  background-color: rgba(var(--v-theme-error), 0.12) !important;
+  background-color: #f1f8ff !important;
+  border: 1px solid #d1e5f9 !important;
 }
 
 .bg-info-subtle {
-  background-color: rgba(var(--v-theme-info), 0.12) !important;
-}
-
-.notification-preview {
-  background-color: rgba(var(--v-theme-surface-variant), 0.5);
-  border: 1px solid rgba(var(--v-border-color), 0.08);
-  font-family: monospace;
-}
-
-.notification-emoji {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-.notification-context {
-  font-size: 0.875rem;
+  background-color: #f6f8fa !important;
+  border: 1px solid #d0d7de !important;
 }
 </style>

@@ -13,14 +13,19 @@ class NotificationController extends BaseController
 {
     public function index(): JsonResponse
     {
-        $notifications = Auth::user()
-            ->notifications()
+        $notifications = Notification::where('user_id', Auth::id())
             ->latest()
             ->paginate(15);
 
-        return $this->successResponse(
-            NotificationResource::collection($notifications)
-        );
+        return response()->json([
+            'data' => NotificationResource::collection($notifications),
+            'meta' => [
+                'current_page' => $notifications->currentPage(),
+                'last_page' => $notifications->lastPage(),
+                'per_page' => $notifications->perPage(),
+                'total' => $notifications->total()
+            ]
+        ]);
     }
 
     public function markAsRead(Notification $notification): JsonResponse
@@ -29,7 +34,7 @@ class NotificationController extends BaseController
             return $this->errorResponse('Unauthorized', 403);
         }
 
-        Auth::user()->markNotificationAsRead($notification);
+        $notification->update(['is_seen' => true]);
 
         return $this->successResponse(
             new NotificationResource($notification)
@@ -49,8 +54,23 @@ class NotificationController extends BaseController
 
     public function markAllAsRead(): JsonResponse
     {
-        Auth::user()->markAllNotificationsAsRead();
+        Notification::where('user_id', Auth::id())
+            ->update(['is_seen' => true]);
 
         return $this->successResponse(null, 'All notifications marked as read.');
+    }
+
+    public function markAsUnread(Notification $notification): JsonResponse
+    {
+        if ($notification->user_id !== Auth::id()) {
+            return $this->errorResponse('Unauthorized', 403);
+        }
+
+        $notification->update(['is_seen' => false]);
+        
+        return $this->successResponse(
+            new NotificationResource($notification),
+            'Notification marked as unread successfully'
+        );
     }
 } 

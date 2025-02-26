@@ -8,6 +8,7 @@ import { useToast } from "vue-toastification"
 import PriorityFilterDropdown from "@core/components/app-form-elements/PriorityFilterDropdown.vue"
 import GeneralMessenger from "@/views/kanban/components/GeneralMessenger.vue"
 import Messenger from "@/views/kanban/components/Messenger.vue"
+import { useRouter } from "vue-router"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -28,9 +29,15 @@ const userTimers = reactive({})
 const isActiveUsersMenuOpen = ref(false)
 const isMessengerDrawerOpen = ref(false)
 const selectedKanbanItem = ref(null)
+const router = useRouter()
+const shouldOpenMessenger = ref(false)
+const initialQueryParams = ref(null)
 
 const refetchKanban = async () => {
-  const res = await $api(`/container/${ route.params.containerId }`, {
+  const wasOpen = isMessengerDrawerOpen.value
+  const currentItem = selectedKanbanItem.value
+
+  const res = await $api(`/container/${route.params.containerId}`, {
     method: 'POST',
     body: {
       filters: {
@@ -45,11 +52,27 @@ const refetchKanban = async () => {
 
   kanban.value = res.data.container
 
-  if(res.data.filters) {
+  if (res.data.filters) {
     priorityFilter.value = res.data.filters.priority || []
     usersFilter.value = res.data.filters.users
     tagsFilter.value = res.data.filters.tags
     searchFilter.value = res.data.filters.search
+  }
+
+  if (wasOpen && currentItem && !initialQueryParams.value) {
+    nextTick(() => {
+      const updatedTask = kanban.value.boards?.flatMap(board => board.tasks)
+        .find(item => item.id === currentItem.item.id)
+      
+      if (updatedTask) {
+        selectedKanbanItem.value = {
+          item: updatedTask,
+          boardId: updatedTask.board_id,
+          boardName: kanban.value.boards.find(b => b.id === updatedTask.board_id)?.name
+        }
+        isMessengerDrawerOpen.value = true
+      }
+    })
   }
 }
 
@@ -299,6 +322,15 @@ watch(
   }, { deep: true, immediate: true })
 
 onMounted(() => {
+  if (route.query.openMessenger === 'true' && route.query.taskId) {
+    initialQueryParams.value = { ...route.query }
+    
+    router.replace({
+      path: route.path,
+      query: {}
+    })
+  }
+  
   refetchKanban()
 })
 
@@ -346,6 +378,26 @@ const deleteKanbanItemFn = async (item) => {
     isMessengerDrawerOpen.value = false
   }
 }
+
+watch(() => kanban.value, (newVal) => {
+  if (newVal && initialQueryParams.value) {
+    const task = newVal.boards?.flatMap(board => board.tasks)
+      .find(item => item.id === parseInt(initialQueryParams.value.taskId))
+
+    if (task) {
+      selectedKanbanItem.value = {
+        item: task,
+        boardId: task.board_id,
+        boardName: newVal.boards.find(b => b.id === task.board_id)?.name
+      }
+      
+      nextTick(() => {
+        isMessengerDrawerOpen.value = true
+        initialQueryParams.value = null
+      })
+    }
+  }
+}, { immediate: true })
 </script>
 
 <template>

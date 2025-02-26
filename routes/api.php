@@ -51,4 +51,5 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
     Route::patch('/notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     Route::patch('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+    Route::patch('/notifications/{notification}/mark-as-unread', [NotificationController::class, 'markAsUnread']);
 });
