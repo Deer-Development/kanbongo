@@ -466,7 +466,7 @@ const deleteKanbanItemFn = async (item) => {
                     <span
                       v-if="entry.time_entry"
                       class="user-task"
-                    >Task #{{ entry.time_entry.task_id }}</span>
+                    >Task #{{ entry.time_entry.task_sequence_id }}</span>
                     <span
                       v-if="!entry.has_weekly_limit"
                       class="progress-text"
@@ -516,7 +516,7 @@ const deleteKanbanItemFn = async (item) => {
                       v-if="entry.last_time_entry"
                       class="user-task"
                     >
-                      Last Task #{{ entry.last_time_entry.task_id }}
+                      Last Task #{{ entry.last_time_entry.task_sequence_id }}
                       <span v-if="entry.last_time_entry.end">
                         (Ended {{ formatDistanceToNow(parseISO(entry.last_time_entry.end)) }} ago)
                         {{ format(new Date(entry.last_time_entry.end), "MMM d, yyyy h:mm:ss a") }}

@@ -28,9 +28,18 @@ class TaskService extends BaseService
 
             $board->tasks()->increment('order');
 
+            // Get the next sequence_id for this container
+            $maxSequence = Task::query()
+                ->whereHas('board', function ($query) use ($board) {
+                    $query->where('container_id', $board->container_id);
+                })
+                ->max('sequence_id') ?? 0;
+
             $task = $board->tasks()->create([
                 'name' => $data['name'],
                 'order' => 0,
+                'sequence_id' => $maxSequence + 1,
+                'container_id' => $board->container_id,
             ]);
 
             DB::commit();

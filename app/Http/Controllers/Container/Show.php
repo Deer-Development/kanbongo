@@ -105,7 +105,7 @@ class Show extends BaseController
                                 });
                             }
                             if (!empty($filters['search'])) {
-                                $q->whereAny(['name', 'id'], 'ILIKE','%' . $filters['search'] . '%');
+                                $q->whereAny(['name', 'sequence_id'], 'ILIKE','%' . $filters['search'] . '%');
                             }
                         },
                     ]);

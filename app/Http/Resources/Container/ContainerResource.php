@@ -110,6 +110,7 @@ class ContainerResource extends JsonResource
                         'id' => $timeEntry->id,
                         'start' => $timeEntry->start,
                         'task_id' => $timeEntry->task_id,
+                        'task_sequence_id' => $timeEntry->task->sequence_id,
                     ],
                 ];
             });
@@ -134,6 +135,7 @@ class ContainerResource extends JsonResource
                         'start' => $lastTimeEntry->start,
                         'end' => $lastTimeEntry->end,
                         'task_id' => $lastTimeEntry->task_id,
+                        'task_sequence_id' => $lastTimeEntry->task->sequence_id,
                     ] : null,
                 ];
             });

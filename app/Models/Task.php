@@ -21,6 +21,19 @@ class Task extends Model
     {
         parent::boot();
 
+        static::creating(function ($task) {
+            // Set container_id from board relationship
+            $task->container_id = $task->board->container_id;
+
+            if (!$task->sequence_id) {
+                $maxSequence = static::query()
+                    ->where('container_id', $task->container_id)
+                    ->max('sequence_id') ?? 0;
+                    
+                $task->sequence_id = $maxSequence + 1;
+            }
+        });
+
         static::deleting(function ($task) {
             Log::create([
                 'loggable_type' => self::class,
@@ -38,6 +51,11 @@ class Task extends Model
     public function board(): BelongsTo
     {
         return $this->belongsTo(Board::class);
+    }
+
+    public function container(): BelongsTo
+    {
+        return $this->belongsTo(Container::class);
     }
 
     public function members(): MorphMany

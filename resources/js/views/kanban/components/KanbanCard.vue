@@ -154,7 +154,7 @@ watchDebounced(
             v-bind="props"
             class="custom-badge pl-0 pt-0 align-self-end"
           >
-            <span class="pr-1">{{ item.id }}</span>
+            <span class="pr-1">{{ item.sequence_id }}</span>
             <VIcon
               size="14"
               color="#374151"

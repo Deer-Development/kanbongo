@@ -13,6 +13,7 @@ class TaskBoardResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'sequence_id' => $this->sequence_id,
             'name' => $this->name,
             'board_id' => $this->board_id,
             'description' => $this->description,
