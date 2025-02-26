@@ -103,5 +103,6 @@ export default defineConfig({
     entries: [
       './resources/js/**/*.vue',
     ],
+    include: ['pusher-js']
   },
 })

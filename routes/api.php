@@ -8,7 +8,11 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\General\Statuses;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
+
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 Route::group(['prefix' => 'auth'], function () {
     Route::post('/send-token', [LoginController::class, 'sendLoginToken'])->name('vue.user.send-token');
@@ -42,4 +46,9 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
     Route::group(['prefix' => 'general'], function() {
        Route::get('statuses/priority', [Statuses::class, 'priority'])->name('statuses.priority');
     });
+
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::patch('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
 });

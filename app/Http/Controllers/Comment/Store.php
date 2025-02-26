@@ -6,6 +6,7 @@ use App\Http\Controllers\BaseController;
 use App\Http\Requests\Comment\ValidateCommentStore;
 use App\Services\Comment\CommentService;
 use App\Http\Resources\Comment\CommentResource;
+use Illuminate\Support\Facades\Auth;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +23,7 @@ class Store extends BaseController
     public function __invoke(ValidateCommentStore $request): JsonResponse
     {
         $comment = $this->service->create(array_merge($request->validated(), [
-            'created_by' => auth()->id(),
+            'created_by' => Auth::id(),
             'content' => $request->validated()['content'] ?? '<p class="attachment-placeholder"> </p>',
         ]));
 
@@ -45,7 +46,7 @@ class Store extends BaseController
             $comment->mentions()->sync($mentionedIds);
         }
 
-        $this->service->markCommentAsRead($comment->id, auth()->id());
+        $this->service->markCommentAsRead($comment->id, Auth::id());
 
         $commentableType = $request->get('commentable_type');
         if (!class_exists($commentableType)) {

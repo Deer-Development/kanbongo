@@ -4,6 +4,7 @@ import { registerPlugins } from '@core/utils/plugins'
 import Toast from "vue-toastification"
 import "vue-toastification/dist/index.css"
 import { CkeditorPlugin } from '@ckeditor/ckeditor5-vue'
+import './bootstrap' 
 
 // Styles
 import '@core-scss/template/index.scss'

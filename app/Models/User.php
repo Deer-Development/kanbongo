@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasNotifications;
 use App\Traits\Filterable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,10 +13,11 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\Permission\Traits\HasRoles;
+use App\Models\Notification;
 
 class User extends Authenticatable implements HasMedia
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles, Filterable, InteractsWithMedia;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, Filterable, InteractsWithMedia, HasNotifications;
 
     protected $guarded = ['id'];
 
@@ -79,5 +81,39 @@ class User extends Authenticatable implements HasMedia
     public function paychecks(): HasMany
     {
         return $this->hasMany(Paycheck::class);
+    }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    public function unreadNotifications(): HasMany
+    {
+        return $this->notifications()->where('is_seen', false);
+    }
+
+    public function readNotifications(): HasMany
+    {
+        return $this->notifications()->where('is_seen', true);
+    }
+
+    public function markAllNotificationsAsRead(): void
+    {
+        $this->notifications()->update(['is_seen' => true]);
+    }
+
+    public function markNotificationAsRead(Notification $notification): void
+    {
+        if ($notification->user_id === $this->id) {
+            $notification->update(['is_seen' => true]);
+        }
+    }
+
+    public function markNotificationAsUnread(Notification $notification): void
+    {
+        if ($notification->user_id === $this->id) {
+            $notification->update(['is_seen' => false]);
+        }
     }
 }
