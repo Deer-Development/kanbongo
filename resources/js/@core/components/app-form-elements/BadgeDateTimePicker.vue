@@ -11,7 +11,6 @@ import {
   makeVInputProps,
 } from 'vuetify/lib/components/VInput/VInput'
 
-
 import { filterInputAttrs } from 'vuetify/lib/util/helpers'
 import { useConfigStore } from '@core/stores/config'
 
@@ -45,6 +44,10 @@ const props = defineProps({
     variant: 'outlined',
     color: 'primary',
   }),
+  hideIconOnMobile: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
@@ -157,6 +160,7 @@ const elementId = computed(() => {
     >
       <template #prepend>
         <VIcon
+          :class="{ 'hide-on-mobile': hideIconOnMobile }"
           class="v-text-field__prepend"
           size="14"
         >
@@ -173,7 +177,6 @@ const elementId = computed(() => {
           :dirty="isDirty.value || props.dirty"
           :error="isValid.value === false"
           :disabled="isDisabled.value"
-          @click:clear="onClear"
         >
           <template #default="{ props: vFieldProps }">
             <div v-bind="vFieldProps">
@@ -201,17 +204,6 @@ const elementId = computed(() => {
                 type="text"
               >
             </div>
-          </template>
-          <template #clear>
-            <VIcon
-              left
-              size="14"
-              color="warning"
-              class="mt-1"
-              @click.stop="onClear"
-            >
-              tabler-square-x
-            </VIcon>
           </template>
         </VField>
       </template>
@@ -557,6 +549,12 @@ input[altinputclass="inlinePicker"] {
       inset-inline-start: 0;
       text-align: start;
     }
+  }
+}
+
+.hide-on-mobile {
+  @media (max-width: 600px) {
+    display: none !important;
   }
 }
 </style>

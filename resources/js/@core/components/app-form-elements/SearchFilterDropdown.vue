@@ -17,9 +17,6 @@
       ref="dropdown"
       class="dropdown-menu hidden"
     >
-      <div class="dropdown-header">
-        Search
-      </div>
       <AppTextField
         v-model="search"
         placeholder="Search..."
