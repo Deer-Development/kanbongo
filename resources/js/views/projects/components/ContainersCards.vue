@@ -52,8 +52,18 @@ const paymentBoard = board => {
 }
 
 const goToBoard = board => {
-  if(board.is_active)
-    router.push({ name: 'container-view', params: { id: projectDataLocal.value.id, containerId: board.id } })
+  if (board.is_active) {
+    // Prevent any race conditions by using nextTick
+    nextTick(() => {
+      router.push({ 
+        name: 'container-view', 
+        params: { 
+          id: projectDataLocal.value.id, 
+          containerId: board.id 
+        }
+      })
+    })
+  }
 }
 
 watch(() => isPaymentDetailsDialogVisible.value, value => {

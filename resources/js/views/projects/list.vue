@@ -64,8 +64,15 @@ const deleteItem = async () => {
 }
 
 const goToProject = item => {
-  if(item.is_active)
-    router.push({ name: 'project-view', params: { id: item.id } })
+  if (item.is_active) {
+    // Prevent any race conditions by using nextTick
+    nextTick(() => {
+      router.push({ 
+        name: 'project-view', 
+        params: { id: item.id } 
+      })
+    })
+  }
 }
 
 const formatDuration = (seconds) => {
