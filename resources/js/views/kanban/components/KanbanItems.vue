@@ -57,6 +57,7 @@ const props = defineProps({
   hasActiveTimer: { type: Boolean, required: false, default: false },
   isOwner: { type: Boolean, required: false, default: false },
   isMember: { type: Boolean, required: false, default: false },
+  isAdmin: { type: Boolean, required: false, default: false },
   auth: {
     type: Object,
     required: false,
@@ -113,20 +114,24 @@ const renameBoard = () => {
   })
 }
 
-const addNewItem = () => {
-  refForm.value?.validate().then(valid => {
-    if (valid.valid) {
-      const item = {
-        name: newTaskTitle.value,
-        boardId: props.boardId,
-      }
+const isSubmitting = ref(false)
 
-      emit('addNewItem', item)
-
-      newTaskTitle.value = ''
-      isAddNewFormVisible.value = false
+const addNewItem = async () => {
+  try {
+    isSubmitting.value = true
+    await refForm.value?.validate()
+    
+    const item = {
+      name: newTaskTitle.value,
+      boardId: props.boardId,
     }
-  })
+
+    await emit('addNewItem', item)
+    newTaskTitle.value = ''
+    isAddNewFormVisible.value = false
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 // 👉 watch kanbanIds its is useful when you add new task
@@ -248,53 +253,84 @@ const refreshData = () => {
       <VForm
         v-if="isBoardNameEditing"
         ref="refKanbanBoardTitle"
+        class="board-edit-form"
         @submit.prevent="renameBoard"
       >
-        <div class="mb-2">
-          <VTextField
-            v-model="localBoardName"
-            autofocus
-            variant="underlined"
-            :rules="[requiredValidator]"
-            hide-details
-            class="border-0"
-            @keydown.esc="hideResetBoardNameForm"
-          >
-            <template #append-inner>
-              <VIcon
-                size="20"
-                color="success"
-                icon="tabler-check"
-                class="me-1"
-                @click="renameBoard"
-              />
-
-              <VIcon
-                size="20"
-                color="error"
-                icon="tabler-x"
-                @click="hideResetBoardNameForm"
-              />
-            </template>
-          </VTextField>
-        </div>
-        <div class="d-flex">
-          <VRadioGroup
-            v-model="localBoardColor"
-            class="d-flex gap-3"
-            inline
-          >
-            <VRadio
-              v-for="color in props.colors"
-              :key="color.name"
-              :value="color.value"
-              :color="color.value"
-              class="custom-radio-checkbox"
-              :class="[boardColor === color.value ? 'selected' : '']"
-              :style="{ color: color.value }"
-              ripple
+        <div class="edit-form-content">
+          <div class="edit-header">
+            <span class="text-subtitle-2">Edit column</span>
+            <VIcon
+              icon="tabler-x"
+              size="16"
+              class="close-icon"
+              @click="hideResetBoardNameForm"
             />
-          </VRadioGroup>
+          </div>
+
+          <div class="edit-body">
+            <VTextField
+              v-model="localBoardName"
+              label="Column name"
+              placeholder="Enter column name"
+              variant="outlined"
+              density="comfortable"
+              :rules="[requiredValidator]"
+              autofocus
+              class="mb-4"
+              hide-details="auto"
+              @keydown.esc="hideResetBoardNameForm"
+            >
+              <template #prepend-inner>
+                <VIcon
+                  icon="tabler-layout-board"
+                  size="16"
+                  class="text-medium-emphasis"
+                />
+              </template>
+            </VTextField>
+
+            <div class="color-selection">
+              <label class="text-subtitle-2 mb-2 d-block">Column color</label>
+              <div class="color-grid">
+                <div
+                  v-for="color in props.colors"
+                  :key="color.name"
+                  class="color-option"
+                  :class="{ selected: localBoardColor === color.value }"
+                  :style="{ '--color': color.value }"
+                  @click="localBoardColor = color.value"
+                >
+                  <div class="color-preview" />
+                  <VIcon
+                    v-if="localBoardColor === color.value"
+                    icon="tabler-check"
+                    size="16"
+                    color="white"
+                    class="check-icon"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="edit-actions">
+            <VBtn
+              size="small"
+              color="primary"
+              type="submit"
+              prepend-icon="tabler-check"
+            >
+              Save changes
+            </VBtn>
+            <VBtn
+              size="small"
+              variant="text"
+              color="secondary"
+              @click="hideResetBoardNameForm"
+            >
+              Cancel
+            </VBtn>
+          </div>
         </div>
       </VForm>
 
@@ -365,6 +401,7 @@ const refreshData = () => {
               <VDivider />
 
               <VListItem
+                v-if="isSuperAdmin || isOwner || isAdmin"
                 color="error"
                 @click="deleteBoard(boardId)"
               >
@@ -383,34 +420,60 @@ const refreshData = () => {
         </div>
       </div>
 
-      <div class="add-new-form mt-2" v-if="isAddNewFormVisible">
+      <div 
+        v-if="isAddNewFormVisible"
+        class="add-new-form-container"
+      >
         <VForm
           ref="refForm"
-          class="mt-4"
           validate-on="submit"
           @submit.prevent="addNewItem"
         >
-          <div class="mb-4">
-            <VTextarea
-              v-model="newTaskTitle"
-              :rules="[requiredValidator]"
-              placeholder="Add Content"
-              autofocus
-              rows="2"
-              @keydown.enter="handleEnterKeydown"
-              @keydown.esc="hideAddNewForm"
+          <div class="form-header">
+            <span class="text-subtitle-2">Add new task</span>
+            <VIcon
+              icon="tabler-x"
+              size="16"
+              class="close-icon"
+              @click="hideAddNewForm"
             />
           </div>
-          <div class="d-flex gap-4 flex-wrap">
+
+          <VTextarea
+            v-model="newTaskTitle"
+            :rules="[requiredValidator]"
+            placeholder="Enter task description..."
+            variant="outlined"
+            density="comfortable"
+            rows="3"
+            hide-details
+            class="task-textarea"
+            autofocus
+            @keydown.enter="handleEnterKeydown"
+            @keydown.esc="hideAddNewForm"
+          >
+            <template #prepend-inner>
+              <VIcon
+                icon="tabler-file-text"
+                size="16"
+                class="text-medium-emphasis"
+              />
+            </template>
+          </VTextarea>
+
+          <div class="form-actions">
             <VBtn
               size="small"
+              color="primary"
               type="submit"
+              prepend-icon="tabler-plus"
+              :loading="isSubmitting"
             >
-              Add
+              Create task
             </VBtn>
             <VBtn
               size="small"
-              variant="tonal"
+              variant="text"
               color="secondary"
               @click="hideAddNewForm"
             >
@@ -519,4 +582,222 @@ const refreshData = () => {
   background: rgba(191, 191, 191, 0.5);
 }
 
+.add-new-form-container {
+  margin-top: 8px;
+  background: rgb(var(--v-theme-background));
+  border-radius: 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: rgba(var(--v-theme-on-surface), 0.2);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  .form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+
+    .text-subtitle-2 {
+      font-weight: 500;
+      color: rgb(var(--v-theme-on-surface));
+    }
+
+    .close-icon {
+      opacity: 0.6;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  .task-textarea {
+    padding: 12px 16px;
+
+    :deep(.v-field) {
+      border-radius: 4px;
+      background: rgb(var(--v-theme-surface));
+      box-shadow: none;
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: rgba(var(--v-theme-primary), 0.5);
+      }
+
+      &.v-field--focused {
+        border-color: rgb(var(--v-theme-primary));
+        box-shadow: 0 0 0 1px rgb(var(--v-theme-primary));
+      }
+
+      .v-field__input {
+        padding-top: 0;
+        min-height: auto;
+        font-size: 0.875rem;
+      }
+
+      .v-field__prepend-inner {
+        padding-inline-end: 8px;
+      }
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(var(--v-theme-on-surface), 0.02);
+    border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
+}
+
+// Adăugăm și un mic efect de animație pentru apariția formularului
+.add-new-form-container {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.board-edit-form {
+  margin-top: 8px;
+  background: rgb(var(--v-theme-background));
+  border-radius: 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  animation: slideDown 0.2s ease-out;
+
+  &:hover {
+    border-color: rgba(var(--v-theme-on-surface), 0.2);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  .edit-form-content {
+    .edit-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+
+      .text-subtitle-2 {
+        font-weight: 500;
+        color: rgb(var(--v-theme-on-surface));
+      }
+
+      .close-icon {
+        opacity: 0.6;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          opacity: 1;
+          transform: scale(1.1);
+        }
+      }
+    }
+
+    .edit-body {
+      padding: 16px;
+
+      .color-selection {
+        label {
+          color: rgba(var(--v-theme-on-surface), 0.7);
+          font-size: 0.875rem;
+        }
+
+        .color-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+          gap: 8px;
+          margin-top: 8px;
+
+          .color-option {
+            position: relative;
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+            padding: 3px;
+
+            &:hover {
+              transform: scale(1.1);
+            }
+
+            &.selected {
+              border-color: var(--color);
+              transform: scale(1.1);
+
+              .check-icon {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+              }
+            }
+
+            .color-preview {
+              width: 100%;
+              height: 100%;
+              border-radius: 4px;
+              background-color: var(--color);
+            }
+
+            .check-icon {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) scale(0.8);
+              opacity: 0;
+              transition: all 0.2s ease;
+              filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+            }
+          }
+        }
+      }
+    }
+
+    .edit-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: rgba(var(--v-theme-on-surface), 0.02);
+      border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+      border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 6px;
+    }
+  }
+}
+
+// Folosim aceeași animație ca la add-new-form
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>

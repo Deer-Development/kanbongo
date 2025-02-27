@@ -5,12 +5,10 @@ import {
 } from '@formkit/drag-and-drop'
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
-import KanbanBoardEditDrawer from './KanbanBoardEditDrawer.vue'
 import KanbanItems from './KanbanItems.vue'
 import { useMediaQuery } from "@vueuse/core"
 import { ref, defineExpose, defineProps, defineEmits, watch } from 'vue'
 import EditTimerDialog from "@/views/kanban/components/dialogs/EditTimer.vue"
-import Messenger from "@/views/kanban/components/Messenger.vue"
 
 const props = defineProps({
   kanbanData: {
@@ -73,15 +71,40 @@ const taskName = ref(null)
 const editDialog = ref(null)
 const isMobile = useMediaQuery('(max-width: 768px)')
 
-const addNewBoard = () => {
-  refAddNewBoard.value?.validate().then(valid => {
-    if (valid.valid) {
-      emit('addNewBoard', boardTitle.value, boardColor.value)
-      isAddNewFormVisible.value = false
-      boardTitle.value = ''
-      boardColor.value = '#ef5350'
-    }
-  })
+const isSubmitting = ref(false)
+const addBoardForm = ref(null)
+const isAddNewBoardFormVisible = ref(false)
+const newBoardName = ref('')
+const newBoardColor = ref('')
+const isHovered = ref(false)
+
+const formRules = {
+  name: [
+    v => !!v || 'Column name is required',
+    v => (v && v.length >= 3) || 'Name must be at least 3 characters',
+    v => !props.kanbanData.boards.some(board => 
+      board.name.toLowerCase() === v?.toLowerCase()
+    ) || 'Column name already exists'
+  ],
+  color: [
+    v => !!v || 'Please select a color for the column'
+  ]
+}
+
+const addNewBoard = async () => {
+  try {
+    const { valid } = await addBoardForm.value?.validate()
+    
+    if (!valid) return
+    
+    isSubmitting.value = true
+    await emit('addNewBoard', newBoardName.value, newBoardColor.value)
+    hideAddNewBoardForm()
+  } catch (error) {
+    console.error('Form validation failed:', error)
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 const deleteBoard = (boardId, availableBoards) => {
@@ -193,7 +216,15 @@ const hideAddNewForm = () => {
   refAddNewBoard.value?.reset()
 }
 
+const hideAddNewBoardForm = () => {
+  isAddNewBoardFormVisible.value = false
+  newBoardName.value = ''
+  newBoardColor.value = ''
+  addBoardForm.value?.reset()
+}
+
 onClickOutside(refAddNewBoard, hideAddNewForm)
+onClickOutside(addBoardForm, hideAddNewBoardForm)
 
 defineExpose({
   isKanbanBoardEditVisible,
@@ -227,6 +258,7 @@ defineExpose({
           :is-super-admin="props.kanbanData.auth.is_super_admin"
           :is-owner="props.kanbanData.auth.is_owner"
           :is-member="props.kanbanData.auth.is_member"
+          :is-admin="props.kanbanData.auth.is_admin"
           :is-mobile="isMobile"
           :auth="props.kanbanData.auth"
           :available-members="localAvailableMembers"
@@ -245,69 +277,123 @@ defineExpose({
       </template>
     </div>
 
-    <div
-      class="add-new-form text-no-wrap"
-      style="inline-size: 21rem;"
+    <div 
+      v-if="!isAddNewBoardFormVisible"
+      class="empty-board-column"
+      @click="isAddNewBoardFormVisible = true"
+      @mouseenter="isHovered = true"
+      @mouseleave="isHovered = false"
     >
-      <VChip
-        class="mb-4"
-        color="primary"
-        @click="isAddNewFormVisible = !isAddNewFormVisible"
-      >
-        <VIcon
-          size="18"
-          icon="tabler-plus"
-        />
-        Add New
-      </VChip>
+      <div class="empty-board-content">
+        <div class="icon-container">
+          <span class="emoji" :class="{ 'is-hovered': isHovered }">
+            {{ isHovered ? '🎯' : '🎨' }}
+          </span>
+          <VIcon
+            icon="tabler-plus"
+            size="18"
+            class="plus-icon"
+          />
+        </div>
+        <span class="add-text">Add another column</span>
+        <span class="helper-text">Click to add</span>
+      </div>
+    </div>
 
+    <div
+      v-if="isAddNewBoardFormVisible"
+      class="add-new-board-container"
+    >
       <VForm
-        v-if="isAddNewFormVisible"
-        ref="refAddNewBoard"
-        class="mt-4"
+        ref="addBoardForm"
         validate-on="submit"
         @submit.prevent="addNewBoard"
       >
-        <div class="mb-4">
-          <VTextField
-            v-model="boardTitle"
-            :rules="[requiredValidator, validateBoardTitle]"
-            autofocus
-            placeholder="Add Board Title"
-            @keydown.esc="hideAddNewForm"
+        <div class="form-header">
+          <span class="text-subtitle-2">Add new column</span>
+          <VIcon
+            icon="tabler-x"
+            size="16"
+            class="close-icon"
+            @click="hideAddNewBoardForm"
           />
         </div>
-        <div class="d-flex mb-4">
-          <VRadioGroup
-            v-model="boardColor"
-            class="d-flex gap-3"
-            inline
+
+        <div class="form-body">
+          <VTextField
+            v-model="newBoardName"
+            label="Column name"
+            placeholder="Enter column name"
+            variant="outlined"
+            density="comfortable"
+            :rules="formRules.name"
+            autofocus
+            class="mb-4"
+            persistent-hint
+            @keydown.esc="hideAddNewBoardForm"
           >
-            <VRadio
-              v-for="color in colors"
-              :key="color.name"
-              :value="color.value"
-              :color="color.value"
-              class="custom-radio-checkbox"
-              :class="[boardColor === color.value ? 'selected' : '']"
-              :style="{ color: color.value }"
-              ripple
-            />
-          </VRadioGroup>
+            <template #prepend-inner>
+              <VIcon
+                icon="tabler-layout-board"
+                size="16"
+                class="text-medium-emphasis"
+              />
+            </template>
+          </VTextField>
+
+          <div class="color-selection">
+            <label class="text-subtitle-2 mb-2 d-block">
+              Column color
+              <span 
+                v-if="!newBoardColor" 
+                class="text-error text-caption ms-1"
+              >
+                *Required
+              </span>
+            </label>
+            <div 
+              class="color-grid"
+              :class="{ 'error-border': !newBoardColor }"
+            >
+              <div
+                v-for="color in colors"
+                :key="color.name"
+                class="color-option"
+                :class="{ 
+                  selected: newBoardColor === color.value,
+                  'error-shake': !newBoardColor && isSubmitting
+                }"
+                :style="{ '--color': color.value }"
+                @click="newBoardColor = color.value"
+              >
+                <div class="color-preview" />
+                <VIcon
+                  v-if="newBoardColor === color.value"
+                  icon="tabler-check"
+                  size="16"
+                  color="white"
+                  class="check-icon"
+                />
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="d-flex gap-3 justify-end">
+
+        <div class="form-actions">
           <VBtn
             size="small"
+            color="primary"
             type="submit"
+            prepend-icon="tabler-plus"
+            :loading="isSubmitting"
           >
-            Add
+            Create column
           </VBtn>
           <VBtn
             size="small"
-            variant="tonal"
+            variant="text"
             color="secondary"
-            type="reset"
-            @click="hideAddNewForm"
+            @click="hideAddNewBoardForm"
           >
             Cancel
           </VBtn>
@@ -401,6 +487,300 @@ defineExpose({
       border-radius: vuetify.$border-radius-root;
       background-color: rgb(var(--v-theme-surface));
     }
+  }
+}
+
+.add-new-board-container {
+  margin: 8px;
+  background: rgb(var(--v-theme-background));
+  border-radius: 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  animation: slideDown 0.2s ease-out;
+  max-width: 400px;
+
+  &:hover {
+    border-color: rgba(var(--v-theme-on-surface), 0.2);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  .form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+
+    .text-subtitle-2 {
+      font-weight: 500;
+      color: rgb(var(--v-theme-on-surface));
+    }
+
+    .close-icon {
+      opacity: 0.6;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  .form-body {
+    padding: 16px;
+
+    .color-selection {
+      label {
+        color: rgba(var(--v-theme-on-surface), 0.7);
+        font-size: 0.875rem;
+      }
+
+      .color-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+        gap: 8px;
+        margin-top: 8px;
+
+        .color-option {
+          position: relative;
+          width: 36px;
+          height: 36px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: 2px solid transparent;
+          padding: 3px;
+
+          &:hover {
+            transform: scale(1.1);
+          }
+
+          &.selected {
+            border-color: var(--color);
+            transform: scale(1.1);
+
+            .check-icon {
+              opacity: 1;
+              transform: translate(-50%, -50%) scale(1);
+            }
+          }
+
+          .color-preview {
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+            background-color: var(--color);
+          }
+
+          .check-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            opacity: 0;
+            transition: all 0.2s ease;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+          }
+        }
+      }
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(var(--v-theme-on-surface), 0.02);
+    border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.empty-board-column {
+  inline-size: 17.875rem;
+  min-inline-size: 17.875rem;
+  height: 120px;
+  margin: 8px 0;
+  background: rgba(var(--v-theme-surface), 1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px dashed rgba(var(--v-theme-primary), 0.15);
+    border-radius: 7px;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  &:hover {
+    background: rgba(var(--v-theme-surface), 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--v-theme-on-surface), 0.08);
+
+    &::before {
+      opacity: 1;
+    }
+
+    .empty-board-content {
+      transform: scale(1.02);
+
+      .icon-container {
+        background: rgba(var(--v-theme-primary), 0.08);
+        transform: scale(1.1);
+
+        .emoji {
+          transform: rotate(15deg);
+        }
+
+        .plus-icon {
+          color: rgb(var(--v-theme-primary));
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+
+      .add-text {
+        color: rgb(var(--v-theme-primary));
+      }
+
+      .helper-text {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+
+  .empty-board-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+    .icon-container {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      background: rgba(var(--v-theme-on-surface), 0.04);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+      .emoji {
+        font-size: 24px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: center;
+        
+        &.is-hovered {
+          animation: bounce 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+      }
+
+      .plus-icon {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgb(var(--v-theme-surface));
+        border-radius: 4px;
+        padding: 3px;
+        box-shadow: 0 2px 4px rgba(var(--v-theme-on-surface), 0.1);
+      }
+    }
+
+    .add-text {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: rgba(var(--v-theme-on-surface), 0.9);
+      margin-bottom: 4px;
+      transition: color 0.25s ease;
+    }
+
+    .helper-text {
+      font-size: 0.75rem;
+      color: rgba(var(--v-theme-on-surface), 0.6);
+      opacity: 0;
+      transform: translateY(5px);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: scale(1) rotate(0);
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+  }
+}
+
+// Ajustăm poziționarea formularului când este vizibil
+.add-new-board-container {
+  inline-size: 17.875rem;
+  min-inline-size: 17.875rem;
+  margin: 8px 0;
+  // ... restul stilurilor rămân la fel
+}
+
+.color-selection {
+  .color-grid {
+    &.error-border {
+      border: 1px solid rgb(var(--v-theme-error));
+      border-radius: 8px;
+      padding: 4px;
+    }
+  }
+
+  .color-option {
+    &.error-shake {
+      animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+  }
+}
+
+@keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+  30%, 50%, 70% {
+    transform: translate3d(-2px, 0, 0);
+  }
+  40%, 60% {
+    transform: translate3d(2px, 0, 0);
   }
 }
 </style>
