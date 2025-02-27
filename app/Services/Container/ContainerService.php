@@ -39,6 +39,7 @@ class ContainerService extends BaseService
     {
         return DB::transaction(function () use ($id, $data) {
             $containerData = $this->prepareContainerData($data);
+
             $members = $data['members'] ?? [];
 
             $container = $this->getModelInstance()->findOrFail($id);
@@ -83,7 +84,7 @@ class ContainerService extends BaseService
             'name' => $data['name'],
             'project_id' => $data['project_id'],
             'is_active' => $data['is_active'],
-            'owner_id' => $data['owner_id'] ?? auth()->id(),
+            'owner_id' => $data['owner_id'] ?? Auth::user()->id,
         ];
     }
 

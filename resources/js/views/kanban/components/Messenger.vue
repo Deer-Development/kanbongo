@@ -31,6 +31,10 @@ const props = defineProps({
   isOwner: { type: Boolean, required: false, default: false },
   isMember: { type: Boolean, required: false, default: false },
   authId: { type: Number, required: false },
+  showBackButton: {
+    type: Boolean,
+    default: false
+  }
 })
 
 const emit = defineEmits([
@@ -39,6 +43,7 @@ const emit = defineEmits([
   'deleteKanbanItem',
   'refreshKanbanData',
   'editTimer',
+  'back-to-general'
 ])
 
 const messages = ref([])
@@ -48,11 +53,14 @@ const localAvailableMembers = ref([])
 const message = ref('')
 const currentMessageId = ref(null)
 const messageToReply = ref(null)
+const showLocalBackButton = ref(props.showBackButton)
 const chatLogPS = ref()
 const previewDialog = ref(false)
 const isEditMode = ref(false)
 const selectedAttachment = ref(null)
 const containerData = ref(null)
+const messageActionsMap = ref(new Map())
+const isLoading = ref(false)
 
 const toast = useToast()
 
@@ -73,7 +81,7 @@ const itemTitle = computed(() => {
   if (props.containerId) {
     return 'Board Chat'
   }
-  return `${props.kanbanItem.item.id}) ${props.kanbanItem.item.name}`
+  return `${props.kanbanItem.item.sequence_id}) ${props.kanbanItem.item.name}`
 })
 
 const handleDrawerModelValueUpdate = val => {
@@ -86,25 +94,31 @@ watch(() => props, () => {
 
 const fetchKanbanItem = async () => {
   if (!commentableId.value) return
-
-  const endpoint = props.containerId ? `/container/${props.containerId}/comments` : `/task/${props.kanbanItem.item.id}`
-  const res = await $api(endpoint)
   
-  if (res) {
-    if (props.containerId) {
-      // Handle container data
-      containerData.value = res.data
-    } else {
-      // Handle task data
-      localKanbanItem.value = res.data
-    }
+  isLoading.value = true
+  
+  try {
+    const endpoint = props.containerId ? `/container/${props.containerId}/comments` : `/task/${props.kanbanItem.item.id}`
+    const res = await $api(endpoint)
     
-    if (res.data.comments) {
-      messages.value = res.data.comments
-      await nextTick()
-      scrollToBottom()
-      checkCommentsInView()
+    if (res) {
+      if (props.containerId) {
+        containerData.value = res.data
+      } else {
+        localKanbanItem.value = res.data
+      }
+      
+      if (res.data.comments) {
+        messages.value = res.data.comments
+        await nextTick()
+        scrollToBottom()
+        checkCommentsInView()
+      }
     }
+  } finally {
+    setTimeout(() => {
+      isLoading.value = false
+    }, 300)
   }
 }
 
@@ -113,6 +127,10 @@ watch(() => props.kanbanItem, () => {
     localKanbanItem.value = JSON.parse(JSON.stringify(props.kanbanItem.item))
   }
 }, { deep: true })
+
+watch(() => props.showBackButton, () => {
+  showLocalBackButton.value = props.showBackButton
+}, { deep:true, immediate: true })
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -314,11 +332,21 @@ const getAttachmentColor = (attachment) => {
   return '#636E72'
 }
 
+const getMessageMenuModel = (messageId) => ({
+  get: () => messageActionsMap.value.get(messageId) || false,
+  set: (value) => messageActionsMap.value.set(messageId, value)
+})
+
 watch(() => props.isDrawerOpen, async () => {
   if (props.isDrawerOpen) {
     await fetchKanbanItem()
   }
 })
+
+const handleBackClick = () => {
+  emit('update:isDrawerOpen', false)
+  emit('back-to-general')
+}
 </script>
 
 <template>
@@ -333,195 +361,232 @@ watch(() => props.isDrawerOpen, async () => {
   >
     <AppDrawerHeaderSection
       :title="itemTitle"
-      class="py-2 px-2"
+      :show-back-button="showLocalBackButton"
       @cancel="closeNavigationDrawer"
+      @back="handleBackClick"
     />
 
     <VDivider />
 
     <div
       ref="chatLogPS"
-      class="flex-grow-1"
+      class="flex-grow-1 messenger-content"
       style="height: calc(100% - 64px); overflow: auto;"
     >
-      <div
-        v-if="messages.length"
-        class="chat-log pa-6"
+      <div 
+        v-if="isLoading" 
+        class="loading-container pa-6"
       >
-        <div
-          v-for="(msg, index) in messages"
-          :id="`comment-${msg.id}`"
-          :key="msg.createdBy.id + String(index)"
-          class="chat-group d-flex align-start mb-6"
-          :class="[{
-            'flex-row-reverse': msg.createdBy.id === authId,
-          }]"
-        >
-          <div
-            class="chat-avatar"
-            :class="msg.createdBy.id === authId ? 'ms-4' : 'me-4'"
-          >
-            <VAvatar
-              size="32"
-              variant="flat"
-            >
-              <template v-if="msg.createdBy.avatar">
-                <VImg
-                  :src="msg.createdBy.avatar"
-                  alt="Avatar"
-                />
-              </template>
-              <template v-else>
-                <span>{{ msg.createdBy.avatar_or_initials }}</span>
-              </template>
-            </VAvatar>
-          </div>
-          <div class="chat-body d-inline-flex flex-column align-end w-100">
-            <div
-              class="chat-content py-2 px-2 w-100 elevation-1 chat-right"
-              style="background-color: rgb(var(--v-theme-surface));"
-              :class="[
-                msg.createdBy.id !== authId ? 'chat-left' : 'chat-right',
-              ]"
-            >
-              <div
-                v-if="msg.attachments?.length"
-                class="attachments-section"
-              >
-                <div class="attachments-wrapper">
-                  <div
-                    v-for="attachment in msg.attachments"
-                    :key="attachment.id"
-                    class="attachment-item"
-                    @click.prevent="openPreview(attachment)"
-                  >
-                    <div class="attachment-info">
-                      <VIcon
-                        :icon="getAttachmentIcon(attachment)"
-                        :color="getAttachmentColor(attachment)"
-                        size="16"
-                      />
-                      <span class="attachment-name">{{ attachment.name }}</span>
-                      <span class="attachment-size">{{ attachment.size }}</span>
-                    </div>
-                  </div>
-                </div>
+        <div class="loading-content">
+          <div v-for="n in 4" :key="n" class="loading-item">
+            <div class="loading-header">
+              <div class="loading-avatar shimmer" />
+              <div class="loading-meta">
+                <div class="loading-name shimmer" />
+                <div class="loading-time shimmer" />
               </div>
-              <div class="d-flex justify-space-between gap-1">
-                <div class="d-flex flex-column gap-2 w-100 ">
-                  <div class="chat-parent-message-preview" v-if="msg.parent">
-                    <div
-                      class="chat-message-box-reply w-100"
-                    >
-                      <div
-                        class="chat-parent-message-text me reply tiptap"
-                        v-html="msg.parent.content"
-                      />
-                    </div>
-                  </div>
-
-                  <p
-                    class="mb-0 text-message-content tiptap"
-                    v-html="msg.content"
-                  />
-                </div>
-                <div
-                  class="message-actions text-right"
-                  style="max-height: 20px !important;"
-                >
-                  <VMenu>
-                    <template #activator="{ props }">
-                      <div
-                        class="custom-badge"
-                        v-bind="props"
-                      >
-                        <VIcon
-
-                          size="14"
-                          color="primary"
-                        >
-                          tabler-dots-vertical
-                        </VIcon>
-                      </div>
-                    </template>
-                    <div class="d-flex flex-column dropdown-menu p-2">
-                      <div
-                        v-if="msg.createdBy.id === authId"
-                        class="d-flex gap-2 justify-end"
-                      >
-                        <div
-                          class="custom-badge"
-                          @click="editMessage(msg)"
-                        >
-                          <VIcon
-                            size="16"
-                            color="info"
-                          >
-                            tabler-edit
-                          </VIcon>
-                        </div>
-                        <div
-                          class="custom-badge"
-                          @click="deleteMessage(msg.id)"
-                        >
-                          <VIcon
-                            size="16"
-                            color="error"
-                          >
-                            tabler-trash
-                          </VIcon>
-                        </div>
-                      </div>
-                      <div
-                        class="custom-badge mt-2"
-                        @click="replyMessage(msg)"
-                      >
-                        <VIcon
-                          size="16"
-                          color="primary"
-                        >
-                          tabler-message-reply
-                        </VIcon>
-                        <span class="text-body-2 text-link">Reply</span>
-                      </div>
-                    </div>
-                  </VMenu>
-                </div>
-              </div>
-
             </div>
-
-            <div :class="[ msg.createdBy.id === authId ? 'text-right' : 'text-left align-self-start' ]">
-              <VIcon
-                v-if="msg.createdBy.id !== authId"
-                id="comment-check check-animation"
-                size="16"
-                :class="{'check-animation': msg.markingAsRead, 'opacity-0': !msg.is_read}"
-                color="success"
-              >
-                tabler-check
-              </VIcon>
-              <span class="text-sm ms-2 text-disabled">{{ msg.created_at }}</span>
+            <div class="loading-body">
+              <div class="loading-text shimmer" />
+              <div class="loading-text shimmer" style="width: 85%" />
             </div>
           </div>
         </div>
       </div>
-      <div
-        v-if="messages.length === 0"
-        class="d-flex flex-column align-center justify-center text-center py-10"
-        style="height: 100%;"
+
+      <div 
+        v-if="!isLoading"
+        class="messages-container"
       >
-        <VIcon
-          size="48"
-          color="grey"
-        >
-          tabler-mood-smile-beam
-        </VIcon>
-        <p class="text-body-1 text-disabled mt-3">
-          No messages yet. <br>
-          <strong>Be the first to share your thoughts!</strong> <br>
-          Type "@" to mention team members, add emojis, or upload files
-        </p>
+        <template v-if="messages.length">
+          <div class="chat-log pa-6">
+            <div
+              v-for="(msg, index) in messages"
+              :id="`comment-${msg.id}`"
+              :key="msg.createdBy.id + String(index)"
+              class="chat-group d-flex align-start mb-6"
+              :class="[{
+                'flex-row-reverse': msg.createdBy.id === authId,
+              }]"
+            >
+              <div
+                class="chat-avatar"
+                :class="msg.createdBy.id === authId ? 'ms-4' : 'me-4'"
+              >
+                <VAvatar
+                  size="32"
+                  variant="flat"
+                >
+                  <template v-if="msg.createdBy.avatar">
+                    <VImg
+                      :src="msg.createdBy.avatar"
+                      alt="Avatar"
+                    />
+                  </template>
+                  <template v-else>
+                    <span>{{ msg.createdBy.avatar_or_initials }}</span>
+                  </template>
+                </VAvatar>
+              </div>
+              <div class="chat-body d-inline-flex flex-column align-end w-100">
+                <div
+                  class="chat-content py-2 px-2 w-100 elevation-1 chat-right"
+                  style="background-color: rgb(var(--v-theme-surface));"
+                  :class="[
+                    msg.createdBy.id !== authId ? 'chat-left' : 'chat-right',
+                  ]"
+                >
+                  <div
+                    v-if="msg.attachments?.length"
+                    class="attachments-section"
+                  >
+                    <div class="attachments-wrapper">
+                      <div
+                        v-for="attachment in msg.attachments"
+                        :key="attachment.id"
+                        class="attachment-item"
+                        @click.prevent="openPreview(attachment)"
+                      >
+                        <div class="attachment-info">
+                          <VIcon
+                            :icon="getAttachmentIcon(attachment)"
+                            :color="getAttachmentColor(attachment)"
+                            size="16"
+                          />
+                          <span class="attachment-name">{{ attachment.name }}</span>
+                          <span class="attachment-size">{{ attachment.size }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-space-between gap-1">
+                    <div class="d-flex flex-column gap-2 w-100 ">
+                      <div class="chat-parent-message-preview" v-if="msg.parent">
+                        <div
+                          class="chat-message-box-reply w-100"
+                        >
+                          <div
+                            class="chat-parent-message-text me reply tiptap"
+                            v-html="msg.parent.content"
+                          />
+                        </div>
+                      </div>
+
+                      <p
+                        class="mb-0 text-message-content tiptap"
+                        v-html="msg.content"
+                      />
+                    </div>
+                    <div
+                      class="message-actions text-right"
+                      style="max-height: 20px !important;"
+                    >
+                      <VMenu
+                        :model-value="messageActionsMap.get(msg.id)"
+                        @update:model-value="value => messageActionsMap.set(msg.id, value)"
+                        :close-on-content-click="true"
+                        location="end"
+                      >
+                        <template #activator="{ props }">
+                          <VBtn
+                            v-bind="props"
+                            icon
+                            variant="text"
+                            size="small"
+                            class="action-btn"
+                          >
+                            <VIcon
+                              size="16"
+                              icon="tabler-dots"
+                            />
+                          </VBtn>
+                        </template>
+
+                        <VList class="dropdown-menu pa-2" density="compact">
+                          <VListItem
+                            class="menu-item"
+                            @click="replyMessage(msg)"
+                          >
+                            <template #prepend>
+                              <VIcon
+                                size="16"
+                                color="primary"
+                                icon="tabler-message-reply"
+                              />
+                            </template>
+                            <VListItemTitle>Reply</VListItemTitle>
+                          </VListItem>
+
+                          <VListItem
+                            v-if="msg.createdBy.id === authId"
+                            class="menu-item"
+                            @click="editMessage(msg)"
+                          >
+                            <template #prepend>
+                              <VIcon
+                                size="16"
+                                color="warning"
+                                icon="tabler-edit"
+                              />
+                            </template>
+                            <VListItemTitle>Edit</VListItemTitle>
+                          </VListItem>
+
+                          <VListItem
+                            v-if="msg.createdBy.id === authId"
+                            class="menu-item"
+                            color="error"
+                            @click="deleteMessage(msg.id)"
+                          >
+                            <template #prepend>
+                              <VIcon
+                                size="16"
+                                icon="tabler-trash"
+                              />
+                            </template>
+                            <VListItemTitle>Delete</VListItemTitle>
+                          </VListItem>
+                        </VList>
+                      </VMenu>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div :class="[ msg.createdBy.id === authId ? 'text-right' : 'text-left align-self-start' ]">
+                  <VIcon
+                    v-if="msg.createdBy.id !== authId"
+                    id="comment-check check-animation"
+                    size="16"
+                    :class="{'check-animation': msg.markingAsRead, 'opacity-0': !msg.is_read}"
+                    color="success"
+                  >
+                    tabler-check
+                  </VIcon>
+                  <span class="text-sm ms-2 text-disabled">{{ msg.created_at }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <div
+            class="d-flex flex-column align-center justify-center text-center py-10"
+            style="height: 100%;"
+          >
+            <VIcon
+              size="48"
+              color="grey"
+            >
+              tabler-mood-smile-beam
+            </VIcon>
+            <p class="text-body-1 text-disabled mt-3">
+              No messages yet. <br>
+              <strong>Be the first to share your thoughts!</strong> <br>
+              Type "@" to mention team members, add emojis, or upload files
+            </p>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -899,6 +964,169 @@ $spacing: (
   0% { transform: scale(0.5); opacity: 0; }
   50% { transform: scale(1.2); }
   100% { transform: scale(1); opacity: 1; }
+}
+
+.dropdown-menu {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(var(--v-theme-on-surface), 0.08);
+  min-width: 160px;
+
+  .menu-item {
+    border-radius: 4px;
+    margin-bottom: 2px;
+    min-height: 36px;
+    padding: 0 8px;
+
+    &:hover {
+      background: rgba(var(--v-theme-surface-variant), 0.06);
+    }
+
+    .v-list-item-title {
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
+
+    &.v-list-item--density-compact {
+      min-height: 32px;
+    }
+
+    .v-icon {
+      margin-right: 8px;
+    }
+  }
+}
+
+.action-btn {
+  opacity: 0.7;
+  transition: all 0.2s ease;
+
+  &:hover {
+    opacity: 1;
+    background: rgba(var(--v-theme-surface-variant), 0.06);
+  }
+}
+
+.v-navigation-drawer {
+  :deep(.v-btn--icon.v-btn--density-default) {
+    width: 34px;
+    height: 34px;
+    
+    .v-icon {
+      font-size: 20px;
+    }
+  }
+}
+
+.messenger-content {
+  position: relative;
+}
+
+.loading-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgb(var(--v-theme-surface));
+  z-index: 1;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.loading-item {
+  padding: 16px;
+  border: 1px solid #eaecef;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.loading-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.loading-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.loading-meta {
+  flex: 1;
+}
+
+.loading-name {
+  height: 14px;
+  width: 120px;
+  margin-bottom: 4px;
+  border-radius: 3px;
+}
+
+.loading-time {
+  height: 12px;
+  width: 80px;
+  border-radius: 3px;
+}
+
+.loading-body {
+  padding-left: 40px;
+}
+
+.loading-text {
+  height: 12px;
+  width: 100%;
+  margin-bottom: 8px;
+  border-radius: 3px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.shimmer {
+  background: #f6f8fa;
+  background-image: linear-gradient(
+    90deg,
+    #f6f8fa 0%,
+    #f6f8fa 40%,
+    #f0f2f4 50%,
+    #f6f8fa 60%,
+    #f6f8fa 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.messages-container {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>
 

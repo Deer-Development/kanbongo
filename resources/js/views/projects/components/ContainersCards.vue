@@ -101,10 +101,10 @@ const canEditBoard = board => {
               :size="32"
               :color="member.user.avatar ? 'transparent' : '#f3f4f6'"
               class="member-avatar"
-              v-tooltip="member.user.full_name"
+              v-tooltip="member.user.name"
             >
               <VImg v-if="member.user.avatar" :src="member.user.avatar" />
-              <span v-else class="text-caption">{{ member.user.avatar_or_initials }}</span>
+              <span v-else class="text-caption">{{ member.user.avatarOrInitials }}</span>
             </VAvatar>
           </template>
           <VAvatar

@@ -49,7 +49,7 @@ class Show extends BaseController
         }
 
         $query = Container::with([
-            'members.user:id,first_name,last_name,email',
+            'members.user',
             'owner:id,first_name,last_name,email',
             'timeEntries' => function ($q) {
                 $q->with('user:id,first_name,last_name,email');

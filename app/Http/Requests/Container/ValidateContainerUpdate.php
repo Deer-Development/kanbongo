@@ -27,6 +27,7 @@ class ValidateContainerUpdate extends FormRequest
             'name' => 'required|string|max:255',
             'is_active' => 'required|boolean',
             'project_id' => 'required|exists:projects,id',
+            'owner_id' => 'required|exists:users,id',
             'members' => 'array',
         ];
     }

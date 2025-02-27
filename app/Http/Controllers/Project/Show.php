@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Project;
 
 use App\Http\Controllers\BaseController;
+use App\Http\Resources\User\UserResource;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
-use App\Http\Resources\Project\ProjectResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -39,8 +39,23 @@ class Show extends BaseController
             $q->orderBy('created_at', 'asc');
         }])->findOrFail($id);
 
+        // Convertim modelul în array pentru a putea modifica structura
+        $modelArray = $model->toArray();
+        
+        // Transformăm users în containere folosind UserResource
+        foreach ($modelArray['containers'] as &$container) {
+            foreach ($container['members'] as &$member) {
+                $member['user'] = (new UserResource($model->containers
+                    ->find($container['id'])
+                    ->members
+                    ->find($member['id'])
+                    ->user))
+                    ->toArray(request());
+            }
+        }
+
         $response = [
-            'project' => $model,
+            'project' => $modelArray,
             'isSuperAdmin' => $user->hasRole('Super-Admin'),
         ];
 

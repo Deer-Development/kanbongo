@@ -35,6 +35,7 @@ const timerStore = useTimerStore()
 const deleteBoardDialog = ref(null)
 const isDeleteBoardDialogVisible = ref(false)
 const deleteBoardDetails = ref(null)
+const isFromGeneralMessenger = ref(false)
 
 const refetchKanban = async () => {
   const wasOpen = isMessengerDrawerOpen.value
@@ -350,8 +351,15 @@ const openBoardMessenger = (itemOpen, type) => {
       item: itemOpen
     }
   }
+  isFromGeneralMessenger.value = true
   isMessagesDialogVisible.value = false
   isMessengerDrawerOpen.value = true
+}
+
+const handleBackToGeneral = () => {
+  isMessengerDrawerOpen.value = false
+  isFromGeneralMessenger.value = false
+  isMessagesDialogVisible.value = true
 }
 
 const handleMessengerUpdate = (updatedItem) => {
@@ -728,10 +736,12 @@ watch(() => route.query, (newQuery) => {
       :is-owner="kanban.auth.is_owner"
       :is-member="kanban.auth.is_member"
       :auth-id="kanban.auth.id"
+      :show-back-button="isFromGeneralMessenger"
       @update:kanban-item="handleMessengerUpdate"
       @edit-timer="editTimer"
       @delete-kanban-item="deleteKanbanItemFn"
       @refresh-kanban-data="refetchKanban"
+      @back-to-general="handleBackToGeneral"
     />
     <DeleteBoardDialog
       v-if="deleteBoardDetails"

@@ -494,11 +494,13 @@ $focus-color: #6366f1;
   }
 
   .custom-textarea {
+    width: 100%;
     .v-field .v-field__input {
       font-size: 9px !important;
       line-height: 12px !important;
       font-weight: 600;
       color: #1f2937;
+      width: 100%;
       --v-field-padding-start: 0px !important;
       --v-field-padding-end: 0 !important;
     }

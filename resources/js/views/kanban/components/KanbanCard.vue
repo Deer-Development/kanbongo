@@ -147,53 +147,10 @@ watchDebounced(
     v-if="item"
     :ripple="false"
     :link="false"
-    class="kanban-card position-relative"
+    class="kanban-card"
   >
     <div class="card-header">
-      <VMenu offset-y>
-        <template #activator="{ props }">
-          <div
-            v-bind="props"
-            class="custom-badge pl-0 pt-0 align-self-end"
-          >
-            <span class="pr-1">{{ item.sequence_id }}</span>
-            <VIcon
-              size="14"
-              color="#374151"
-              icon="tabler-dots-circle-horizontal"
-            />
-          </div>
-        </template>
-
-        <div class="d-flex flex-column dropdown-menu p-2 mt-0 pt-0">
-          <div
-            class="custom-badge mt-2"
-            @click="isEditingName = true"
-          >
-            <VIcon
-              size="16"
-              color="primary"
-            >
-              tabler-edit
-            </VIcon>
-            <span class="text-body-5 text-link">Edit Title</span>
-          </div>
-          <div
-            v-if="(isSuperAdmin || isOwner) && !item.tracked_time"
-            class="custom-badge mt-2"
-            @click="deleteKanbanItem"
-          >
-            <VIcon
-              size="16"
-              color="error"
-            >
-              tabler-trash
-            </VIcon>
-            <span class="text-body-2 text-link">Delete Task</span>
-          </div>
-        </div>
-      </VMenu>
-      <div class="d-flex align-center pl-0 w-100">
+      <div class="d-flex align-center w-100">
         <div class="pr-0">
           <VIcon
             class="card-handler"
@@ -202,7 +159,7 @@ watchDebounced(
             icon="tabler-grip-vertical"
           />
         </div>
-        <div class="pl-0 pr-1 mx-0 w-100">
+        <div class="pl-0 pr-1 mx-0 flex-grow-1">
           <VTextarea
             v-if="isEditingName"
             v-model="item.name"
@@ -210,7 +167,7 @@ watchDebounced(
             rows="3"
             dense
             variant="underlined"
-            class="custom-textarea"
+            class="test-design-textarea"
           >
             <template #append-inner>
               <VIcon
@@ -235,6 +192,48 @@ watchDebounced(
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="action-trigger-wrapper">
+        <VMenu location="bottom end" offset="4">
+          <template #activator="{ props }">
+            <div v-bind="props" class="action-trigger">
+              <span class="sequence-id">{{ item.sequence_id }}</span>
+              <VIcon size="12" icon="tabler-chevron-down" class="action-icon" />
+            </div>
+          </template>
+
+          <VList class="dropdown-menu pa-2" density="compact">
+            <VListItem
+              class="menu-item"
+              @click="isEditingName = true"
+            >
+              <template #prepend>
+                <VIcon
+                  size="16"
+                  color="primary"
+                  icon="tabler-edit"
+                />
+              </template>
+              <VListItemTitle>Edit Title</VListItemTitle>
+            </VListItem>
+
+            <VListItem
+              v-if="(isSuperAdmin || isOwner) && !item.tracked_time"
+              class="menu-item"
+              color="error"
+              @click="deleteKanbanItem"
+            >
+              <template #prepend>
+                <VIcon
+                  size="16"
+                  icon="tabler-trash"
+                />
+              </template>
+              <VListItemTitle>Delete Task</VListItemTitle>
+            </VListItem>
+          </VList>
+        </VMenu>
       </div>
     </div>
 
@@ -300,3 +299,105 @@ watchDebounced(
     </VCardText>
   </VCard>
 </template>
+
+<style lang="scss" scoped>
+.card-header {
+  padding: 8px;
+  position: relative;
+}
+
+.action-trigger-wrapper {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+.action-trigger {
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px 0 0 0;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  min-height: 20px;
+  
+  &:hover {
+    background: rgba(var(--v-theme-surface-variant), 0.08);
+    border-color: rgba(var(--v-theme-on-surface), 0.2);
+  }
+
+  .sequence-id {
+    font-size: 0.7rem;
+    color: rgba(var(--v-theme-on-surface), 0.8);
+    font-weight: 500;
+    letter-spacing: -0.25px;
+    line-height: 1;
+  }
+
+  .action-icon {
+    font-size: 12px;
+    color: rgba(var(--v-theme-on-surface), 0.6);
+  }
+}
+
+.card-header > .d-flex.align-center {
+  padding-bottom: 16px;
+  margin-bottom: 0;
+}
+
+.card-title {
+  // padding-right: 40px; // removed
+}
+
+.kanban-card {
+  &:hover {
+    .action-trigger {
+      opacity: 1;
+    }
+  }
+}
+
+.dropdown-menu {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(var(--v-theme-on-surface), 0.08);
+  min-width: 160px;
+
+  .menu-item {
+    border-radius: 4px;
+    margin-bottom: 2px;
+    min-height: 36px;
+    padding: 0 8px;
+
+    &:hover {
+      background: rgba(var(--v-theme-surface-variant), 0.06);
+    }
+
+    .v-list-item-title {
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
+
+    &.v-list-item--density-compact {
+      min-height: 32px;
+    }
+  }
+}
+
+.test-design-textarea {
+  :deep(.v-field__input) {
+    min-height: unset !important;
+    font-size: 11px !important;
+    line-height: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  :deep(.v-field__append-inner) {
+    padding-top: 2px;
+  }
+}
+</style>

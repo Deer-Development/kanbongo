@@ -6,7 +6,7 @@ use App\Http\Resources\Task\TaskBoardResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-
+use App\Http\Resources\User\UserResource;
 class ContainerResource extends JsonResource
 {
     public function toArray($request): array
@@ -148,7 +148,26 @@ class ContainerResource extends JsonResource
             'is_active' => $this->is_active,
             'owner_id' => $this->owner_id,
             'owner' => $this->owner,
-            'members' => $this->members,
+            'members' => $this->members->map(function ($member) {
+                return [
+                    'id' => $member->id,
+                    'user_id' => $member->user_id,
+                    'is_admin' => $member->is_admin,
+                    'can_timing' => $member->can_timing,
+                    'billable' => $member->billable,
+                    'billable_rate' => $member->billable_rate,
+                    'weekly_limit_enabled' => $member->weekly_limit_enabled,
+                    'weekly_limit_hours' => $member->weekly_limit_hours,
+                    'user' => array_merge(
+                        $member->user->toArray(),
+                        [
+                            'role' => $member->user->roles->first()?->name,
+                            'name' => $member->user->full_name,
+                            'avatarOrInitials' => $member->user->avatar_or_initials,
+                        ]
+                    ),
+                ];
+            }),
             'boards' => $boards,
             'auth' => [
                 'id' => $authUser->id,
