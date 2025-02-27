@@ -377,7 +377,7 @@ const refreshData = () => {
             <template #activator="{ props }">
               <VIcon
                 v-bind="props"
-                v-tooltip="'Board Actions'"
+                v-tooltip="'Actions'"
                 class="text-high-emphasis cursor-pointer"
                 size="16"
                 icon="tabler-dots-vertical"
