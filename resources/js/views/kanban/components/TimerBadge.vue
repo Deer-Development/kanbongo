@@ -159,7 +159,6 @@
                                 extended-badge
                                 :disabled="timeEntry.deleted || timeEntry.is_paid"
                                 :config="datetimeConfig"
-                                :hide-icon-on-mobile="true"
                                 @update:model-value="updateDuration(timeEntry)"
                               />
                               <BadgeDateTimePicker
@@ -171,7 +170,6 @@
                                 extended-badge
                                 :disabled="timeEntry.deleted || timeEntry.is_paid"
                                 :config="datetimeConfig"
-                                :hide-icon-on-mobile="true"
                                 @update:model-value="updateDuration(timeEntry)"
                               />
                             </div>

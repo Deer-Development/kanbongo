@@ -84,8 +84,8 @@ const addNewBoard = () => {
   })
 }
 
-const deleteBoard = boardId => {
-  emit('deleteBoard', boardId)
+const deleteBoard = (boardId, availableBoards) => {
+  emit('deleteBoard', boardId, availableBoards)
 }
 
 const refreshData = () => {
@@ -213,6 +213,11 @@ defineExpose({
         <KanbanItems
           :has-active-timer="hasActiveTimer"
           :group-name="groupName"
+          :available-boards="localKanbanData.filter(board => board.id !== kb.id).map(board => ({
+            id: board.id,
+            name: board.name,
+            color: board.color,
+          }))"
           :kanban-ids="kb.tasks?.map(task => task.id)"
           :board-name="kb.name"
           :board-color="kb.color"

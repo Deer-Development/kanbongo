@@ -10,6 +10,7 @@ import GeneralMessenger from "@/views/kanban/components/GeneralMessenger.vue"
 import Messenger from "@/views/kanban/components/Messenger.vue"
 import { useRouter } from "vue-router"
 import { useTimerStore } from '@/stores/useTimerStore'
+import DeleteBoardDialog from './dialogs/DeleteBoardDialog.vue'
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -26,14 +27,14 @@ const tagsFilter = ref([])
 const searchFilter = ref('')
 const saveFilters = ref(false)
 const userData = computed(() => useCookie('userData', { default: null }).value)
-const userTimers = reactive({})
-const isActiveUsersMenuOpen = ref(false)
 const isMessengerDrawerOpen = ref(false)
 const selectedKanbanItem = ref(null)
 const router = useRouter()
-const shouldOpenMessenger = ref(false)
 const initialQueryParams = ref(null)
 const timerStore = useTimerStore()
+const deleteBoardDialog = ref(null)
+const isDeleteBoardDialogVisible = ref(false)
+const deleteBoardDetails = ref(null)
 
 const refetchKanban = async () => {
   const wasOpen = isMessengerDrawerOpen.value
@@ -111,9 +112,41 @@ const addNewBoard = async (newBoardName, newBoardColor) => {
   refetchKanban()
 }
 
-const deleteBoard = async boardId => {
-  await $api(`/apps/kanban/board/${ boardId }`, { method: 'DELETE' })
+const openDeleteBoardDialog = (boardId, availableBoards) => {
+  const board = kanban.value.boards.find(b => b.id === boardId)
+  const filteredBoards = availableBoards.filter(b => b.id !== boardId)
+  
+  deleteBoardDetails.value = {
+    boardId,
+    board,
+    availableBoards: filteredBoards.map(b => ({
+      id: b.id,
+      name: b.name,
+      color: b.color,
+      icon: 'tabler-layout-board'
+    }))
+  }
+  isDeleteBoardDialogVisible.value = true
+}
+
+const deleteBoard = async (result) => {
+  if (!result.confirmed || !deleteBoardDetails.value) return
+  
+  await $api(`/board/${deleteBoardDetails.value.boardId}`, { 
+    method: 'DELETE',
+    body: { 
+      targetBoardId: result.targetBoardId
+    }
+  })
+  
   refetchKanban()
+  isDeleteBoardDialogVisible.value = false
+  deleteBoardDetails.value = null
+}
+
+const cancelDeleteBoard = () => {
+  isDeleteBoardDialogVisible.value = false
+  deleteBoardDetails.value = null
 }
 
 const toggleTimerFn = async (memberData, taskId) => {
@@ -644,7 +677,7 @@ watch(() => route.query, (newQuery) => {
         ref="kanbanBoard"
         :kanban-data="kanban"
         @add-new-board="addNewBoard"
-        @delete-board="deleteBoard"
+        @delete-board="openDeleteBoardDialog"
         @rename-board="renameTheBoard"
         @add-new-item="addNewItem"
         @edit-item="editItemFn"
@@ -699,6 +732,14 @@ watch(() => route.query, (newQuery) => {
       @edit-timer="editTimer"
       @delete-kanban-item="deleteKanbanItemFn"
       @refresh-kanban-data="refetchKanban"
+    />
+    <DeleteBoardDialog
+      v-if="deleteBoardDetails"
+      v-model:is-dialog-visible="isDeleteBoardDialogVisible"
+      :board-details="deleteBoardDetails.board"
+      :available-boards="deleteBoardDetails.availableBoards"
+      @confirm="deleteBoard"
+      @cancel="cancelDeleteBoard"
     />
   </div>
 </template>

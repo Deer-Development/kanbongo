@@ -6,6 +6,7 @@ use App\Http\Controllers\BaseController;
 use App\Services\Board\BoardService;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class Destroy extends BaseController
 {
@@ -16,9 +17,11 @@ class Destroy extends BaseController
         $this->service = $service;
     }
 
-    public function __invoke(int $id): JsonResponse
+    public function __invoke(Request $request, int $id): JsonResponse
     {
-        $this->service->delete($id);
+        $targetBoardId = $request->input('targetBoardId');
+        
+        $this->service->destroy($id, $targetBoardId);
 
         return $this->successResponse([], 'Board deleted successfully.', Response::HTTP_OK);
     }

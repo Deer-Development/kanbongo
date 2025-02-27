@@ -14,6 +14,10 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  availableBoards: {
+    type: Array,
+    required: false,
+  },
   colors: {
     type: Array,
     required: false,
@@ -76,11 +80,10 @@ const refKanbanBoard = ref()
 const localKanbanData = ref(props.kanbanData.tasks)
 const localBoardName = ref(props.boardName)
 const localBoardColor = ref(props.boardColor)
-const hasLocalActiveTimer = ref(false)
+const localAvailableBoards = ref(props.availableBoards)
 const localAvailableMembers = ref(props.availableMembers)
 const localActiveUsers = ref(props.activeUsers)
 const localAuthDetails = ref(props.auth)
-const localIds = ref(props.kanbanIds)
 const isAddNewFormVisible = ref(false)
 const isBoardNameEditing = ref(false)
 const refForm = ref()
@@ -151,6 +154,12 @@ watch(() => props.auth, (newValue, oldValue) => {
   }
 }, { deep: true, immediate: true })
 
+watch(() => props.availableBoards, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    localAvailableBoards.value = [...props.availableBoards]
+  }
+}, { deep: true, immediate: true })
+
 dragAndDrop({
   parent: refKanbanBoard,
   values: localKanbanData,
@@ -181,6 +190,10 @@ const resolveItemUsingId = id => localKanbanData.value.find(item => item.id === 
 
 const deleteItem = item => {
   emit('deleteItem', item)
+}
+
+const deleteBoard = boardId => {
+  emit('deleteBoard', boardId, localAvailableBoards.value)
 }
 
 const toggleTimer = (member, taskId) => {
@@ -318,19 +331,55 @@ const refreshData = () => {
         </div>
         <div class="d-flex align-center gap-2">
           <VIcon
-            v-tooltip="'Edit Column'"
-            class="text-high-emphasis"
-            size="20"
-            icon="tabler-edit"
-            @click="isBoardNameEditing = true"
-          />
-          <VIcon
             v-tooltip="'Add New Task'"
             class="text-high-emphasis"
             size="20"
             icon="tabler-square-rounded-plus"
             @click="isAddNewFormVisible = !isAddNewFormVisible"
           />
+          <VMenu>
+            <template #activator="{ props }">
+              <VIcon
+                v-bind="props"
+                v-tooltip="'Board Actions'"
+                class="text-high-emphasis cursor-pointer"
+                size="16"
+                icon="tabler-dots-vertical"
+              />
+            </template>
+
+            <VList density="compact">
+              <VListItem
+                @click="isBoardNameEditing = true"
+              >
+                <template #prepend>
+                  <VIcon
+                    size="20"
+                    icon="tabler-edit"
+                    class="me-2"
+                  />
+                </template>
+                <VListItemTitle>Edit Board</VListItemTitle>
+              </VListItem>
+
+              <VDivider />
+
+              <VListItem
+                color="error"
+                @click="deleteBoard(boardId)"
+              >
+                <template #prepend>
+                  <VIcon
+                    size="20"
+                    icon="tabler-trash"
+                    color="error"
+                    class="me-2"
+                  />
+                </template>
+                <VListItemTitle>Delete Board</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
         </div>
       </div>
 

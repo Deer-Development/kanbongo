@@ -57,4 +57,49 @@ class BoardService extends BaseService
 
         return new BoardResource($board);
     }
+
+    public function destroy(int $id, ?int $targetBoardId = null): void
+    {
+        DB::transaction(function () use ($id, $targetBoardId) {
+            $board = $this->getById($id);
+            $currentOrder = $board->order;
+            
+            // If we have tasks to move and a target board
+            if ($targetBoardId !== null && $board->tasks()->count() > 0) {
+                $targetBoard = $this->getById($targetBoardId);
+                
+                // Get max task order from target board
+                $maxTaskOrder = $targetBoard->tasks()
+                    ->orderBy('order', 'desc')
+                    ->value('order') ?? -1;
+                
+                // Move and reorder tasks to target board
+                $tasksToMove = $board->tasks()
+                    ->orderBy('order')
+                    ->get();
+                    
+                foreach ($tasksToMove as $index => $task) {
+                    $task->update([
+                        'board_id' => $targetBoardId,
+                        'order' => $maxTaskOrder + $index + 1
+                    ]);
+                }
+            }
+            
+            // Delete the board
+            $board->delete();
+            
+            // Resequence remaining boards in the container
+            $boardsToReorder = Board::where('container_id', $board->container_id)
+                ->where('order', '>', $currentOrder)
+                ->orderBy('order')
+                ->get();
+                
+            foreach ($boardsToReorder as $boardToReorder) {
+                $boardToReorder->update([
+                    'order' => $boardToReorder->order - 1
+                ]);
+            }
+        }, 3); // 3 retries on deadlock
+    }
 }
