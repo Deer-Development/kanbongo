@@ -18,9 +18,9 @@ class ProjectResource extends JsonResource
             'stats' => [
                 'boards_count' => $this->containers()->count(),
                 'total_tasks' => $this->containers()
-                    ->withCount('boards')
+                    ->withCount('tasks')
                     ->get()
-                    ->sum('boards_count'),
+                    ->sum('tasks_count'),
             ]
         ];
     }

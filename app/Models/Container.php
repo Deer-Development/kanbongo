@@ -54,4 +54,9 @@ class Container extends Model
     {
         return $this->morphMany(Comment::class, 'commentable');
     }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(Task::class);
+    }
 }
