@@ -885,69 +885,241 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
   }
 
   .github-card {
+    @media (max-width: 768px) {
+      margin: 0 -1rem; // Negative margin to stretch on mobile
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
     .card-header {
-      .task-title-container {
-        display: flex;
+      @media (max-width: 768px) {
         flex-direction: column;
-        gap: 0.5rem;
-      }
+        gap: 1rem;
 
-      .task-title {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin: 0;
-        line-height: 1.4;
-      }
-
-      .time-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.25rem 0.75rem;
-        background: #dafbe1;
-        color: #1a7f37;
-        border-radius: 2rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        transition: all 0.2s ease;
-
-        &:hover {
-          transform: translateY(-1px);
+        .header-left {
+          width: 100%;
         }
 
-        .v-icon {
-          opacity: 0.8;
+        .header-actions {
+          width: 100%;
+          justify-content: stretch;
+          border-top: 1px solid #d0d7de;
+          padding-top: 0.75rem;
+
+          .action-btn {
+            flex: 1;
+            justify-content: center;
+          }
         }
+      }
+
+      .task-metrics {
+        @media (max-width: 768px) {
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+      }
+
+      .payment-badges {
+        @media (max-width: 768px) {
+          flex-wrap: wrap;
+        }
+      }
+    }
+
+    // Improve table responsiveness on mobile
+    .table-container {
+      @media (max-width: 768px) {
+        margin: 0;  // Remove negative margin
+        position: relative;
+        overflow-x: auto;
+        width: 100%;
+        
+        // Enable smooth scrolling
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        
+        &::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .github-table {
+          position: relative;
+          border-spacing: 0;
+          
+          th, td {
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            min-width: 120px;
+            white-space: nowrap;
+            
+            // Make first column sticky
+            &:first-child {
+              position: sticky;
+              left: 0;
+              z-index: 2;
+              background: #ffffff;
+              width: 60px;  // Fixed width for checkbox column
+              min-width: 60px;  // Ensure minimum width
+              max-width: 60px;  // Ensure maximum width
+              padding: 0.5rem;
+              border-right: 1px solid #d0d7de;
+              box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.1);
+            }
+            
+            &:last-child {
+              padding-right: 1rem;
+            }
+          }
+
+          // Special styling for header cells
+          th:first-child {
+            background: #f6f8fa;
+            z-index: 3;
+            width: 60px;
+            min-width: 60px;
+            max-width: 60px;
+          }
+
+          // Checkbox column specific styles
+          .checkbox-column {
+            width: 60px;
+            min-width: 60px;
+            max-width: 60px;
+            padding: 0.5rem;
+            text-align: center;
+
+            .v-checkbox {
+              margin: 0 auto;
+              width: fit-content;
+              
+              .v-selection-control {
+                width: auto;
+                min-width: auto;
+              }
+            }
+          }
+
+          // Ensure proper background for sticky column on hover
+          tr:hover td:first-child {
+            background: #f6f8fa;
+          }
+
+          tr.is-paid td:first-child {
+            background: #f8f9fa;
+          }
+
+          tr.is-deleted td:first-child {
+            background: #f6f8fa;
+            opacity: 0.8;
+          }
+        }
+
+        // Add fade effect on the right
+        &::after {
+          content: '';
+          position: absolute;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          width: 24px;
+          background: linear-gradient(to right, transparent, rgba(255,255,255,0.9));
+          pointer-events: none;
+          z-index: 1;
+        }
+      }
+    }
+
+    // Improve logs section on mobile
+    .logs-section {
+      @media (max-width: 768px) {
+        padding: 1rem;
+
+        .github-timeline {
+          .log-entry {
+            padding: 0.75rem;
+
+            .log-header {
+              flex-direction: column;
+              align-items: flex-start;
+              gap: 0.5rem;
+
+              .log-date {
+                width: 100%;
+                justify-content: flex-start;
+                padding-top: 0.25rem;
+                border-top: 1px solid #d0d7de;
+              }
+            }
+
+            .log-content {
+              .change-item {
+                padding: 0.5rem;
+
+                &.time-change {
+                  .time-comparison {
+                    flex-direction: column;
+                    gap: 0.5rem;
+
+                    .v-icon {
+                      display: none; // Hide arrow on mobile
+                    }
+                  }
+                }
+
+                &.payment-change {
+                  .payment-info {
+                    .payment-details {
+                      flex-direction: column;
+                      gap: 0.25rem;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Improve task metrics display on mobile
+  .task-metrics {
+    @media (max-width: 768px) {
+      margin-top: 0.75rem;
+      
+      .time-badge, .payment-badge {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.7rem;
+      }
+    }
+  }
+
+  // Improve status badges on mobile
+  .status-badge {
+    @media (max-width: 768px) {
+      white-space: nowrap;
+      
+      &.paid, &.unpaid {
+        padding: 0.125rem 0.375rem;
+        font-size: 0.7rem;
       }
     }
   }
 }
 
-.github-table {
-  .checkbox-column {
-    .v-checkbox {
-      .v-selection-control {
-        &--dirty {
-          .v-selection-control__input::before {
-            background-color: #0969da;
-          }
-        }
-        
-        &--indeterminate {
-          .v-selection-control__input::before {
-            background-color: #6e7781;
-          }
-        }
-
-        &--disabled.v-selection-control--success {
-          .v-selection-control__input::before {
-            background-color: #1a7f37 !important;
-            opacity: 0.7;
-          }
-        }
-      }
-    }
+// Add smooth transitions for better mobile experience
+.v-expand-transition {
+  &-enter-active,
+  &-leave-active {
+    transition: all 0.3s ease-out;
+  }
+  
+  &-enter-from,
+  &-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
   }
 }
 </style>

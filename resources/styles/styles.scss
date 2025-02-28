@@ -749,18 +749,49 @@ $focus-color: #6366f1;
   overflow: hidden;
   height: 32px;
   background: #f6f8fa;
+  min-width: 0;
+  width: 100%;
+  
+  @media (max-width: 767px) {
+    width: 70%;
+  }
 
   .v-btn {
     height: 32px;
-    min-width: 76px;
+    min-width: 0;
+    flex: 1;
     border: none;
     border-radius: 0;
     font-size: 0.8125rem;
     text-transform: none;
     letter-spacing: normal;
     font-weight: 600;
-    padding: 0 12px;
+    padding: 0 8px;
     color: #24292f;
+    
+    @media (max-width: 767px) {
+      padding: 0 6px;
+      font-size: 0.75rem;
+      
+      .v-btn__prepend {
+        margin-inline-end: 4px;
+      }
+      
+      &.filter-btn {
+        .v-btn__content {
+          display: flex;
+          align-items: center;
+          
+          > span {
+            display: none;
+          }
+          
+          .v-icon {
+            margin-right: 0;
+          }
+        }
+      }
+    }
     
     &:not(:last-child) {
       border-right: 1px solid #d0d7de;

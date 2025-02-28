@@ -53,13 +53,15 @@ onMounted(() => {
   <div class="project-view">
     <!-- Header Section -->
     <div class="header-section">
-      <div class="breadcrumbs-wrapper">
-        <VBreadcrumbs :items="breadcumItems" class="github-breadcrumbs">
-          <template #divider>
-            <VIcon size="16" color="text-disabled">tabler-chevron-right</VIcon>
-          </template>
-        </VBreadcrumbs>
-        <div class="d-flex gap-2 align-center">
+      <div class="header-content">
+        <div class="breadcrumbs-section">
+          <VBreadcrumbs :items="breadcumItems" class="github-breadcrumbs">
+            <template #divider>
+              <VIcon size="16" color="text-disabled">tabler-chevron-right</VIcon>
+            </template>
+          </VBreadcrumbs>
+        </div>
+        <div class="actions-section">
           <VBtnGroup 
             class="btn-group-status-filter"
             density="compact"
@@ -121,7 +123,7 @@ onMounted(() => {
             class="github-btn"
             @click="isAddBoardDialogVisible = true"
           >
-            New Board
+            New
           </VBtn>
         </div>
       </div>
@@ -154,60 +156,63 @@ onMounted(() => {
     padding: 1rem;
     margin-bottom: 1.5rem;
 
-    .breadcrumbs-wrapper {
+    .header-content {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 1rem;
 
-      :deep() {
-        .v-breadcrumbs-item {
-          color: #57606a;
-          font-size: 0.875rem;
-        }
+      @media (min-width: 768px) {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
 
-        .v-breadcrumbs-item--disabled {
-          color: #24292f;
-          font-weight: 600;
+      .breadcrumbs-section {
+        width: 100%;
+        overflow-x: auto;
+
+        :deep() {
+          .v-breadcrumbs {
+            flex-wrap: nowrap;
+          }
+
+          .v-breadcrumbs-item {
+            color: #57606a;
+            font-size: 0.875rem;
+            white-space: nowrap;
+          }
+
+          .v-breadcrumbs-item--disabled {
+            color: #24292f;
+            font-weight: 600;
+          }
         }
       }
 
-      .github-btn {
-        height: 34px;
-        min-width: 76px;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.8125rem;
-        text-transform: none;
-        letter-spacing: normal;
-        font-weight: 600;
-        padding: 0 12px;
-        color: #24292f;
-        
-        &:not(:last-child) {
-          border-right: 1px solid #d0d7de;
-        }
-        
-        &:hover {
-          background: #f3f4f6;
+      .actions-section {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        width: 100%;
+        align-items: center;
+
+        @media (min-width: 768px) {
+          width: auto;
+          justify-content: flex-end;
         }
 
-        &.v-btn--variant-tonal {
-          background: #ffffff;
+        .btn-group-status-filter {
           
-          &:hover {
-            opacity: 0.95;
+          @media (min-width: 768px) {
+            flex: 0 0 auto;
           }
+        }
 
-          &.text-primary {
-            background: #ddf4ff;
-          }
-
-          &.text-success {
-            background: #dafbe1;
-          }
-
-          &.text-warning {
-            background: #fff8c5;
+        .github-btn {
+          flex: 1;
+          
+          @media (min-width: 768px) {
+            flex: 0 0 auto;
           }
         }
       }

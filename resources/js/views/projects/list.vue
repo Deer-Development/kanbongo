@@ -82,77 +82,81 @@ watch(statusFilter, (newValue, oldValue) => {
   <div class="projects-list">
     <!-- Header Section -->
     <div class="header-section">
-      <div class="search-bar">
-        <VIcon size="20" color="text-medium-emphasis" class="search-icon">tabler-search</VIcon>
-        <AppTextField
-          v-model="searchQuery"
-          placeholder="Search projects..."
-          variant="plain"
-          hide-details
-          class="github-input"
-        />
-        <VBtnGroup 
-            class="btn-group-status-filter"
-            density="compact"
-          >
-          <VBtn
-            :color="statusFilter === 'all' ? 'primary' : undefined"
-            :variant="statusFilter === 'all' ? 'tonal' : 'outlined'"
-            size="x-small"
-            class="filter-btn"
-            @click="statusFilter = 'all'"
-          >
-            <VIcon 
-              size="14" 
-              class="mr-1"
-              :color="statusFilter === 'all' ? undefined : '#57606a'"
+      <div class="header-content">
+        <div class="search-section">
+          <VIcon size="20" color="text-medium-emphasis" class="search-icon">tabler-search</VIcon>
+          <AppTextField
+            v-model="searchQuery"
+            placeholder="Search projects..."
+            variant="plain"
+            hide-details
+            class="github-input"
+          />
+        </div>
+        <div class="actions-section">
+          <VBtnGroup 
+              class="btn-group-status-filter"
+              density="compact"
             >
-              tabler-filter
-            </VIcon>
-            All
-          </VBtn>
-          <VBtn
-            :color="statusFilter === 'active' ? 'success' : undefined"
-            :variant="statusFilter === 'active' ? 'tonal' : 'outlined'"
-            size="x-small"
-            class="filter-btn"
-            @click="statusFilter = 'active'"
-          >
-            <VIcon 
-              size="14" 
-              class="mr-1"
-              :color="statusFilter === 'active' ? undefined : '#57606a'"
+            <VBtn
+              :color="statusFilter === 'all' ? 'primary' : undefined"
+              :variant="statusFilter === 'all' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="statusFilter = 'all'"
             >
-              tabler-circle-check
-            </VIcon>
-            Active
-          </VBtn>
-          <VBtn
-            :color="statusFilter === 'inactive' ? 'error' : undefined"
-            :variant="statusFilter === 'inactive' ? 'tonal' : 'outlined'"
-            size="x-small"
-            class="filter-btn"
-            @click="statusFilter = 'inactive'"
-          >
-            <VIcon 
-              size="14" 
-              class="mr-1"
-              :color="statusFilter === 'inactive' ? undefined : 'error'"
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="statusFilter === 'all' ? undefined : '#57606a'"
+              >
+                tabler-filter
+              </VIcon>
+              All
+            </VBtn>
+            <VBtn
+              :color="statusFilter === 'active' ? 'success' : undefined"
+              :variant="statusFilter === 'active' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="statusFilter = 'active'"
             >
-              tabler-circle-x
-            </VIcon>
-            Inactive
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="statusFilter === 'active' ? undefined : '#57606a'"
+              >
+                tabler-circle-check
+              </VIcon>
+              Active
+            </VBtn>
+            <VBtn
+              :color="statusFilter === 'inactive' ? 'error' : undefined"
+              :variant="statusFilter === 'inactive' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="statusFilter = 'inactive'"
+            >
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="statusFilter === 'inactive' ? undefined : 'error'"
+              >
+                tabler-circle-x
+              </VIcon>
+              Inactive
+            </VBtn>
+          </VBtnGroup>
+          <VBtn
+            color="primary"
+            size="small"
+            prepend-icon="tabler-plus"
+            class="github-btn"
+            @click="isAddModalVisible = true"
+          >
+            New
           </VBtn>
-        </VBtnGroup>
-        <VBtn
-          color="primary"
-          size="small"
-          prepend-icon="tabler-plus"
-          class="github-btn"
-          @click="isAddModalVisible = true"
-        >
-          New Project
-        </VBtn>
+        </div>
       </div>
     </div>
 
@@ -238,65 +242,70 @@ watch(statusFilter, (newValue, oldValue) => {
     padding: 1rem;
     margin-bottom: 1.5rem;
 
-    .search-bar {
+    .header-content {
       display: flex;
-      align-items: center;
+      flex-direction: column;
       gap: 1rem;
 
-      .search-icon {
-        color: #57606a;
+      @media (min-width: 768px) {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
       }
 
-      .github-input {
-        flex: 1;
-        
-        :deep(.v-field) {
-          border-radius: 6px;
-          background: #f6f8fa;
+      .search-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+
+        @media (min-width: 768px) {
+          max-width: 300px;
+        }
+
+        .search-icon {
+          color: #57606a;
+        }
+
+        .github-input {
+          flex: 1;
+          width: 100%;
           
-          &:hover {
-            background: #f3f4f6;
+          :deep(.v-field) {
+            border-radius: 6px;
+            background: #f6f8fa;
+            
+            &:hover {
+              background: #f3f4f6;
+            }
           }
         }
       }
 
-      .github-btn {
-        height: 34px;
-        min-width: 76px;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.8125rem;
-        text-transform: none;
-        letter-spacing: normal;
-        font-weight: 600;
-        padding: 0 12px;
-        color: #24292f;
-        
-        &:not(:last-child) {
-          border-right: 1px solid #d0d7de;
-        }
-        
-        &:hover {
-          background: #f3f4f6;
+      .actions-section {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        width: 100%;
+        align-items: center;
+
+        @media (min-width: 768px) {
+          width: auto;
+          justify-content: flex-end;
         }
 
-        &.v-btn--variant-tonal {
-          background: #ffffff;
+        .btn-group-status-filter {
           
-          &:hover {
-            opacity: 0.95;
+          @media (min-width: 768px) {
+            flex: 0 0 auto;
           }
+        }
 
-          &.text-primary {
-            background: #ddf4ff;
-          }
-
-          &.text-success {
-            background: #dafbe1;
-          }
-
-          &.text-warning {
-            background: #fff8c5;
+        .github-btn {
+          flex: 1;
+          
+          @media (min-width: 768px) {
+            flex: 0 0 auto;
           }
         }
       }

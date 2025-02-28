@@ -208,7 +208,7 @@ const goBack = () => {
             <AppDateTimePicker
               v-model="selectedDateRange"
               :config="{ mode: 'range' }"
-              placeholder="Select date range"
+              placeholder="Date"
               clearable
               class="github-input date-picker"
             />
@@ -769,51 +769,74 @@ const goBack = () => {
   }
 
   .selected-payment-info {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
+    
+    @media (max-width: 768px) {
+      margin: 0.5rem -1rem 0;
+      padding: 0.5rem;
+      background: #f6f8fa;
+      border-top: 1px solid #d0d7de;
+      border-bottom: 1px solid #d0d7de;
+    }
     
     .payment-stats {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 0.5rem;
       
       .stat-item {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        background: #f6f8fa;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        background: #ffffff;
         border: 1px solid #d0d7de;
         border-radius: 6px;
+        flex: 1;
+        min-width: 200px;
+        max-width: 250px;
+        height: 40px;
         transition: all 0.2s ease;
 
         &:hover {
           border-color: #0969da;
-          background: #f3f4f6;
+          background: #f8fafc;
         }
 
         .stat-icon {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 36px;
-          height: 36px;
-          background: #ffffff;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          width: 28px;
+          height: 28px;
+          background: #f6f8fa;
+          border-radius: 6px;
+          
+          .v-icon {
+            font-size: 16px;
+          }
         }
 
         .stat-content {
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          flex: 1;
 
           .stat-label {
             font-size: 0.75rem;
             color: #57606a;
-            margin-bottom: 0.25rem;
+            margin: 0;
           }
 
           .stat-value {
-            font-size: 1rem;
+            font-size: 0.875rem;
             font-weight: 600;
             color: #0969da;
           }
@@ -822,15 +845,82 @@ const goBack = () => {
 
       .pay-btn {
         margin-left: auto;
-        padding: 0 1.5rem;
-        height: 36px;
+        padding: 0 1rem;
+        height: 40px;
         font-weight: 600;
+        font-size: 0.875rem;
         letter-spacing: 0.3px;
+        min-width: 120px;
         transition: all 0.2s ease;
+        
+        .v-btn__content {
+          gap: 0.375rem;
+        }
+        
+        .v-icon {
+          font-size: 18px;
+        }
         
         &:hover {
           transform: translateY(-1px);
           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+      }
+      
+      @media (max-width: 768px) {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        
+        .stat-item {
+          flex: 1;
+          min-width: calc(50% - 0.25rem);
+          padding: 0.375rem 0.5rem;
+          background: #ffffff;
+          
+          .stat-icon {
+            width: 24px;
+            height: 24px;
+            
+            .v-icon {
+              font-size: 14px;
+            }
+          }
+
+          .stat-content {
+            flex: 1;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.125rem;
+
+            .stat-label {
+              margin: 0;
+              font-size: 0.675rem;
+              line-height: 1;
+            }
+
+            .stat-value {
+              font-size: 0.75rem;
+              line-height: 1;
+            }
+          }
+        }
+
+        .pay-btn {
+          width: 100%;
+          margin: 0;
+          height: 32px;
+          padding: 0 1rem;
+          font-size: 0.75rem;
+          
+          .v-icon {
+            font-size: 16px;
+          }
+          
+          .v-btn__content {
+            font-size: 0.75rem;
+            gap: 0.25rem;
+          }
         }
       }
     }
@@ -874,6 +964,10 @@ const goBack = () => {
           }
         }
       }
+    }
+
+    .btn-group-status-filter {
+      max-width: 240px;
     }
   }
 }
