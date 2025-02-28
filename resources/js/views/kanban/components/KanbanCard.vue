@@ -31,6 +31,7 @@ const props = defineProps({
   hasActiveTimer: { type: Boolean, required: false, default: false },
   isOwner: { type: Boolean, required: false, default: false },
   isMember: { type: Boolean, required: false, default: false },
+  isAdmin: { type: Boolean, required: false, default: false },
   auth: { type: Object, required: false },
 })
 
@@ -40,6 +41,7 @@ const emit = defineEmits([
   "editTimer",
   'refreshKanbanData',
   'addMember',
+  'deleteKanbanItem',
 ])
 
 const dueDate = ref(null)
@@ -219,7 +221,7 @@ watchDebounced(
             </VListItem>
 
             <VListItem
-              v-if="(isSuperAdmin || isOwner) && !item.tracked_time"
+              v-if="(isSuperAdmin || isOwner || isAdmin) || !item.tracked_time"
               class="menu-item"
               color="error"
               @click="deleteKanbanItem"
@@ -228,6 +230,7 @@ watchDebounced(
                 <VIcon
                   size="16"
                   icon="tabler-trash"
+                  color="error"
                 />
               </template>
               <VListItemTitle>Delete Task</VListItemTitle>
@@ -287,7 +290,7 @@ watchDebounced(
       <DynamicMemberSelector
         v-model="item.members"
         :items="localAvailableMembers"
-        :is-super-admin="props.isSuperAdmin"
+        :is-super-admin="props.isSuperAdmin || props.isAdmin || props.isOwner"
         item-title="user.full_name"
         item-value="user.id"
         :active-users="localActiveUsers"

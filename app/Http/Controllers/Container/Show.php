@@ -52,7 +52,10 @@ class Show extends BaseController
             'members.user',
             'owner:id,first_name,last_name,email',
             'timeEntries' => function ($q) {
-                $q->with('user:id,first_name,last_name,email');
+                $q->with(['user:id,first_name,last_name,email', 'task' => function ($q) {
+                    $q->select('id', 'sequence_id', 'deleted_at');
+                    $q->withTrashed();
+                }]);
             },
             'boards' => function ($q) use ($id, $filters) {
                 $q->orderBy('order')

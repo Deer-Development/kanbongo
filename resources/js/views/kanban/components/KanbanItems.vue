@@ -511,6 +511,7 @@ const refreshData = () => {
             :has-active-timer="props.hasActiveTimer"
             :is-owner="props.isOwner"
             :is-member="props.isMember"
+            :is-admin="props.isAdmin"
             :auth="localAuthDetails"
             :available-members="localAvailableMembers"
             :active-users="localActiveUsers"

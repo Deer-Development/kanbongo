@@ -601,6 +601,9 @@ watch(() => route.query, (newQuery) => {
                       class="user-task"
                     >
                       Last Task #{{ entry.last_time_entry.task_sequence_id }}
+                      <span v-if="entry.last_time_entry.task_deleted_at">
+                        (Deleted {{ formatDistanceToNow(parseISO(entry.last_time_entry.task_deleted_at)) }} ago)
+                      </span>
                       <span v-if="entry.last_time_entry.end">
                         (Ended {{ formatDistanceToNow(parseISO(entry.last_time_entry.end)) }} ago)
                         {{ format(new Date(entry.last_time_entry.end), "MMM d, yyyy h:mm:ss a") }}

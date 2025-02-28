@@ -38,7 +38,6 @@ class MemberPaymentDetails extends BaseController
                 }
                 $q->with('user:id,first_name,last_name,email');
                 $q->with(['task' => function ($q) {
-                    $q->select('id', 'name');
                     $q->withTrashed();
                 }]);
                 $q->withTrashed();
