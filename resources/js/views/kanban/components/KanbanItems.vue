@@ -395,7 +395,7 @@ const refreshData = () => {
                     class="me-2"
                   />
                 </template>
-                <VListItemTitle>Edit Board</VListItemTitle>
+                <VListItemTitle>Edit</VListItemTitle>
               </VListItem>
 
               <VDivider />
@@ -413,7 +413,7 @@ const refreshData = () => {
                     class="me-2"
                   />
                 </template>
-                <VListItemTitle>Delete Board</VListItemTitle>
+                <VListItemTitle>Delete</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
@@ -585,6 +585,7 @@ const refreshData = () => {
 
 .add-new-form-container {
   margin-top: 8px;
+  margin-left: 8px;
   background: rgb(var(--v-theme-background));
   border-radius: 6px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
@@ -679,7 +680,8 @@ const refreshData = () => {
 }
 
 .board-edit-form {
-  margin-top: 8px;
+  margin-top: 2px;
+  margin-left: 8px;
   background: rgb(var(--v-theme-background));
   border-radius: 6px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
