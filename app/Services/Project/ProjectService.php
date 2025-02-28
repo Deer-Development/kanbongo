@@ -22,7 +22,7 @@ class ProjectService extends BaseService
         $orderBy = $request->input('orderBy', 'asc');
         $itemsPerPage = $request->input('itemsPerPage', 10);
         $page = $request->input('page', 1);
-
+        $status = $request->input('status', 'all');
         $user = Auth::user();
 
         $query = $this->getModelInstance()->query();
@@ -59,6 +59,12 @@ class ProjectService extends BaseService
         ]);
 
         $query = $query->applyFilters($request);
+
+        if ($status !== 'all') {
+        // dd($status);
+
+            $query->where('is_active', $status === 'active');
+        }
 
         $validSortColumns = $this->getValidSortColumns();
         if (in_array($sortBy, $validSortColumns)) {

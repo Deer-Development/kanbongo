@@ -6,9 +6,17 @@ const route = useRoute()
 const projectData = ref(null)
 const isSuperAdmin = ref(false)
 const boardDetails = ref()
+const statusFilter = ref('all')
 
 const fetchContainer = async () => {
-  const { data } = await $api(`/project/${route.params.id}`)
+  const { data } = await $api(`/project/${route.params.id}`,
+    {
+      method: 'GET',
+      query: {
+        status: statusFilter.value,
+      },
+    }
+  )
 
   projectData.value = data.project
   isSuperAdmin.value = data.isSuperAdmin
@@ -32,6 +40,10 @@ const userData = computed(() => useCookie('userData', { default: null }).value)
 
 const isAddBoardDialogVisible = ref(false)
 
+watch(statusFilter, () => {
+  fetchContainer()
+})
+
 onMounted(() => {
   fetchContainer()
 })
@@ -47,16 +59,71 @@ onMounted(() => {
             <VIcon size="16" color="text-disabled">tabler-chevron-right</VIcon>
           </template>
         </VBreadcrumbs>
-        <VBtn
-          v-if="projectData"
-          color="primary"
-          size="small"
-          prepend-icon="tabler-plus"
-          class="github-btn"
-          @click="isAddBoardDialogVisible = true"
-        >
-          New Board
-        </VBtn>
+        <div class="d-flex gap-2 align-center">
+          <VBtnGroup 
+            class="btn-group-status-filter"
+            density="compact"
+          >
+            <VBtn
+              :color="statusFilter === 'all' ? 'primary' : undefined"
+              :variant="statusFilter === 'all' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="statusFilter = 'all'"
+            >
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="statusFilter === 'all' ? undefined : '#57606a'"
+              >
+                tabler-filter
+              </VIcon>
+              All
+            </VBtn>
+            <VBtn
+              :color="statusFilter === 'active' ? 'success' : undefined"
+              :variant="statusFilter === 'active' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="statusFilter = 'active'"
+            >
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="statusFilter === 'active' ? undefined : '#57606a'"
+              >
+                tabler-circle-check
+              </VIcon>
+              Active
+            </VBtn>
+            <VBtn
+              :color="statusFilter === 'inactive' ? 'error' : undefined"
+              :variant="statusFilter === 'inactive' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="statusFilter = 'inactive'"
+            >
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="statusFilter === 'inactive' ? undefined : 'error'"
+              >
+                tabler-circle-x
+              </VIcon>
+              Inactive
+            </VBtn>
+          </VBtnGroup>
+          <VBtn
+            v-if="projectData"
+            color="primary"
+            size="small"
+            prepend-icon="tabler-plus"
+            class="github-btn"
+            @click="isAddBoardDialogVisible = true"
+          >
+            New Board
+          </VBtn>
+        </div>
       </div>
     </div>
 
@@ -105,10 +172,43 @@ onMounted(() => {
       }
 
       .github-btn {
-        background: #2da44e;
+        height: 34px;
+        min-width: 76px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+        text-transform: none;
+        letter-spacing: normal;
+        font-weight: 600;
+        padding: 0 12px;
+        color: #24292f;
+        
+        &:not(:last-child) {
+          border-right: 1px solid #d0d7de;
+        }
         
         &:hover {
-          background: #2c974b;
+          background: #f3f4f6;
+        }
+
+        &.v-btn--variant-tonal {
+          background: #ffffff;
+          
+          &:hover {
+            opacity: 0.95;
+          }
+
+          &.text-primary {
+            background: #ddf4ff;
+          }
+
+          &.text-success {
+            background: #dafbe1;
+          }
+
+          &.text-warning {
+            background: #fff8c5;
+          }
         }
       }
     }

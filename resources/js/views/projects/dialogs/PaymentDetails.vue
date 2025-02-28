@@ -203,7 +203,7 @@ const goBack = () => {
           </VBtn>
         </div>
 
-        <div class="filters-section">
+        <div class="filters-section" v-if="!showPaychecks">
           <div class="date-range-section">
             <AppDateTimePicker
               v-model="selectedDateRange"
@@ -214,7 +214,7 @@ const goBack = () => {
             />
           </div>
           <VBtnGroup 
-            class="status-filter"
+            class="btn-group-status-filter"
             density="compact"
           >
             <VBtn
@@ -871,55 +871,6 @@ const goBack = () => {
             min-height: 30px;
             padding-top: 0;
             padding-bottom: 0;
-          }
-        }
-      }
-    }
-
-    .status-filter {
-      border: 1px solid #d0d7de;
-      border-radius: 6px;
-      overflow: hidden;
-      height: 32px;
-      background: #f6f8fa;
-
-      .v-btn {
-        height: 32px;
-        min-width: 76px;
-        border: none;
-        border-radius: 0;
-        font-size: 0.8125rem;
-        text-transform: none;
-        letter-spacing: normal;
-        font-weight: 600;
-        padding: 0 12px;
-        color: #24292f;
-        
-        &:not(:last-child) {
-          border-right: 1px solid #d0d7de;
-        }
-        
-        &:hover {
-          background: #f3f4f6;
-        }
-
-        &.v-btn--variant-tonal {
-          background: #ffffff;
-          
-          &:hover {
-            opacity: 0.95;
-          }
-
-          &.text-primary {
-            background: #ddf4ff;
-          }
-
-          &.text-success {
-            background: #dafbe1;
-          }
-
-          &.text-warning {
-            background: #fff8c5;
           }
         }
       }

@@ -22,7 +22,9 @@ class Show extends BaseController
     {
         $user = Auth::user();
 
-        $model = Project::with(['owner', 'containers' => function ($q) use ($user) {
+        $status = request()->get('status');
+
+        $model = Project::with(['owner', 'containers' => function ($q) use ($user, $status) {
             if ($user->hasRole('Super-Admin')) {
                 $q->with(['members' => function ($q) {
                     $q->with('user');
@@ -35,14 +37,15 @@ class Show extends BaseController
                         $q->with('user');
                     }]);
             }
+            if ($status && $status !== 'all') {
+                $q->where('is_active', $status === 'active');
+            }
             $q->with('owner');
             $q->orderBy('created_at', 'asc');
         }])->findOrFail($id);
 
-        // Convertim modelul în array pentru a putea modifica structura
         $modelArray = $model->toArray();
         
-        // Transformăm users în containere folosind UserResource
         foreach ($modelArray['containers'] as &$container) {
             foreach ($container['members'] as &$member) {
                 $member['user'] = (new UserResource($model->containers

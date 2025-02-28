@@ -2,9 +2,9 @@
 import CreateProject from "@/views/projects/dialogs/CreateProject.vue"
 import EditProject from "@/views/projects/dialogs/EditProject.vue"
 import { router } from "@/plugins/1.router/index"
+import { watch } from "vue"
 
 const searchQuery = ref('')
-const selectedStatus = ref()
 
 const itemsPerPage = ref(25)
 const page = ref(1)
@@ -14,11 +14,7 @@ const selectedItem = ref(null)
 const isEditModalVisible = ref(false)
 const isAddModalVisible = ref(false)
 const isDeleteModalVisible = ref(false)
-
-const updateOptions = options => {
-  sortBy.value = options.sortBy[0]?.key
-  orderBy.value = options.sortBy[0]?.order
-}
+const statusFilter = ref('all')
 
 const {
   data: data,
@@ -27,7 +23,7 @@ const {
   method: 'GET',
   query: {
     q: searchQuery,
-    is_active: selectedStatus,
+    status: statusFilter,
     itemsPerPage,
     page,
     sortBy,
@@ -75,13 +71,11 @@ const goToProject = item => {
   }
 }
 
-const formatDuration = (seconds) => {
-  const hours = Math.floor(seconds / 3600)
-  if (hours >= 1000) {
-    return `${(hours/1000).toFixed(1)}k hours`
+watch(statusFilter, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    fetch()
   }
-  return `${hours} hours`
-}
+})
 </script>
 
 <template>
@@ -93,11 +87,63 @@ const formatDuration = (seconds) => {
         <AppTextField
           v-model="searchQuery"
           placeholder="Search projects..."
-          density="compact"
           variant="plain"
           hide-details
           class="github-input"
         />
+        <VBtnGroup 
+            class="btn-group-status-filter"
+            density="compact"
+          >
+          <VBtn
+            :color="statusFilter === 'all' ? 'primary' : undefined"
+            :variant="statusFilter === 'all' ? 'tonal' : 'outlined'"
+            size="x-small"
+            class="filter-btn"
+            @click="statusFilter = 'all'"
+          >
+            <VIcon 
+              size="14" 
+              class="mr-1"
+              :color="statusFilter === 'all' ? undefined : '#57606a'"
+            >
+              tabler-filter
+            </VIcon>
+            All
+          </VBtn>
+          <VBtn
+            :color="statusFilter === 'active' ? 'success' : undefined"
+            :variant="statusFilter === 'active' ? 'tonal' : 'outlined'"
+            size="x-small"
+            class="filter-btn"
+            @click="statusFilter = 'active'"
+          >
+            <VIcon 
+              size="14" 
+              class="mr-1"
+              :color="statusFilter === 'active' ? undefined : '#57606a'"
+            >
+              tabler-circle-check
+            </VIcon>
+            Active
+          </VBtn>
+          <VBtn
+            :color="statusFilter === 'inactive' ? 'error' : undefined"
+            :variant="statusFilter === 'inactive' ? 'tonal' : 'outlined'"
+            size="x-small"
+            class="filter-btn"
+            @click="statusFilter = 'inactive'"
+          >
+            <VIcon 
+              size="14" 
+              class="mr-1"
+              :color="statusFilter === 'inactive' ? undefined : 'error'"
+            >
+              tabler-circle-x
+            </VIcon>
+            Inactive
+          </VBtn>
+        </VBtnGroup>
         <VBtn
           color="primary"
           size="small"
@@ -215,10 +261,43 @@ const formatDuration = (seconds) => {
       }
 
       .github-btn {
-        background: #2da44e;
+        height: 34px;
+        min-width: 76px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+        text-transform: none;
+        letter-spacing: normal;
+        font-weight: 600;
+        padding: 0 12px;
+        color: #24292f;
+        
+        &:not(:last-child) {
+          border-right: 1px solid #d0d7de;
+        }
         
         &:hover {
-          background: #2c974b;
+          background: #f3f4f6;
+        }
+
+        &.v-btn--variant-tonal {
+          background: #ffffff;
+          
+          &:hover {
+            opacity: 0.95;
+          }
+
+          &.text-primary {
+            background: #ddf4ff;
+          }
+
+          &.text-success {
+            background: #dafbe1;
+          }
+
+          &.text-warning {
+            background: #fff8c5;
+          }
         }
       }
     }
