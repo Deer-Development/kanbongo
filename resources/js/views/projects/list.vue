@@ -284,9 +284,11 @@ watch(statusFilter, (newValue, oldValue) => {
 
       .actions-section {
         display: flex;
+        justify-content: space-between;
+        flex-direction: row;
         gap: 1rem;
         flex-wrap: wrap;
-        width: 100%;
+        width: 100% !important;
         align-items: center;
 
         @media (min-width: 768px) {
@@ -295,7 +297,7 @@ watch(statusFilter, (newValue, oldValue) => {
         }
 
         .btn-group-status-filter {
-          
+          max-width: 240px;
           @media (min-width: 768px) {
             flex: 0 0 auto;
           }

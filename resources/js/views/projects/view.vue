@@ -193,7 +193,7 @@ onMounted(() => {
         display: flex;
         gap: 1rem;
         flex-wrap: wrap;
-        width: 100%;
+        width: 100% !important;
         align-items: center;
 
         @media (min-width: 768px) {
@@ -202,7 +202,7 @@ onMounted(() => {
         }
 
         .btn-group-status-filter {
-          
+          max-width: 240px;
           @media (min-width: 768px) {
             flex: 0 0 auto;
           }
