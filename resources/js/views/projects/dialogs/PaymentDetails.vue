@@ -23,11 +23,31 @@ const totalSelectedPayment = ref(0)
 const selectedEntries = ref([])
 
 const selectedDateRange = ref("")
+const paymentStatusFilter = ref('all')
+
+const filteredMembers = computed(() => {
+  return members.value.filter(member => {
+    switch (paymentStatusFilter.value) {
+      case 'paid':
+        return member.total_paid_hours > 0;
+      case 'pending':
+        return member.pending_payment > 0;
+      default:
+        return true;
+    }
+  });
+});
 
 const fetchMemberDetails = async () => {
   const res = await $api(`/board/payment-details/${boardIdLocal.value}`, {
     method: "GET",
-    params: { date_range: selectedDateRange.value, is_super_admin: props.isSuperAdmin, is_owner: props.isOwner, is_admin: props.isAdmin },
+    params: { 
+      date_range: selectedDateRange.value, 
+      payment_status: paymentStatusFilter.value,
+      is_super_admin: props.isSuperAdmin, 
+      is_owner: props.isOwner, 
+      is_admin: props.isAdmin 
+    },
   })
 
   members.value = res.data
@@ -47,6 +67,10 @@ watch(selectedDateRange, () => {
   if (boardIdLocal.value !== 0 && !selectedMember.value) fetchMemberDetails()
 })
 
+watch(paymentStatusFilter, () => {
+  if (boardIdLocal.value !== 0 && !selectedMember.value) fetchMemberDetails()
+})
+
 const onReset = () => {
   emit("update:isDialogVisible", false)
   members.value = []
@@ -58,10 +82,10 @@ const onReset = () => {
   selectedEntries.value = []
 }
 
-const totalPaid = computed(() => members.value.reduce((sum, member) => sum + member.total_amount_paid, 0))
-const totalPaidHours = computed(() => members.value.reduce((sum, member) => sum + member.total_paid_hours, 0))
-const totalPending = computed(() => members.value.reduce((sum, member) => sum + member.pending_payment, 0))
-const totalUnpaidHours = computed(() => members.value.reduce((sum, member) => sum + member.total_unpaid_hours, 0))
+const totalPaid = computed(() => filteredMembers.value.reduce((sum, member) => sum + member.total_amount_paid, 0))
+const totalPaidHours = computed(() => filteredMembers.value.reduce((sum, member) => sum + member.total_paid_hours, 0))
+const totalPending = computed(() => filteredMembers.value.reduce((sum, member) => sum + member.pending_payment, 0))
+const totalUnpaidHours = computed(() => filteredMembers.value.reduce((sum, member) => sum + member.total_unpaid_hours, 0))
 
 const paymentProgress = computed(() => {
   const total = totalPaid.value + totalPending.value
@@ -77,7 +101,7 @@ const getStatusClass = (member) => {
 const getStatusText = (member) => {
   if (member.total_unpaid_hours === 0 && member.total_paid_hours > 0) return 'Paid'
   if (member.pending_payment > 0) return 'Pending'
-  return 'Not Worked'
+  return 'No Payment'
 }
 
 const confirmPayment = member => {
@@ -157,7 +181,6 @@ const goBack = () => {
           </VBtn>
         </div>
 
-        <!-- Main Header -->
         <div class="d-flex justify-space-between align-center mb-4 mt-4">
           <div class="title-section">
             <h2 class="header-title">
@@ -180,18 +203,71 @@ const goBack = () => {
           </VBtn>
         </div>
 
-        <!-- Date Range Picker -->
-        <div class="date-range-section">
-          <AppDateTimePicker
-            v-model="selectedDateRange"
-            :config="{ mode: 'range' }"
-            placeholder="Select date range"
-            clearable
-            class="github-input"
-          />
+        <div class="filters-section">
+          <div class="date-range-section">
+            <AppDateTimePicker
+              v-model="selectedDateRange"
+              :config="{ mode: 'range' }"
+              placeholder="Select date range"
+              clearable
+              class="github-input date-picker"
+            />
+          </div>
+          <VBtnGroup 
+            class="status-filter"
+            density="compact"
+          >
+            <VBtn
+              :color="paymentStatusFilter === 'all' ? 'primary' : undefined"
+              :variant="paymentStatusFilter === 'all' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="paymentStatusFilter = 'all'"
+            >
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="paymentStatusFilter === 'all' ? undefined : '#57606a'"
+              >
+                tabler-filter
+              </VIcon>
+              All
+            </VBtn>
+            <VBtn
+              :color="paymentStatusFilter === 'paid' ? 'success' : undefined"
+              :variant="paymentStatusFilter === 'paid' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="paymentStatusFilter = 'paid'"
+            >
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="paymentStatusFilter === 'paid' ? undefined : '#57606a'"
+              >
+                tabler-cash
+              </VIcon>
+              Paid
+            </VBtn>
+            <VBtn
+              :color="paymentStatusFilter === 'pending' ? 'warning' : undefined"
+              :variant="paymentStatusFilter === 'pending' ? 'tonal' : 'outlined'"
+              size="x-small"
+              class="filter-btn"
+              @click="paymentStatusFilter = 'pending'"
+            >
+              <VIcon 
+                size="14" 
+                class="mr-1"
+                :color="paymentStatusFilter === 'pending' ? undefined : '#57606a'"
+              >
+                tabler-clock-dollar
+              </VIcon>
+              Pending
+            </VBtn>
+          </VBtnGroup>
         </div>
 
-        <!-- Selected Payment Info -->
         <div 
           v-if="selectedMember && totalSelectedPayment > 0 && !showPaychecks" 
           class="selected-payment-info"
@@ -235,8 +311,30 @@ const goBack = () => {
       <VCardText class="content-section">
         <!-- Members Grid -->
         <div v-if="!selectedMember" class="members-grid">
+          <div v-if="filteredMembers.length === 0" class="no-results">
+            <div class="empty-state">
+              <VIcon
+                size="40"
+                color="#57606a"
+                class="mb-4"
+              >
+                tabler-mood-empty
+              </VIcon>
+              <h3>No matching results</h3>
+              <p class="text-medium-emphasis">
+                {{ 
+                  paymentStatusFilter === 'paid' 
+                    ? 'No paid time entries found in the selected period.' 
+                    : paymentStatusFilter === 'pending' 
+                      ? 'No pending payments found in the selected period.'
+                      : 'No time entries found in the selected period.'
+                }}
+              </p>
+            </div>
+          </div>
+          
           <div
-            v-for="member in members"
+            v-for="member in filteredMembers"
             :key="member.member_id"
             class="member-card"
           >
@@ -329,6 +427,7 @@ const goBack = () => {
           <MemberPaymentDetails
             :member="selectedMember"
             :date-range="selectedDateRange"
+            :payment-status="paymentStatusFilter"
             :board-id="boardIdLocal"
             :is-owner="isOwner"
             :is-super-admin="isSuperAdmin"
@@ -477,6 +576,38 @@ const goBack = () => {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
     gap: 1rem;
+    min-height: 200px;
+
+    .no-results {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 3rem 1rem;
+
+      .empty-state {
+        text-align: center;
+        background: #ffffff;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        padding: 2rem;
+        max-width: 400px;
+        width: 100%;
+
+        h3 {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #24292f;
+          margin-bottom: 0.5rem;
+        }
+
+        p {
+          font-size: 0.875rem;
+          color: #57606a;
+          margin: 0;
+        }
+      }
+    }
   }
 
   .member-card {
@@ -700,6 +831,96 @@ const goBack = () => {
         &:hover {
           transform: translateY(-1px);
           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+      }
+    }
+  }
+
+  .filters-section {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    width: 100%;
+
+    .date-range-section {
+      width: auto;
+      flex: 1;
+      max-width: 300px;
+
+      .date-picker {
+        :deep(.v-field) {
+          border-radius: 6px;
+          border: 1px solid #d0d7de;
+          background: #ffffff;
+          height: 32px;
+          color: #24292f;
+          
+          &:hover {
+            border-color: #0969da;
+          }
+          
+          &.v-field--focused {
+            border-color: #0969da;
+            box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+          }
+
+          .v-field__input {
+            font-size: 0.875rem;
+            min-height: 30px;
+            padding-top: 0;
+            padding-bottom: 0;
+          }
+        }
+      }
+    }
+
+    .status-filter {
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      overflow: hidden;
+      height: 32px;
+      background: #f6f8fa;
+
+      .v-btn {
+        height: 32px;
+        min-width: 76px;
+        border: none;
+        border-radius: 0;
+        font-size: 0.8125rem;
+        text-transform: none;
+        letter-spacing: normal;
+        font-weight: 600;
+        padding: 0 12px;
+        color: #24292f;
+        
+        &:not(:last-child) {
+          border-right: 1px solid #d0d7de;
+        }
+        
+        &:hover {
+          background: #f3f4f6;
+        }
+
+        &.v-btn--variant-tonal {
+          background: #ffffff;
+          
+          &:hover {
+            opacity: 0.95;
+          }
+
+          &.text-primary {
+            background: #ddf4ff;
+          }
+
+          &.text-success {
+            background: #dafbe1;
+          }
+
+          &.text-warning {
+            background: #fff8c5;
+          }
         }
       }
     }

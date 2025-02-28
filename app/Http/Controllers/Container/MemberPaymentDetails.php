@@ -14,6 +14,7 @@ class MemberPaymentDetails extends BaseController
     public function __invoke(Request $request, int $id, int $userId): JsonResponse
     {
         $dateRange = $request->input('date_range');
+        $paymentStatus = $request->input('payment_status', 'all');
         $startDate = null;
         $endDate = null;
 
@@ -24,7 +25,7 @@ class MemberPaymentDetails extends BaseController
         }
 
         $model = Container::with([
-            'timeEntries' => function ($q) use ($userId, $startDate, $endDate) {
+            'timeEntries' => function ($q) use ($userId, $startDate, $endDate, $paymentStatus) {
                 $q->where('user_id', $userId);
                 if ($startDate) {
                     $q->where('start', '>=', $startDate);
@@ -32,34 +33,62 @@ class MemberPaymentDetails extends BaseController
                 if ($endDate) {
                     $q->where('end', '<=', $endDate);
                 }
+                if ($paymentStatus !== 'all') {
+                    $q->where('is_paid', $paymentStatus === 'paid');
+                }
                 $q->with('user:id,first_name,last_name,email');
-                $q->with('task:id,name');
+                $q->with(['task' => function ($q) {
+                    $q->select('id', 'name');
+                    $q->withTrashed();
+                }]);
+                $q->withTrashed();
             },
+            'members' => function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            }   
         ])->findOrFail($id);
+
+        $billableRate = $model->members->first()->billable_rate;
 
         $paymentDetails = $model->timeEntries
             ->whereNotNull('end')
             ->groupBy('task_id')
-            ->map(function ($entries) use ($userId) {
-                $trackedTime = $entries->sum(fn($entry) => $entry->end
+            ->map(function ($entries) use ($userId, $billableRate) {
+                $trackedTime = $entries->sum(fn($entry) => $entry->end && !$entry->deleted_at
                     ? Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))
                     : 0);
+                
                 $task = $entries->first()->task;
+                
+                // Calculate paid and pending amounts
+                $paidAmount = $entries->sum(fn($entry) => 
+                    $entry->is_paid && !$entry->deleted_at ? ($entry->amount_paid ?? 0) : 0
+                );
+                
+                $pendingAmount = $entries->sum(fn($entry) => 
+                    !$entry->is_paid && !$entry->deleted_at && $entry->end
+                        ? (Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end)) / 3600) * $billableRate
+                        : 0
+                );
+                
                 return [
                     'task' => $task,
                     'trackedTime' => $trackedTime,
                     'trackedTimeDisplay' => $this->formatTime($trackedTime),
+                    'paidAmount' => round($paidAmount, 2),
+                    'pendingAmount' => round($pendingAmount, 2),
                     'timeEntries' => $entries
                         ->filter(fn($entry) => !is_null($entry->end))
                         ->map(fn($entry) => [
                             'id' => $entry->id,
                             'start' => $entry->start,
                             'end' => $entry->end,
-                            'duration' => $entry->end ? $this->formatTime(Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))) : null,
+                            'duration' => $entry->end && !$entry->deleted_at ? $this->formatTime(Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))) : null,
                             'is_paid' => $entry->is_paid,
                             'amount_paid' => $entry->amount_paid,
                             'paid_rate' => $entry->paid_rate,
                             'added_manually' => $entry->added_manually,
+                            'deleted_at' => $entry->deleted_at,
                         ])->values(),
                     'entries_logs' => $task ? $task->logs()
                         ->where('loggable_type', 'App\Models\TimeEntry')

@@ -54,7 +54,7 @@ class TimeEntry extends Model
             ]);
         });
 
-        static::deleting(function ($entry) {
+        static::deleted(function ($entry) {
             Log::create([
                 'loggable_type' => self::class,
                 'loggable_id' => $entry->id,

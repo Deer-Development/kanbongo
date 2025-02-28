@@ -14,6 +14,7 @@ class PaymentDetails extends BaseController
     public function __invoke(Request $request, int $id): JsonResponse
     {
         $dateRange = $request->input('date_range');
+        $paymentStatus = $request->input('payment_status', 'all');
         $startDate = null;
         $endDate = null;
         $isSuperAdmin = filter_var($request->input('is_super_admin'), FILTER_VALIDATE_BOOLEAN);
@@ -65,6 +66,11 @@ class PaymentDetails extends BaseController
                 foreach ($board->tasks as $task) {
                     foreach ($task->timeEntries as $timeEntry) {
                         if ($timeEntry->user_id === $member->user_id) {
+                            if ($paymentStatus !== 'all') {
+                                if ($paymentStatus === 'paid' && !$timeEntry->is_paid) continue;
+                                if ($paymentStatus === 'pending' && $timeEntry->is_paid) continue;
+                            }
+
                             $trackedTime = $this->calculateTrackedTime($timeEntry);
 
                             if ($timeEntry->is_paid) {
