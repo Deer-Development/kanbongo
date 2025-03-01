@@ -2,7 +2,7 @@
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
 import MoveBoardDialog from "@/views/projects/dialogs/MoveBoardDialog.vue"
-import ConfirmDialog from "@/components/dialogs/ConfirmDialog.vue"
+import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue"
 import { router } from "@/plugins/1.router/index"
 
 const props = defineProps({
@@ -39,7 +39,7 @@ const handleFormSubmitted = () => {
 
 const isBoardDialogVisible = ref(false)
 const isPaymentDetailsDialogVisible = ref(false)
-const isDeleteDialogVisible = ref(false)
+const isDeleteConfirmDialogVisible = ref(false)
 const isMoveDialogVisible = ref(false)
 const boardDetails = ref()
 const boardId = ref(0)
@@ -54,12 +54,13 @@ const editBoard = board => {
 
 const deleteBoard = board => {
   boardDetails.value = board
-  isDeleteDialogVisible.value = true
+  isDeleteConfirmDialogVisible.value = true
 }
 
-const confirmedDeleteBoard = () => {
-  emit('deleteContainer', boardDetails.value.id)
-  isDeleteDialogVisible.value = false
+const handleDeleteConfirm = (confirmed) => {
+  if (confirmed) {
+    emit('deleteContainer', boardDetails.value.id)
+  }
 }
 
 const moveBoard = board => {
@@ -237,13 +238,14 @@ const canEditBoard = board => {
     @form-submitted="handleFormSubmitted"
   />
 
-  <ConfirmDialog
-    v-model:isDialogVisible="isDeleteDialogVisible"
-    cancel-title="Cancel"
-    confirm-title="Delete"
-    confirm-msg="Board deleted permanently."
-    confirmation-question="Are you sure you want to delete this board? This action cannot be undone."
-    @confirm="confirmed => confirmed && confirmedDeleteBoard()"
+  <DeleteConfirmDialog
+    v-model:isDialogVisible="isDeleteConfirmDialogVisible"
+    title="Delete board"
+    :item-name="boardDetails?.name"
+    item-type="board"
+    message="This action cannot be undone. This will permanently delete this board and remove all associated data, including tasks, comments, and files."
+    confirmation-text="delete"
+    @confirm="handleDeleteConfirm"
   />
   
   <MoveBoardDialog

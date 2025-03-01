@@ -1,8 +1,9 @@
 <script setup>
 import CreateProject from "@/views/projects/dialogs/CreateProject.vue"
 import EditProject from "@/views/projects/dialogs/EditProject.vue"
-import { router } from "@/plugins/1.router/index"
+import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue"
 import { watch } from "vue"
+import { useRouter } from 'vue-router'
 
 const searchQuery = ref('')
 
@@ -14,6 +15,7 @@ const selectedItem = ref(null)
 const isEditModalVisible = ref(false)
 const isAddModalVisible = ref(false)
 const isDeleteModalVisible = ref(false)
+const isDeleteLoading = ref(false)
 const statusFilter = ref('all')
 
 const {
@@ -35,6 +37,8 @@ const items = computed(() => data.value.items)
 const isSuperAdmin = computed(() => data.value.isSuperAdmin)
 const userData = computed(() => useCookie('userData', { default: null }).value)
 
+const router = useRouter()
+
 const editItem = item => {
   selectedItem.value = item
   isEditModalVisible.value = true
@@ -45,27 +49,31 @@ const itemToDelete = item => {
   isDeleteModalVisible.value = true
 }
 
-const deleteItem = async () => {
-  try {
-    await $api(`/project/${selectedItem.value.id}`, {
-      method: 'DELETE',
-    })
+const handleDeleteConfirm = async (confirmed) => {
+  if (confirmed) {
+    isDeleteLoading.value = true
+    try {
+      await $api(`/project/${selectedItem.value.id}`, {
+        method: 'DELETE',
+      })
 
-    await fetch()
-    isDeleteModalVisible.value = false
-    selectedItem.value = null
-  } catch (err) {
-    console.error(err)
+      await fetch()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      isDeleteLoading.value = false
+      selectedItem.value = null
+    }
   }
 }
 
 const goToProject = item => {
   if (item.is_active) {
-    // Prevent any race conditions by using nextTick
     nextTick(() => {
-      router.push({ 
+      router.replace({ 
         name: 'project-view', 
-        params: { id: item.id } 
+        params: { id: item.id },
+        query: { _: Date.now() }
       })
     })
   }
@@ -219,16 +227,17 @@ watch(statusFilter, (newValue, oldValue) => {
       </div>
     </div>
 
-    <CreateProject v-model:isDialogVisible="isAddModalVisible" @created="fetch" />
-    <EditProject v-model:isDialogVisible="isEditModalVisible" :container="selectedItem" @updated="fetch" />
-    <ConfirmDialog
+    <CreateProject v-model:is-dialog-visible="isAddModalVisible" @form-submitted="fetch" />
+    <EditProject v-model:is-dialog-visible="isEditModalVisible" v-model:project-details="selectedItem" @form-submitted="fetch" />
+    <DeleteConfirmDialog
       v-model:isDialogVisible="isDeleteModalVisible"
-      cancel-title="Cancel"
-      confirm-title="Delete project"
-      confirm-msg="This project and all its data will be permanently deleted."
-      confirmation-question="Are you sure you want to delete this project?"
-      cancel-msg="Operation cancelled"
-      @confirm="confirmed => confirmed && deleteItem()"
+      title="Delete project"
+      :item-name="selectedItem?.name"
+      item-type="project"
+      message="This action cannot be undone. This will permanently delete this project and all its boards, tasks, and associated data."
+      confirmation-text="delete"
+      :loading="isDeleteLoading"
+      @confirm="handleDeleteConfirm"
     />
   </div>
 </template>

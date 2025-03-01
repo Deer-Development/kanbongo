@@ -34,6 +34,7 @@ declare module 'vue' {
     CustomRadios: typeof import('./resources/js/@core/components/app-form-elements/CustomRadios.vue')['default']
     CustomRadiosWithIcon: typeof import('./resources/js/@core/components/app-form-elements/CustomRadiosWithIcon.vue')['default']
     CustomRadiosWithImage: typeof import('./resources/js/@core/components/app-form-elements/CustomRadiosWithImage.vue')['default']
+    DeleteConfirmDialog: typeof import('./resources/js/components/dialogs/DeleteConfirmDialog.vue')['default']
     DialogCloseBtn: typeof import('./resources/js/@core/components/DialogCloseBtn.vue')['default']
     DropZone: typeof import('./resources/js/@core/components/DropZone.vue')['default']
     DynamicMemberSelector: typeof import('./resources/js/@core/components/DynamicMemberSelector.vue')['default']

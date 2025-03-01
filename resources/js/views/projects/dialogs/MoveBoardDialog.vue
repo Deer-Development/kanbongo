@@ -24,7 +24,6 @@ const showNewProjectForm = ref(false)
 const newProjectName = ref('')
 const newProjectDescription = ref('')
 
-// Computed pentru a verifica dacă butonul de confirmare ar trebui să fie dezactivat
 const isConfirmDisabled = computed(() => {
   if (showNewProjectForm.value) {
     return !newProjectName.value.trim()
@@ -32,10 +31,8 @@ const isConfirmDisabled = computed(() => {
   return !selectedProjectId.value
 })
 
-// Computed pentru a afișa numele containerului
 const boardName = computed(() => props.boardDetails?.name || 'this container')
 
-// Încărcăm lista proiectelor la care utilizatorul este proprietar
 const fetchProjects = async () => {
   isLoading.value = true
   try {
@@ -44,7 +41,6 @@ const fetchProjects = async () => {
     })
     
     if (response && response.data.items) {
-      // Filtrăm proiectul curent din listă
       projects.value = response.data.items.filter(project => 
         project.id !== props.boardDetails?.project_id
       ).map(project => ({
@@ -61,7 +57,6 @@ const fetchProjects = async () => {
   }
 }
 
-// Resetăm starea dialogului când se închide
 const resetDialog = () => {
   selectedProjectId.value = null
   showNewProjectForm.value = false
@@ -69,16 +64,13 @@ const resetDialog = () => {
   newProjectDescription.value = ''
 }
 
-// Gestionăm confirmarea mutării
 const confirmMove = async () => {
   isLoading.value = true
   
   try {
     let targetProjectId = selectedProjectId.value
     
-    // Dacă utilizatorul a ales să creeze un proiect nou
     if (showNewProjectForm.value) {
-      // Creăm proiectul nou
       const newProjectResponse = await $api('/project', {
         method: 'POST',
         body: {
@@ -94,20 +86,16 @@ const confirmMove = async () => {
       }
     }
     
-    // Emitem evenimentul de confirmare cu ID-ul proiectului țintă
     emit('confirm', {
       confirmed: true,
       boardId: props.boardDetails.id,
       targetProjectId: targetProjectId
     })
     
-    // Închidem dialogul
     emit('update:isDialogVisible', false)
     
-    // Resetăm starea dialogului
     resetDialog()
     
-    // Afișăm un mesaj de succes
     toast.success(`Board moved successfully${showNewProjectForm.value ? ' to new project' : ''}`)
   } catch (error) {
     console.error('Error moving Board:', error)
