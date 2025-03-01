@@ -108,7 +108,7 @@ const addTemporaryUser = async () => {
         is_temporary: true,
         can_timing: false,
         billable: false,
-        rate: 0,
+        billable_rate: 0,
         weekly_limit_enabled: false,
         weekly_limit_hours: null,
         is_admin: false,
@@ -147,7 +147,7 @@ watch(() => props.isDialogVisible, async value => {
     avatarOrInitials: member.user.avatarOrInitials,
     can_timing: member.can_timing,
     billable: member.billable,
-    rate: member.billable_rate,
+    billable_rate: member.billable_rate,
     is_temporary: member.user.is_temporary,
     weekly_limit_enabled: member.weekly_limit_enabled,
     weekly_limit_hours: member.weekly_limit_hours,
@@ -176,7 +176,7 @@ const addUser = (userId, isOwner = false) => {
     role: user.role,
     can_timing: false,
     billable: false,
-    rate: 0,
+    billable_rate: 0,
     weekly_limit_enabled: false,
     weekly_limit_hours: null,
     is_owner: isOwner,
@@ -530,7 +530,7 @@ const onReset = () => {
 
                           <div class="control-column inputs">
                             <VTextField
-                              v-model="member.rate"
+                              v-model="member.billable_rate"
                               label="Rate"
                               type="number"
                               min="0"
