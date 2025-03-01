@@ -32,10 +32,11 @@ const selectedKanbanItem = ref(null)
 const router = useRouter()
 const initialQueryParams = ref(null)
 const timerStore = useTimerStore()
-const deleteBoardDialog = ref(null)
 const isDeleteBoardDialogVisible = ref(false)
 const deleteBoardDetails = ref(null)
 const isFromGeneralMessenger = ref(false)
+const progressUpdateInterval = ref(null)
+const toast = useToast()
 
 const refetchKanban = async () => {
   const wasOpen = isMessengerDrawerOpen.value
@@ -151,13 +152,49 @@ const cancelDeleteBoard = () => {
 }
 
 const toggleTimerFn = async (memberData, taskId) => {
-  const res = await $api(`/task/toggle-timer/${taskId}`, {
-    method: 'POST',
-    body: memberData,
-  })
+  // Verificăm dacă există deja un request în curs pentru acest utilizator și task
+  // Dar permitem requesturile pentru oprirea automată a timer-ului
+  const isAutoStop = memberData.stopped_by_system === true
+  
+  if (!isAutoStop && timerStore.isRequestPending(memberData.user_id, taskId)) {
+    console.log('Request already pending for this user and task')
+    return
+  }
+  
+  // Resetăm starea utilizatorului în store înainte de a face cererea
+  if (memberData.user_id) {
+    timerStore.resetUserState(memberData.user_id)
+  }
+  
+  // Marcăm requestul ca fiind în curs
+  timerStore.markRequestPending(memberData.user_id, taskId)
+  
+  try {
+    const res = await $api(`/task/toggle-timer/${taskId}`, {
+      method: 'POST',
+      body: memberData,
+    })
 
-  if(res) {
-    refetchKanban()
+    if(res) {
+      // Afișăm notificarea corespunzătoare în funcție de acțiune
+      if (res.data.action === 'started') {
+        toast.success(`Timer started for task #${res.data.task_sequence_id}`)
+      } else if (res.data.action === 'stopped') {
+        // Verificăm dacă a fost oprit de sistem sau manual
+        if (memberData.stopped_by_system) {
+          // Notificarea pentru oprirea de către sistem este deja afișată în checkWeeklyLimit
+        } else {
+          toast.info(`Timer stopped for task #${res.data.task_sequence_id}`)
+        }
+      }
+      
+      refetchKanban()
+    }
+  } catch (error) {
+    console.error('Error toggling timer:', error)
+  } finally {
+    // Marcăm requestul ca fiind finalizat, indiferent de rezultat
+    timerStore.markRequestCompleted(memberData.user_id, taskId)
   }
 }
 
@@ -224,59 +261,79 @@ const updateBoardState = async kanbanBoardIds => {
   })
 }
 
-const userToggleStatus = reactive({})
-const toast = useToast()
-
 const checkWeeklyLimitAndToggle = entry => {
-  if (!entry.has_weekly_limit || entry.user.id !== userData.value.id || !entry.time_entry?.start) return
-
-  const startDate = parseISO(entry.time_entry.start)
-  const now = new Date()
-  const elapsedSeconds = differenceInSeconds(now, startDate)
-
-  const totalTracked = entry.weekly_tracked.total_seconds + elapsedSeconds
-  const remainingSeconds = entry.weekly_limit_seconds - totalTracked
-
-  if (remainingSeconds <= 0 && !userToggleStatus[entry.user.id]) {
-    userToggleStatus[entry.user.id] = true
-    toggleTimerFn({
-      user_id: entry.user.id,
-      task_id: entry.time_entry.task_id,
-      stopped_by_system: true,
-    }, entry.time_entry.task_id)
-    toast.error('Weekly limit reached. Timer stopped.')
-    clearUserTimers()
-  } else if (remainingSeconds > 0) {
-    setTimeout(() => {
-      if (!userToggleStatus[entry.user.id]) {
-        userToggleStatus[entry.user.id] = true
-        toggleTimerFn({
-          user_id: entry.user.id,
-          task_id: entry.time_entry.task_id,
-          stopped_by_system: true,
-        }, entry.time_entry.task_id)
-        toast.error('Weekly limit reached. Timer stopped.')
-        clearUserTimers()
+  if (entry.user.id !== userData.value.id) return
+  
+  try {
+    if (typeof timerStore.checkWeeklyLimit === 'function') {
+      timerStore.checkWeeklyLimit(entry, toggleTimerFn)
+      console.log('checkWeeklyLimit is a function in timerStore', timerStore)
+    } else {
+      console.error('checkWeeklyLimit is not a function in timerStore', timerStore)
+      
+      if (entry.has_weekly_limit && entry.time_entry?.start) {
+        const startDate = parseISO(entry.time_entry.start)
+        const now = new Date()
+        const elapsedSeconds = differenceInSeconds(now, startDate)
+        
+        const totalTracked = entry.weekly_tracked.total_seconds + elapsedSeconds
+        const remainingSeconds = entry.weekly_limit_seconds - totalTracked
+        
+        if (remainingSeconds <= 0) {
+          toggleTimerFn({
+            user_id: entry.user.id,
+            task_id: entry.time_entry.task_id,
+            stopped_by_system: true,
+          }, entry.time_entry.task_id)
+          console.log('toggleTimerFn called for auto stop')
+        } else if (remainingSeconds > 0) {
+          setTimeout(() => {
+            toggleTimerFn({
+              user_id: entry.user.id,
+              task_id: entry.time_entry.task_id,
+              stopped_by_system: true,
+            }, entry.time_entry.task_id)
+            console.log('toggleTimerFn called for auto stop with remaining seconds', remainingSeconds)
+          }, remainingSeconds * 1000)
+        }
       }
-    }, remainingSeconds * 1000)
+    }
+  } catch (error) {
+    console.error('Error in checkWeeklyLimitAndToggle:', error)
   }
 }
 
 const updateUserTimers = () => {
-  kanbanData.value?.active_users?.forEach(entry => {
-    if (!entry.time_entry?.start) {
-      return
-    }
+  try {
+    kanbanData.value?.active_users?.forEach(entry => {
+      if (!entry.time_entry?.start) {
+        return
+      }
 
-    timerStore.startTimer(entry.user.id, entry.time_entry, true)
-  })
+      // Inițializează progress bar-ul pentru utilizatorul activ
+      if (entry.has_weekly_limit) {
+        timerStore.initWeeklyProgress(entry.user.id, entry)
+      }
+
+      timerStore.startTimer(entry.user.id, entry.time_entry, true)
+      
+      if (entry.user.id === userData.value.id) {
+        if (typeof timerStore.checkWeeklyLimit === 'function') {
+          timerStore.checkWeeklyLimit(entry, toggleTimerFn)
+          console.log('checkWeeklyLimit is a function in timerStore', timerStore)
+        } else {
+          checkWeeklyLimitAndToggle(entry)
+          console.log('checkWeeklyLimit is not a function in timerStore', timerStore)
+        }
+      }
+    })
+  } catch (error) {
+    console.error('Error in updateUserTimers:', error)
+  }
 }
 
 const clearUserTimers = () => {
   timerStore.clearAllTimers(true)
-  Object.keys(userToggleStatus).forEach(userId => {
-    delete userToggleStatus[userId]
-  })
 }
 
 const setPriority = data => {
@@ -303,13 +360,45 @@ const setSearchFilter = search => {
   refetchKanban()
 }
 
+const startProgressUpdates = () => {
+  // Oprim orice interval existent
+  if (progressUpdateInterval.value) {
+    clearInterval(progressUpdateInterval.value)
+  }
+  
+  // Creăm un nou interval care actualizează progress bar-urile la fiecare secundă
+  progressUpdateInterval.value = setInterval(() => {
+    if (activeUsersMenu.value && kanbanData.value?.active_users) {
+      kanbanData.value.active_users.forEach(entry => {
+        if (entry.has_weekly_limit && entry.time_entry?.start) {
+          // Forțăm o actualizare a progress bar-ului
+          const progress = timerStore.getWeeklyProgress(entry.user.id)
+          if (progress) {
+            // Actualizăm direct valorile reactive
+            const startDate = parseISO(entry.time_entry.start)
+            const now = new Date()
+            const elapsedSeconds = differenceInSeconds(now, startDate)
+            timerStore.updateWeeklyProgress(entry.user.id, elapsedSeconds)
+          }
+        }
+      })
+    }
+  }, 1000)
+}
+
 watch(
   () => activeUsersMenu.value,
   isOpen => {
     if (isOpen) {
       updateUserTimers()
+      startProgressUpdates() // Pornim actualizarea progress bar-urilor
     } else {
       clearUserTimers()
+      // Oprim actualizarea progress bar-urilor
+      if (progressUpdateInterval.value) {
+        clearInterval(progressUpdateInterval.value)
+        progressUpdateInterval.value = null
+      }
     }
   },
 )
@@ -335,6 +424,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearUserTimers()
+  if (progressUpdateInterval.value) {
+    clearInterval(progressUpdateInterval.value)
+    progressUpdateInterval.value = null
+  }
 })
 
 const openMessenger = (item) => {
@@ -430,6 +523,42 @@ watch(() => route.query, (newQuery) => {
     }
   }
 },{ deep: true })
+
+const getWeeklyProgressPercent = (entry) => {
+  if (!entry.has_weekly_limit) return 0
+  
+  if (entry.time_entry?.start) {
+    const progress = timerStore.getWeeklyProgress(entry.user.id)
+    if (progress) {
+      return progress.percentValue
+    }
+  }
+  
+  // Fallback la calculul static
+  return (entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100
+}
+
+const getWeeklyProgressDisplay = (entry) => {
+  if (!entry.has_weekly_limit) return entry.weekly_tracked.total_display
+  
+  if (entry.time_entry?.start) {
+    const progress = timerStore.getWeeklyProgress(entry.user.id)
+    if (progress) {
+      return progress.displayValue
+    }
+  }
+  
+  // Formatăm manual pentru utilizatorii inactivi sau când nu avem progress în store
+  const hours = Math.floor(entry.weekly_tracked.total_seconds / 3600)
+  const minutes = Math.floor((entry.weekly_tracked.total_seconds % 3600) / 60)
+  
+  // Formatăm limita cu o precizie de 1 zecimală pentru limitele mici
+  const limitDisplay = entry.weekly_limit_hours < 1 ? 
+    `${(entry.weekly_limit_hours * 60).toFixed(0)}m` : 
+    `${entry.weekly_limit_hours}h`
+  
+  return `${hours}h ${minutes}m / ${limitDisplay}`
+}
 </script>
 
 <template>
@@ -563,13 +692,13 @@ watch(() => route.query, (newQuery) => {
                     >
                       <span class="weekly-limit-label">Weekly limit active</span>
                       <VProgressLinear
-                        :model-value="(entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100"
+                        :model-value="getWeeklyProgressPercent(entry)"
                         height="4"
                         color="success"
                         class="progress-bar"
                       />
                       <span class="progress-text">
-                        {{ entry.weekly_tracked.total_display }} / {{ entry.weekly_limit_hours }}h
+                        {{ getWeeklyProgressDisplay(entry) }}
                       </span>
                     </div>
                   </div>
@@ -621,13 +750,13 @@ watch(() => route.query, (newQuery) => {
                     >
                       <span class="weekly-limit-label">Weekly limit active</span>
                       <VProgressLinear
-                        :model-value="(entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100"
+                        :model-value="getWeeklyProgressPercent(entry)"
                         height="4"
-                        color="info"
+                        color="success"
                         class="progress-bar"
                       />
                       <span class="progress-text">
-                        {{ entry.weekly_tracked.total_display }} / {{ entry.weekly_limit_hours }}h
+                        {{ getWeeklyProgressDisplay(entry) }}
                       </span>
                     </div>
                   </div>

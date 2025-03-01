@@ -23,7 +23,7 @@
           :color="getTimerColor"
           size="14"
         />
-        <span>{{ isTiming ? activeTimer : (task.tracked_time?.trackedTimeDisplay || '0h 0m 0s') }}</span>
+        <span>{{ isTiming ? currentTimer : (task.tracked_time?.trackedTimeDisplay || '0h 0m 0s') }}</span>
       </div>
     </template>
     <template #default>
@@ -241,6 +241,7 @@ const authDetails = ref(props.auth)
 const timerStore = useTimerStore()
 const localActiveUsers = ref([...props.activeUsers])
 const localMember = ref(props.member)
+
 const calculateTrackedTime = start => {
   try {
     const startDate = parseISO(start)
@@ -255,14 +256,12 @@ const calculateTrackedTime = start => {
 
     return `${hours}h ${minutes}m ${remainingSeconds}s`
   } catch (error) {
-
     return 'Error calculating time'
   }
 }
 
 watch(() => props.activeUsers, () => {
   localActiveUsers.value = [...props.activeUsers]
-
 }, { deep: true, immediate: true })
 
 watch(() => props.member, () => {
@@ -274,27 +273,34 @@ watch(
   (newValue, oldValue) => {
     if(newValue.length === 0) {
       isTiming.value = false
-      activeTimer.value = null
       return
     }
 
-    isTiming.value = newValue.some(
+    const isCurrentUserTimingThisTask = newValue.some(
       user => user.user.id === props.auth.id && user.time_entry?.task_id === props.task.id,
     )
 
-    if (isTiming.value && !activeTimer.value) {
+    isTiming.value = isCurrentUserTimingThisTask
+
+    if (isTiming.value) {
       const trackedTime = newValue.find(
         user => user.user.id === props.auth.id && user.time_entry?.task_id === props.task.id,
       )
       
       if (trackedTime) {
         timerStore.startTimer(props.auth.id, trackedTime.time_entry)
-        activeTimer.value = computed(() => timerStore.timers[props.auth.id])
       }
     }
   },
   { deep: true, immediate: true },
 )
+
+const currentTimer = computed(() => {
+  if (isTiming.value) {
+    return timerStore.getTimer(props.auth.id)
+  }
+  return props.task.tracked_time?.trackedTimeDisplay || '0h 0m 0s'
+})
 
 watch(
   () => props.auth,
@@ -332,11 +338,8 @@ watch(
 )
 
 const toggleTimer = () => {
-  if (localMember.value?.intervalId) {
-    timerStore.clearTimer(props.auth.id)
-    localMember.value.intervalId = null
-  }
-
+  timerStore.clearTimer(props.auth.id)
+  
   isTiming.value = false
   activeTimer.value = null
   emit('toggleTimer', localMember.value)
@@ -391,18 +394,14 @@ const addTimeEntry = userId => {
 }
 
 const updateDuration = timeEntry => {
-  console.log(timeEntry)
-
   if (timeEntry.start && timeEntry.end) {
     const startDate = parseISO(timeEntry.start)
     const endDate = parseISO(timeEntry.end)
-
 
     const seconds = differenceInSeconds(endDate, startDate)
 
     if (seconds < 0) {
       timeEntry.duration = 'Invalid Time'
-      
       return
     }
 
@@ -447,13 +446,8 @@ const getTimerColor = computed(() => {
 })
 
 onUnmounted(() => {
-  if (localMember.value?.intervalId) {
-    timerStore.clearTimer(props.auth.id)
-    localMember.value.intervalId = null
-  }
-
+  timerStore.clearTimer(props.auth.id)
   isTiming.value = false
-  activeTimer.value = null
 })
 </script>
 

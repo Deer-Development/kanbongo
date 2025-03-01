@@ -53,39 +53,43 @@ class TaskService extends BaseService
 
     public function toggleTimer(array $data, int $taskId)
     {
-        DB::beginTransaction();
-
-        try {
-            $task = $this->getById($taskId)->load('timeEntries');
-
-            $timeEntry = $task->timeEntries()
-                ->where('user_id', $data['user_id'])
-                ->whereNull('end')
-                ->first();
-
-            if ($timeEntry) {
-                $timeEntry->update(['end' => now(), 'stopped_by_system' => $data['stopped_by_system'] ?? false]);
-            } else {
-                if (isset($data['stopped_by_system']) && $data['stopped_by_system']) {
-                    DB::rollBack();
-                    return $task;
-                }
-                $task->timeEntries()->create([
-                    'start' => now(),
-                    'user_id' => $data['user_id'],
-                    'container_id' => $task->board->container_id,
-                    'billable' => $data['billable'],
-                    'billable_rate' => $data['billable_rate'],
-                ]);
-            }
-
-            DB::commit();
-
-            return $task;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
+        $task = $this->getById($taskId);
+        $userId = $data['user_id'] ?? auth()->id();
+        
+        // Verificăm dacă există un time entry activ pentru acest utilizator și task
+        $timeEntry = $task->timeEntries()
+            ->where('user_id', $userId)
+            ->whereNull('end')
+            ->first();
+        
+        $action = 'unknown';
+        
+        if ($timeEntry) {
+            // Oprim timer-ul
+            $timeEntry->update([
+                'end' => now(),
+                'stopped_by_system' => $data['stopped_by_system'] ?? false
+            ]);
+            $action = 'stopped';
+        } else {
+            // Pornim timer-ul
+            $task->timeEntries()->create([
+                'user_id' => $userId,
+                'start' => now(),
+                'container_id' => $task->board->container_id,
+                'billable' => $data['billable'],
+                'billable_rate' => $data['billable_rate'],
+            ]);
+            $action = 'started';
         }
+        
+        // Reîncărcăm task-ul cu relațiile necesare
+        $task = $this->getById($taskId);
+        
+        return [
+            'model' => $task,
+            'action' => $action
+        ];
     }
 
     public function update(int $id, array $data): Task
