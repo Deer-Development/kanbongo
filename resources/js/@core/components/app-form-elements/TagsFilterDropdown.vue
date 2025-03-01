@@ -2,7 +2,7 @@
   <div class="relative inline-block text-left">
     <button
       ref="btn"
-      class="custom-badge"
+      class="custom-badge github-style-badge"
     >
       <VIcon
         size="16"
@@ -15,7 +15,7 @@
 
     <div
       ref="dropdown"
-      class="dropdown-menu hidden"
+      class="dropdown-menu github-style-dropdown hidden"
     >
       <div class="dropdown-header">
         Tags
@@ -25,12 +25,17 @@
         :class="{ 'is-selected': modelValue.includes('untagged') }"
         @click="toggleUntagged"
       >
-        <VIcon
-          size="18"
-          :icon="modelValue.includes('untagged') ? 'tabler-tag-off' : 'tabler-tag-off'"
-          class="user-icon"
+        <div class="tag-icon untagged">
+          <VIcon size="14">tabler-tag-off</VIcon>
+        </div>
+        <span class="tag-name">Untagged</span>
+        <VIcon 
+          v-if="modelValue.includes('untagged')"
+          size="16" 
+          icon="tabler-check" 
+          color="accent"
+          class="ms-auto"
         />
-        Untagged
       </button>
 
       <VDivider />
@@ -41,42 +46,45 @@
           :key="tag.id"
           class="dropdown-item"
           :class="{ 'is-selected': modelValue.includes(tag.id) }"
-          :style="modelValue.includes(tag.id) ? { color: `${tag.color}73` } : ''"
           @click="selectTag(tag)"
         >
-          <VIcon
-            left
-            size="18"
-            class="user-icon"
-            :icon="modelValue.includes(tag.id) ? 'tabler-tag-filled' : 'tabler-tag'"
-          />
-          <span
+          <div class="tag-icon" :style="{ backgroundColor: `${tag.color}33` }">
+            <VIcon size="14" :color="tag.color">tabler-tag</VIcon>
+          </div>
+          <span 
             class="tag"
-            :style="{ backgroundColor: `${tag.color}73` }"
+            :style="{ backgroundColor: `${tag.color}15`, color: tag.color }"
           >
             {{ tag.name }}
           </span>
+          <VIcon 
+            v-if="modelValue.includes(tag.id)"
+            size="16" 
+            icon="tabler-check" 
+            color="accent"
+            class="ms-auto"
+          />
         </button>
         <VDivider />
         <div
-          class="dropdown-item priority-clear"
+          class="dropdown-item clear-action"
           @click="emit('update:modelValue', [])"
         >
           <VIcon
-            left
             size="16"
-            color="gray"
+            class="me-2"
           >
             tabler-circle-off
           </VIcon>
-          <span>Clear</span>
+          <span>Clear all filters</span>
         </div>
       </template>
       <div
         v-else
-        class="no-result"
+        class="dropdown-empty"
       >
-        No result
+        <VIcon size="16" icon="tabler-tag-off" class="me-2" />
+        No tags available
       </div>
     </div>
   </div>
@@ -142,66 +150,47 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.dropdown-menu {
-  background: white;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(27, 31, 36, 0.15);
-  border: 1px solid #d0d7de;
-  overflow: hidden;
-  z-index: 10;
-  min-width: 220px;
-}
+<style lang="scss">
+@import './shared-github-styles.scss';
 
-.dropdown-header {
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #57606a;
-  border-bottom: 1px solid #d0d7de;
-  background: #f6f8fa;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 4px;
-  background: rgba(241, 243, 245, 0.7);
-  color: #333;
-  border: 1px solid #d0d7de;
-  gap: 2px;
-  cursor: pointer;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
-  transition: background 0.2s;
-  color: #24292e;
-  cursor: pointer;
-}
-
-.dropdown-item:hover {
-  background: #f6f8fa;
-}
-
-.is-selected {
-  background: rgba(9, 105, 218, 0.1);
-  color: #0969da;
-  font-weight: 600;
-}
-
-.no-result {
-  padding: 12px;
-  text-align: center;
-  color: #57606a;
-  font-size: 14px;
+.dropdown-menu.github-style-dropdown {
+  .tag-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    
+    &.untagged {
+      background-color: #f0f0f0;
+      color: map-get($github-colors, text-tertiary);
+    }
+  }
+  
+  .tag-name {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+  
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    font-size: 12px;
+    font-weight: 400;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+    letter-spacing: 0.01em;
+    border: 1px solid transparent;
+  }
 }
 </style>

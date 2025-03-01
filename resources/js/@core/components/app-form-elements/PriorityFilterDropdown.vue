@@ -2,7 +2,7 @@
   <div class="relative inline-block text-left">
     <button
       ref="btn"
-      class="custom-badge"
+      class="custom-badge github-style-badge"
     >
       <VIcon
         size="16"
@@ -15,7 +15,7 @@
 
     <div
       ref="dropdown"
-      class="dropdown-menu hidden"
+      class="dropdown-menu github-style-dropdown hidden"
     >
       <div class="dropdown-header">
         Priority
@@ -26,12 +26,17 @@
         :class="{ 'is-selected': modelValue.includes('unflagged') }"
         @click="toggleUnflagged"
       >
-        <VIcon
-          size="18"
-          :icon="modelValue.includes('unflagged') ? 'tabler-user-x' : 'tabler-user'"
-          class="user-icon"
+        <div class="priority-icon unflagged">
+          <VIcon size="14">tabler-flag-off</VIcon>
+        </div>
+        <span class="priority-name">Unflagged</span>
+        <VIcon 
+          v-if="modelValue.includes('unflagged')"
+          size="16" 
+          icon="tabler-check" 
+          color="accent"
+          class="ms-auto"
         />
-        Unflagged
       </button>
 
       <VDivider />
@@ -43,30 +48,39 @@
         :class="{ 'is-selected': modelValue.includes(key) }"
         @click="selectPriority(key)"
       >
-        <VIcon
-          size="16"
-          :color="getPriorityColor(key)"
-          class="user-icon"
-        >
-          tabler-flag-3-filled
-        </VIcon>
-        <span>{{ label }}</span>
+        <div class="priority-icon" :style="{ backgroundColor: `${getPriorityColor(key)}15` }">
+          <VIcon
+            size="14"
+            :color="getPriorityColor(key)"
+          >
+            tabler-flag-3-filled
+          </VIcon>
+        </div>
+        <span class="priority-badge" :style="{ backgroundColor: `${getPriorityColor(key)}15`, color: getPriorityColor(key) }">
+          {{ label }}
+        </span>
+        <VIcon 
+          v-if="modelValue.includes(key)"
+          size="16" 
+          icon="tabler-check" 
+          color="accent"
+          class="ms-auto"
+        />
       </button>
 
       <VDivider />
 
       <div
-        class="dropdown-item priority-clear"
+        class="dropdown-item clear-action"
         @click="clearSelection"
       >
         <VIcon
-          left
           size="16"
-          color="gray"
+          class="me-2"
         >
           tabler-circle-off
         </VIcon>
-        <span>Clear</span>
+        <span>Clear all filters</span>
       </div>
     </div>
   </div>
@@ -154,51 +168,44 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.dropdown-menu {
-  background: white;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(27, 31, 36, 0.15);
-  border: 1px solid #d0d7de;
-  overflow: hidden;
-  z-index: 10;
-  min-width: 220px;
-}
+<style lang="scss">
+@import './shared-github-styles.scss';
 
-.dropdown-header {
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #57606a;
-  border-bottom: 1px solid #d0d7de;
-  background: #f6f8fa;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
-  transition: background 0.2s;
-  color: #24292e;
-  cursor: pointer;
-}
-
-.dropdown-item:hover {
-  background: #f6f8fa;
-}
-
-.is-selected {
-  background: rgba(9, 105, 218, 0.1);
-  color: #0969da;
-  font-weight: 600;
-}
-
-.no-result {
-  padding: 12px;
-  text-align: center;
-  color: #57606a;
-  font-size: 14px;
+.dropdown-menu.github-style-dropdown {
+  .priority-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    
+    &.unflagged {
+      background-color: #f0f0f0;
+      color: map-get($github-colors, text-tertiary);
+    }
+  }
+  
+  .priority-name {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+  
+  .priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    font-size: 12px;
+    font-weight: 400;
+    border-radius: 3px;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+    border: 1px solid transparent;
+  }
 }
 </style>

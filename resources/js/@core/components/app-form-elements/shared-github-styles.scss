@@ -1,0 +1,131 @@
+// Common GitHub-style refinements for all dropdowns
+$github-colors: (
+  text-primary: #24292f,
+  text-secondary: #57606a,
+  text-tertiary: #6e7781,
+  border: #d0d7de,
+  border-subtle: #eaecef,
+  bg-primary: #ffffff,
+  bg-secondary: #f6f8fa,
+  bg-tertiary: #f8f8f8,
+  accent: #0969da,
+  accent-subtle: #ddf4ff,
+  hover: #f3f4f6,
+  shadow: rgba(31, 35, 40, 0.07),
+  avatar-bg: #eef1f5,
+  danger: #cf222e,
+  danger-bg: #FFEBE9
+);
+
+.github-style-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  
+  &:hover {
+    background-color: map-get($github-colors, hover);
+  }
+  
+  .icon {
+    color: map-get($github-colors, text-tertiary);
+    font-size: 16px;
+  }
+}
+
+.dropdown-menu.github-style-dropdown {
+  background: map-get($github-colors, bg-primary);
+  border: 1px solid map-get($github-colors, border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px map-get($github-colors, shadow);
+  overflow: hidden;
+  z-index: 10;
+  min-width: 240px;
+  max-height: 350px;
+  overflow-y: auto;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(175, 184, 193, 0.4);
+    border-radius: 3px;
+    
+    &:hover {
+      background: rgba(175, 184, 193, 0.6);
+    }
+  }
+  
+  .dropdown-header {
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: map-get($github-colors, text-tertiary);
+    border-bottom: 1px solid map-get($github-colors, border-subtle);
+    background: map-get($github-colors, bg-secondary);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    letter-spacing: 0.02em;
+  }
+  
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    color: map-get($github-colors, text-primary);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    border-bottom: 1px solid transparent;
+    
+    &:hover {
+      background: map-get($github-colors, hover);
+    }
+    
+    &.is-selected {
+      background: rgba(map-get($github-colors, accent), 0.06);
+      font-weight: 400;
+      
+      .user-name, .tag-name, .priority-name {
+        color: map-get($github-colors, accent);
+      }
+    }
+    
+    &.clear-action {
+      color: map-get($github-colors, text-tertiary);
+      font-size: 12px;
+      
+      &:hover {
+        color: map-get($github-colors, danger);
+        background: map-get($github-colors, danger-bg);
+      }
+    }
+  }
+  
+  .dropdown-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+    color: map-get($github-colors, text-tertiary);
+    font-size: 13px;
+    text-align: center;
+  }
+} 

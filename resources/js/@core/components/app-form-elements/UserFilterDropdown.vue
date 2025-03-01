@@ -2,7 +2,7 @@
   <div class="relative inline-block text-left">
     <button
       ref="btn"
-      class="custom-badge"
+      class="custom-badge github-style-badge"
     >
       <VIcon
         size="16"
@@ -15,7 +15,7 @@
 
     <div
       ref="dropdown"
-      class="dropdown-menu hidden"
+      class="dropdown-menu github-style-dropdown hidden"
     >
       <div class="dropdown-header">
         Assignees
@@ -26,12 +26,10 @@
         :class="{ 'is-selected': modelValue.includes('unassigned') }"
         @click="toggleUnassigned"
       >
-        <VIcon
-          size="18"
-          :icon="modelValue.includes('unassigned') ? 'tabler-user-x' : 'tabler-user'"
-          class="user-icon"
-        />
-        Unassigned
+        <div class="user-avatar unassigned">
+          <VIcon size="14">tabler-user-off</VIcon>
+        </div>
+        <span class="user-name">Unassigned</span>
       </button>
 
       <VDivider />
@@ -44,36 +42,41 @@
           :class="{ 'is-selected': modelValue.includes(user.id) }"
           @click="selectUser(user)"
         >
-          <VIcon
-            size="18"
-            :icon="modelValue.includes(user.id) ? 'tabler-user-check' : 'tabler-user'"
-            class="user-icon"
+          <div class="user-avatar">
+            {{ user.full_name.charAt(0) }}
+          </div>
+          <span class="user-name">{{ user.full_name }}</span>
+          <VIcon 
+            v-if="modelValue.includes(user.id)"
+            size="16" 
+            icon="tabler-check" 
+            color="accent"
+            class="ms-auto"
           />
-          {{ user.full_name }}
         </button>
 
         <VDivider />
 
         <div
-          class="dropdown-item priority-clear"
+          class="dropdown-item clear-action"
           @click="clearSelection"
         >
           <VIcon
-            left
             size="16"
-            color="gray"
+            class="me-2"
           >
             tabler-circle-off
           </VIcon>
-          <span>Clear</span>
+          <span>Clear all filters</span>
         </div>
       </template>
 
       <div
         v-else
-        class="no-result"
+        class="dropdown-empty"
       >
-        No result
+        <VIcon size="16" icon="tabler-users-off" class="me-2" />
+        No users available
       </div>
     </div>
   </div>
@@ -148,51 +151,45 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.dropdown-menu {
-  background: white;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(27, 31, 36, 0.15);
-  border: 1px solid #d0d7de;
-  overflow: hidden;
-  z-index: 10;
-  min-width: 220px;
-}
+<style lang="scss">
+@import './shared-github-styles.scss';
 
-.dropdown-header {
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #57606a;
-  border-bottom: 1px solid #d0d7de;
-  background: #f6f8fa;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
-  transition: background 0.2s;
-  color: #24292e;
-  cursor: pointer;
-}
-
-.dropdown-item:hover {
-  background: #f6f8fa;
-}
-
-.is-selected {
-  background: rgba(9, 105, 218, 0.1);
-  color: #0969da;
-  font-weight: 600;
-}
-
-.no-result {
-  padding: 12px;
-  text-align: center;
-  color: #57606a;
-  font-size: 14px;
+.dropdown-menu.github-style-dropdown {
+  .user-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: map-get($github-colors, avatar-bg);
+    color: map-get($github-colors, text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 500;
+    flex-shrink: 0;
+    border: 1px solid rgba(31, 35, 40, 0.06);
+    
+    &.unassigned {
+      background-color: #f0f0f0;
+      color: map-get($github-colors, text-tertiary);
+    }
+  }
+  
+  .user-name {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+  
+  .dropdown-item.is-selected {
+    .user-avatar {
+      background-color: rgba(map-get($github-colors, accent), 0.12);
+      color: map-get($github-colors, accent);
+      border-color: rgba(map-get($github-colors, accent), 0.2);
+    }
+  }
 }
 </style>
