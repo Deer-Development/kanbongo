@@ -1,6 +1,8 @@
 <script setup>
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
+import MoveBoardDialog from "@/views/projects/dialogs/MoveBoardDialog.vue"
+import ConfirmDialog from "@/components/dialogs/ConfirmDialog.vue"
 import { router } from "@/plugins/1.router/index"
 
 const props = defineProps({
@@ -21,6 +23,8 @@ const props = defineProps({
 
 const emit = defineEmits([
   'formSubmitted',
+  'deleteContainer',
+  'moveContainer',
 ])
 
 const projectDataLocal = ref(JSON.parse(JSON.stringify(props.projectData)))
@@ -35,14 +39,41 @@ const handleFormSubmitted = () => {
 
 const isBoardDialogVisible = ref(false)
 const isPaymentDetailsDialogVisible = ref(false)
+const isDeleteDialogVisible = ref(false)
+const isMoveDialogVisible = ref(false)
 const boardDetails = ref()
 const boardId = ref(0)
 const isOwner = computed(() => projectDataLocal.value.owner.id === props.userData.id)
 const isAdmin = ref(false)
+const userData = useCookie('userData')
 
 const editBoard = board => {
   boardDetails.value = board
   isBoardDialogVisible.value = true
+}
+
+const deleteBoard = board => {
+  boardDetails.value = board
+  isDeleteDialogVisible.value = true
+}
+
+const confirmedDeleteBoard = () => {
+  emit('deleteContainer', boardDetails.value.id)
+  isDeleteDialogVisible.value = false
+}
+
+const moveBoard = board => {
+  boardDetails.value = board
+  isMoveDialogVisible.value = true
+}
+
+const handleMoveConfirm = (result) => {
+  if (result.confirmed) {
+    emit('moveContainer', {
+      boardId: result.boardId,
+      targetProjectId: result.targetProjectId
+    })
+  }
 }
 
 const paymentBoard = board => {
@@ -140,17 +171,51 @@ const canEditBoard = board => {
         >
           Payments
         </VBtn>
-        <VBtn
+        
+        <VMenu
           v-if="canEditBoard(board)"
-          variant="text"
-          size="small"
-          color="primary"
-          class="action-btn"
-          prepend-icon="tabler-edit"
-          @click.stop="editBoard(board)"
+          location="bottom end"
+          :close-on-content-click="true"
+          transition="scale-transition"
+          :offset="[0, 8]"
         >
-          Edit
-        </VBtn>
+          <template #activator="{ props }">
+            <VBtn
+              variant="text"
+              size="small"
+              color="primary"
+              class="action-btn"
+              prepend-icon="tabler-dots-vertical"
+              v-bind="props"
+              @click.stop
+            >
+              Actions
+            </VBtn>
+          </template>
+          
+          <VList density="compact" class="action-menu">
+            <VListItem
+              prepend-icon="tabler-edit"
+              title="Edit"
+              class="action-item edit-action"
+              @click.stop="editBoard(board)"
+            />
+            <VDivider class="my-1" />
+            <VListItem
+              prepend-icon="tabler-trash"
+              title="Delete"
+              class="action-item delete-action"
+              @click.stop="deleteBoard(board)"
+            />
+            <VDivider class="my-1" />
+            <VListItem
+              prepend-icon="tabler-arrows-transfer-up"
+              title="Move to another project"
+              class="action-item move-action"
+              @click.stop="moveBoard(board)"
+            />
+          </VList>
+        </VMenu>
       </div>
     </div>
   </div>
@@ -170,6 +235,21 @@ const canEditBoard = board => {
     v-model:is-admin="isAdmin"
     v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
     @form-submitted="handleFormSubmitted"
+  />
+
+  <ConfirmDialog
+    v-model:isDialogVisible="isDeleteDialogVisible"
+    cancel-title="Cancel"
+    confirm-title="Delete"
+    confirm-msg="Board deleted permanently."
+    confirmation-question="Are you sure you want to delete this board? This action cannot be undone."
+    @confirm="confirmed => confirmed && confirmedDeleteBoard()"
+  />
+  
+  <MoveBoardDialog
+    v-model:isDialogVisible="isMoveDialogVisible"
+    :board-details="boardDetails"
+    @confirm="handleMoveConfirm"
   />
 </template>
 
@@ -296,6 +376,67 @@ const canEditBoard = board => {
         .v-icon {
           font-size: 1rem;
         }
+      }
+    }
+  }
+}
+
+.action-menu {
+  min-width: 220px;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  padding: 4px;
+  
+  .action-item {
+    border-radius: 4px;
+    margin: 2px 0;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background-color: #f6f8fa;
+    }
+    
+    &.edit-action {
+      :deep(.v-list-item__prepend) {
+        .v-icon {
+          color: #0969da;
+        }
+      }
+      
+      &:hover {
+        background-color: rgba(9, 105, 218, 0.08);
+      }
+    }
+    
+    &.delete-action {
+      :deep(.v-list-item__prepend) {
+        .v-icon {
+          color: #cf222e;
+        }
+      }
+      
+      &:hover {
+        background-color: rgba(207, 34, 46, 0.08);
+      }
+    }
+    
+    &.move-action {
+      :deep(.v-list-item__prepend) {
+        .v-icon {
+          color: #8250df;
+        }
+      }
+      
+      &:hover {
+        background-color: rgba(130, 80, 223, 0.08);
+      }
+    }
+    
+    :deep(.v-list-item__content) {
+      .v-list-item-title {
+        font-size: 0.875rem;
+        font-weight: 500;
       }
     }
   }

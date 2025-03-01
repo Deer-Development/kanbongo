@@ -14,13 +14,14 @@ use App\Http\Controllers\Container\Show;
 use App\Http\Controllers\Container\Update;
 use App\Http\Controllers\Container\Destroy;
 use App\Http\Controllers\Container\ShowForComments;
-
+use App\Http\Controllers\Container\Move;
 Route::group(['prefix' => 'container'], function () {
     Route::get('/', Index::class)->name("container.index");
     Route::post('/', Store::class)->name("container.store");
     Route::post('/{id}', Show::class)->name("container.show");
     Route::get('/{id}/comments', ShowForComments::class)->name("container.show-for-comments");
     Route::put('/{id}', Update::class)->name("container.update");
+    Route::post('/{id}/move', Move::class)->name("container.move");
     Route::get('/tags/{id}', Tags::class)->name("container.fetch-tags");
     Route::get('/members/{id}', Users::class)->name("container.fetch-users");
     Route::post('/activities/{id}', Activities::class)->name("container.fetch-activities");

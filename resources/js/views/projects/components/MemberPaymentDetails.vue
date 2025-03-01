@@ -353,7 +353,7 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
                         {{ entry.is_paid ? 'Paid' : 'Unpaid' }}
                       </span>
                     </td>
-                    <td>{{ entry.amount_paid ? `$${entry.amount_paid}` : '--' }}</td>
+                    <td>{{ entry.amount_paid ? `$${entry.amount_paid.toFixed(2)}` : '--' }}</td>
                     <td>{{ entry.paid_rate ? `$${entry.paid_rate}` : '--' }}</td>
                   </tr>
                 </tbody>
@@ -440,7 +440,7 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
                                   Marked as Paid
                                 </div>
                                 <div class="payment-details">
-                                  <span>Amount: ${{ log.new_data.amount_paid }}</span>
+                                  <span>Amount: ${{ log.new_data.amount_paid.toFixed(2) }}</span>
                                   <span>Rate: ${{ log.new_data.paid_rate }}/hr</span>
                                 </div>
                               </template>

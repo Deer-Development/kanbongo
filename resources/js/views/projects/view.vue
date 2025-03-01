@@ -1,12 +1,14 @@
 <script setup>
 import ContainersCards from '@/views/projects/components/ContainersCards.vue'
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
+import { useToast } from 'vue-toastification'
 
 const route = useRoute()
 const projectData = ref(null)
 const isSuperAdmin = ref(false)
 const boardDetails = ref()
 const statusFilter = ref('all')
+const toast = useToast()
 
 const fetchContainer = async () => {
   const { data } = await $api(`/project/${route.params.id}`,
@@ -20,6 +22,33 @@ const fetchContainer = async () => {
 
   projectData.value = data.project
   isSuperAdmin.value = data.isSuperAdmin
+}
+
+const deleteContainer = async (boardId) => {
+  const { data } = await $api(`/container/${boardId}`, {
+    method: 'DELETE',
+  })
+
+  nextTick(() => {  
+    fetchContainer()
+  })
+}
+
+const handleMoveContainer = async (data) => {
+  try {
+    const response = await $api(`/container/${data.boardId}/move`, {
+      method: 'POST',
+      body: {
+        target_project_id: data.targetProjectId
+      }
+    })
+    
+    if (response) {
+      fetchContainer()
+    }
+  } catch (error) {
+    console.error('Error moving container:', error)
+  }
 }
 
 const breadcumItems = computed(() => {
@@ -141,6 +170,8 @@ onMounted(() => {
         :project-data="projectData"
         :is-super-admin="isSuperAdmin"
         :user-data="userData"
+        @delete-container="deleteContainer"
+        @move-container="handleMoveContainer"
         @form-submitted="fetchContainer"
       />
     </div>
