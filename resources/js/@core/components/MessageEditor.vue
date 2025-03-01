@@ -369,9 +369,8 @@ onUnmounted(() => {
     clearInterval(file.progress)
   })
 
-  uploadingFiles.value = []
-  uploadedFiles.value = []
-
+  exitEditMode()
+  exitReplyMode()
   if (editor.value) {
     editor.value.destroy()
   }
@@ -450,6 +449,20 @@ const editorActions = [
     tooltip: 'Insert link'
   },
 ]
+
+// Define the method to be exposed
+const resetEditor = () => {
+  if (editor.value) {
+    editor.value.commands.setContent('')
+  }
+  exitEditMode()
+  exitReplyMode()
+}
+
+// Expose the method
+defineExpose({
+  resetEditor
+})
 </script>
 
 <template>

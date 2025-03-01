@@ -1,17 +1,24 @@
 <template>
-  <div class="dropdown-menu">
+  <div class="dropdown-menu github-style-dropdown">
     <button
+      class="dropdown-item emoji-item"
       :class="{ 'is-selected': index === selectedIndex }"
       v-for="(item, index) in items"
       :key="index"
       @click="selectItem(index)"
     >
-      <img v-if="item.fallbackImage" :src="item.fallbackImage" align="absmiddle">
-      <template v-else>
-        {{ item.emoji }}
-      </template>
-      :{{ item.name }}:
+      <div class="emoji-container">
+        <img v-if="item.fallbackImage" :src="item.fallbackImage" alt="emoji">
+        <template v-else>
+          {{ item.emoji }}
+        </template>
+      </div>
+      <span class="emoji-name">:{{ item.name }}:</span>
     </button>
+    <div class="dropdown-empty" v-if="items.length === 0">
+      <VIcon size="16" icon="tabler-mood-sad" class="me-2" />
+      No matching emojis found
+    </div>
   </div>
 </template>
 
@@ -89,5 +96,35 @@ export default {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss">
+// The github-style-dropdown class is already defined in MentionList.vue
+// Here we just add emoji-specific styling
+
+.dropdown-menu.github-style-dropdown {
+  .emoji-item {
+    padding: 8px 12px;
+    
+    .emoji-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      margin-right: 8px;
+      font-size: 18px;
+      
+      img {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+      }
+    }
+    
+    .emoji-name {
+      font-size: 14px;
+      color: #24292f;
+      font-family: monospace;
+    }
+  }
+}
 </style>

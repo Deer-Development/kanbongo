@@ -61,6 +61,7 @@ const selectedAttachment = ref(null)
 const containerData = ref(null)
 const messageActionsMap = ref(new Map())
 const isLoading = ref(false)
+const messageEditorRef = ref(null)
 
 const toast = useToast()
 
@@ -219,7 +220,9 @@ const exitEditMode = () => {
 
 const exitReplyMode = () => {
   messageToReply.value = null
-  message.value = ''
+  if (message.value.includes('data-type="mention"')) {
+    message.value = ''
+  }
 }
 
 const submitEditMessage = async messageId => {
@@ -259,7 +262,15 @@ const closeNavigationDrawer = () => {
   emit('update:isDrawerOpen', false)
   messages.value = []
   message.value = ''
+  uploadedFiles.value = []
+  selectedMembers.value = []
   exitEditMode()
+  exitReplyMode()
+  messageToReply.value = null
+  
+  if (messageEditorRef.value && typeof messageEditorRef.value.resetEditor === 'function') {
+    messageEditorRef.value.resetEditor()
+  }
 
   emit('refreshKanbanData')
 }
@@ -337,9 +348,29 @@ const getMessageMenuModel = (messageId) => ({
   set: (value) => messageActionsMap.value.set(messageId, value)
 })
 
-watch(() => props.isDrawerOpen, async () => {
-  if (props.isDrawerOpen) {
+watch(() => props.isDrawerOpen, async (newVal) => {
+  if (newVal) {
+    messageToReply.value = null
+    message.value = ''
+    uploadedFiles.value = []
+    selectedMembers.value = []
+    exitEditMode()
+    exitReplyMode()
+    
+    if (messageEditorRef.value && typeof messageEditorRef.value.resetEditor === 'function') {
+      messageEditorRef.value.resetEditor()
+    }
+    
     await fetchKanbanItem()
+  } else {
+    messageToReply.value = null
+    message.value = ''
+    uploadedFiles.value = []
+    selectedMembers.value = []
+    
+    if (messageEditorRef.value && typeof messageEditorRef.value.resetEditor === 'function') {
+      messageEditorRef.value.resetEditor()
+    }
   }
 })
 
@@ -404,7 +435,7 @@ const handleBackClick = () => {
               v-for="(msg, index) in messages"
               :id="`comment-${msg.id}`"
               :key="msg.createdBy.id + String(index)"
-              class="chat-group d-flex align-start mb-6"
+              class="chat-group d-flex align-start"
               :class="[{
                 'flex-row-reverse': msg.createdBy.id === authId,
               }]"
@@ -428,13 +459,10 @@ const handleBackClick = () => {
                   </template>
                 </VAvatar>
               </div>
-              <div class="chat-body d-inline-flex flex-column align-end w-100">
+              <div class="chat-body d-inline-flex flex-column w-100" :class="msg.createdBy.id === authId ? 'align-end' : 'align-start'">
                 <div
-                  class="chat-content py-2 px-2 w-100 elevation-1 chat-right"
-                  style="background-color: rgb(var(--v-theme-surface));"
-                  :class="[
-                    msg.createdBy.id !== authId ? 'chat-left' : 'chat-right',
-                  ]"
+                  class="chat-content"
+                  :class="msg.createdBy.id !== authId ? 'chat-left' : 'chat-right'"
                 >
                   <div
                     v-if="msg.attachments?.length"
@@ -459,17 +487,83 @@ const handleBackClick = () => {
                       </div>
                     </div>
                   </div>
-                  <div class="d-flex justify-space-between gap-1">
-                    <div class="d-flex flex-column gap-2 w-100 ">
+                  
+                  <div class="message-content-container">
+                    <div v-if="msg.createdBy.id !== authId" class="message-actions-container">
+                      <div class="message-actions">
+                        <VMenu
+                          :model-value="messageActionsMap.get(msg.id)"
+                          @update:model-value="value => messageActionsMap.set(msg.id, value)"
+                          :close-on-content-click="true"
+                          location="bottom"
+                          :offset="[0, 5]"
+                          :open-delay="0"
+                          :close-delay="0"
+                        >
+                          <template #activator="{ props }">
+                            <div
+                              v-bind="props"
+                              class="custom-action-btn"
+                            >
+                              <VIcon size="12" icon="tabler-dots-vertical" />
+                            </div>
+                          </template>
+                          
+                          <VList class="dropdown-menu pa-2" density="compact">
+                            <VListItem
+                              class="menu-item"
+                              @click="replyMessage(msg)"
+                            >
+                              <template #prepend>
+                                <VIcon
+                                  size="16"
+                                  color="primary"
+                                  icon="tabler-message-reply"
+                                />
+                              </template>
+                              <VListItemTitle>Reply</VListItemTitle>
+                            </VListItem>
+
+                            <VListItem
+                              v-if="msg.createdBy.id === authId"
+                              class="menu-item"
+                              @click="editMessage(msg)"
+                            >
+                              <template #prepend>
+                                <VIcon
+                                  size="16"
+                                  color="warning"
+                                  icon="tabler-edit"
+                                />
+                              </template>
+                              <VListItemTitle>Edit</VListItemTitle>
+                            </VListItem>
+
+                            <VListItem
+                              v-if="msg.createdBy.id === authId"
+                              class="menu-item"
+                              color="error"
+                              @click="deleteMessage(msg.id)"
+                            >
+                              <template #prepend>
+                                <VIcon
+                                  size="16"
+                                  icon="tabler-trash"
+                                />
+                              </template>
+                              <VListItemTitle>Delete</VListItemTitle>
+                            </VListItem>
+                          </VList>
+                        </VMenu>
+                      </div>
+                    </div>
+                    
+                    <div class="message-main-content">
                       <div class="chat-parent-message-preview" v-if="msg.parent">
                         <div
-                          class="chat-message-box-reply w-100"
-                        >
-                          <div
-                            class="chat-parent-message-text me reply tiptap"
-                            v-html="msg.parent.content"
-                          />
-                        </div>
+                          class="chat-parent-message-text me reply tiptap"
+                          v-html="msg.parent.content"
+                        />
                       </div>
 
                       <p
@@ -477,93 +571,89 @@ const handleBackClick = () => {
                         v-html="msg.content"
                       />
                     </div>
-                    <div
-                      class="message-actions text-right"
-                      style="max-height: 20px !important;"
-                    >
-                      <VMenu
-                        :model-value="messageActionsMap.get(msg.id)"
-                        @update:model-value="value => messageActionsMap.set(msg.id, value)"
-                        :close-on-content-click="true"
-                        location="end"
-                      >
-                        <template #activator="{ props }">
-                          <VBtn
-                            v-bind="props"
-                            icon
-                            variant="text"
-                            size="small"
-                            class="action-btn"
-                          >
-                            <VIcon
-                              size="16"
-                              icon="tabler-dots"
-                            />
-                          </VBtn>
-                        </template>
+                    
+                    <div v-if="msg.createdBy.id === authId" class="message-actions-container">
+                      <div class="message-actions">
+                        <VMenu
+                          :model-value="messageActionsMap.get(msg.id)"
+                          @update:model-value="value => messageActionsMap.set(msg.id, value)"
+                          :close-on-content-click="true"
+                          location="bottom"
+                          :offset="[0, 5]"
+                          :open-delay="0"
+                          :close-delay="0"
+                        >
+                          <template #activator="{ props }">
+                            <div
+                              v-bind="props"
+                              class="custom-action-btn"
+                            >
+                              <VIcon size="12" icon="tabler-dots-vertical" />
+                            </div>
+                          </template>
+                          
+                          <VList class="dropdown-menu pa-2" density="compact">
+                            <VListItem
+                              class="menu-item"
+                              @click="replyMessage(msg)"
+                            >
+                              <template #prepend>
+                                <VIcon
+                                  size="16"
+                                  color="primary"
+                                  icon="tabler-message-reply"
+                                />
+                              </template>
+                              <VListItemTitle>Reply</VListItemTitle>
+                            </VListItem>
 
-                        <VList class="dropdown-menu pa-2" density="compact">
-                          <VListItem
-                            class="menu-item"
-                            @click="replyMessage(msg)"
-                          >
-                            <template #prepend>
-                              <VIcon
-                                size="16"
-                                color="primary"
-                                icon="tabler-message-reply"
-                              />
-                            </template>
-                            <VListItemTitle>Reply</VListItemTitle>
-                          </VListItem>
+                            <VListItem
+                              v-if="msg.createdBy.id === authId"
+                              class="menu-item"
+                              @click="editMessage(msg)"
+                            >
+                              <template #prepend>
+                                <VIcon
+                                  size="16"
+                                  color="warning"
+                                  icon="tabler-edit"
+                                />
+                              </template>
+                              <VListItemTitle>Edit</VListItemTitle>
+                            </VListItem>
 
-                          <VListItem
-                            v-if="msg.createdBy.id === authId"
-                            class="menu-item"
-                            @click="editMessage(msg)"
-                          >
-                            <template #prepend>
-                              <VIcon
-                                size="16"
-                                color="warning"
-                                icon="tabler-edit"
-                              />
-                            </template>
-                            <VListItemTitle>Edit</VListItemTitle>
-                          </VListItem>
-
-                          <VListItem
-                            v-if="msg.createdBy.id === authId"
-                            class="menu-item"
-                            color="error"
-                            @click="deleteMessage(msg.id)"
-                          >
-                            <template #prepend>
-                              <VIcon
-                                size="16"
-                                icon="tabler-trash"
-                              />
-                            </template>
-                            <VListItemTitle>Delete</VListItemTitle>
-                          </VListItem>
-                        </VList>
-                      </VMenu>
+                            <VListItem
+                              v-if="msg.createdBy.id === authId"
+                              class="menu-item"
+                              color="error"
+                              @click="deleteMessage(msg.id)"
+                            >
+                              <template #prepend>
+                                <VIcon
+                                  size="16"
+                                  icon="tabler-trash"
+                                />
+                              </template>
+                              <VListItemTitle>Delete</VListItemTitle>
+                            </VListItem>
+                          </VList>
+                        </VMenu>
+                      </div>
                     </div>
                   </div>
-
                 </div>
 
                 <div :class="[ msg.createdBy.id === authId ? 'text-right' : 'text-left align-self-start' ]">
                   <VIcon
                     v-if="msg.createdBy.id !== authId"
-                    id="comment-check check-animation"
-                    size="16"
+                    id="comment-check"
+                    size="14"
                     :class="{'check-animation': msg.markingAsRead, 'opacity-0': !msg.is_read}"
                     color="success"
                   >
                     tabler-check
                   </VIcon>
-                  <span class="text-sm ms-2 text-disabled">{{ msg.created_at }}</span>
+                  <span class="ms-1">{{ msg.created_at }}</span>
                 </div>
               </div>
             </div>
@@ -592,6 +682,7 @@ const handleBackClick = () => {
 
     <div class="chat-log-message-form mb-5">
       <MessageEditor
+        ref="messageEditorRef"
         v-model="message"
         v-model:pre-uploaded-files="uploadedFiles"
         v-model:is-edit-mode="isEditMode"
@@ -729,12 +820,56 @@ $spacing: (
   display: flex;
   gap: map-get($spacing, md);
   align-items: flex-start;
+  position: relative;
+  margin-bottom: 24px;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
 
   &.flex-row-reverse {
     .chat-content {
       background: #f0f6ff;
     }
+    
+    .chat-avatar {
+      margin-left: map-get($spacing, sm);
+    }
+    
+    .chat-timestamp {
+      right: 48px;
+      text-align: right;
+    }
   }
+  
+  &:not(.flex-row-reverse) {
+    .chat-avatar {
+      margin-right: map-get($spacing, sm);
+    }
+    
+    .chat-timestamp {
+      left: 48px;
+      text-align: left;
+    }
+  }
+}
+
+.chat-avatar {
+  position: relative;
+  
+  .v-avatar {
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(31, 35, 40, 0.1);
+  }
+}
+
+.chat-timestamp {
+  position: absolute;
+  bottom: -18px;
+  font-size: 11px;
+  color: map-get($github-colors, text-secondary);
+  opacity: 0.8;
+  white-space: nowrap;
 }
 
 .chat-body {
@@ -744,14 +879,28 @@ $spacing: (
 
 .chat-content {
   @include github-card;
-  padding: map-get($spacing, md);
   position: relative;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.08);
+  transition: box-shadow 0.2s ease;
+  padding: 0;
+  overflow: hidden;
   
-  @media (min-width: 769px) {
-    &:hover {
-      .message-actions {
-        opacity: 1;
-      }
+  .chat-group.flex-row-reverse & {
+    background: #f0f6ff;
+    border-top-right-radius: 4px;
+  }
+  
+  .chat-group:not(.flex-row-reverse) & {
+    background: map-get($github-colors, bg-primary);
+    border-top-left-radius: 4px;
+  }
+  
+  &:hover {
+    box-shadow: 0 2px 6px rgba(31, 35, 40, 0.12);
+    
+    .message-actions {
+      opacity: 1;
     }
   }
   
@@ -774,14 +923,75 @@ $spacing: (
   border-radius: 0 3px 3px 0;
   font-size: 13px;
   color: map-get($github-colors, text-secondary);
+  position: relative;
+  max-height: 60px;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to bottom, transparent, map-get($github-colors, reply-bg));
+    pointer-events: none;
+    opacity: 0.8;
+  }
+  
+  .chat-parent-message-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .text-message-content {
   color: map-get($github-colors, text-primary);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
   word-break: break-word;
+  
+  :deep(p) {
+    margin-bottom: 8px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  :deep(strong) {
+    font-weight: 600;
+  }
+  
+  :deep(em) {
+    font-style: italic;
+    color: rgba(map-get($github-colors, text-primary), 0.9);
+  }
+  
+  :deep(code) {
+    background: rgba(map-get($github-colors, text-secondary), 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 85%;
+  }
+  
+  :deep(pre) {
+    background: map-get($github-colors, bg-secondary);
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 8px 0;
+    
+    code {
+      background: transparent;
+      padding: 0;
+    }
+  }
   
   :deep(.tiptap-link) {
     color: map-get($github-colors, accent);
@@ -794,81 +1004,101 @@ $spacing: (
   }
 }
 
-.message-actions {
-  position: absolute;
-  top: map-get($spacing, xs);
-  right: map-get($spacing, xs);
-  opacity: 0;
-  transition: opacity 0.2s ease;
+.message-content-container {
+  display: flex;
+  width: 100%;
   
-  // Show on mobile devices
-  @media (max-width: 768px) {
-    opacity: 1;
-    position: relative;
-    top: auto;
-    right: auto;
-    margin-left: map-get($spacing, xs);
+  &.flex-row-reverse {
+    flex-direction: row-reverse;
   }
   
-  .dropdown-menu {
-    @include github-card;
-    padding: map-get($spacing, xs);
+  .message-main-content {
+    flex: 1;
+    padding: map-get($spacing, md);
+    min-width: 0;
   }
   
-  .custom-badge {
+  .message-actions-container {
     display: flex;
     align-items: center;
-    gap: map-get($spacing, xs);
-    padding: map-get($spacing, xs) map-get($spacing, sm);
+    justify-content: center;
+    background: transparent;
+    width: 24px;
     cursor: pointer;
-    border-radius: 4px;
-    color: map-get($github-colors, text-secondary);
-    
-    @media (max-width: 768px) {
-      padding: map-get($spacing, xs);
-      
-      // Optional: Make the touch target larger on mobile
-      min-width: 32px;
-      min-height: 32px;
-      justify-content: center;
-    }
+    transition: background-color 0.2s ease;
+    position: relative;
     
     &:hover {
-      background: map-get($github-colors, hover);
-      color: map-get($github-colors, text-primary);
+      background-color: rgba(map-get($github-colors, bg-secondary), 0.5);
+      
+      .custom-action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+        opacity: 1;
+      }
+    }
+    
+    .chat-right & {
+      border-left: 1px solid rgba(map-get($github-colors, border), 0.15);
+      border-right: none;
+    }
+    
+    .chat-left & {
+      border-right: 1px solid rgba(map-get($github-colors, border), 0.15);
+      border-left: none;
     }
   }
 }
 
+.message-actions {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .custom-action-btn {
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    
+    @media (max-width: 768px) {
+      opacity: 0.6;
+    }
+    
+    .v-icon {
+      font-size: 12px;
+      color: map-get($github-colors, text-secondary);
+    }
+  }
+}
+
+.chat-left {
+  align-self: flex-start;
+}
+
+.chat-right {
+  align-self: flex-end;
+}
+
 .attachments-section {
-  border-bottom: 1px solid map-get($github-colors, border);
-  padding: map-get($spacing, xs) map-get($spacing, sm);
+  border-bottom: 1px solid rgba(map-get($github-colors, border), 0.5);
+  padding: map-get($spacing, sm) 0;
   margin-bottom: map-get($spacing, sm);
 }
 
 .attachments-wrapper {
   display: flex;
-  overflow-x: auto;
-  gap: map-get($spacing, xs);
-  padding-bottom: map-get($spacing, sm);
-  
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: map-get($github-colors, bg-secondary);
-    border-radius: 4px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: darken(map-get($github-colors, border), 10%);
-    border-radius: 4px;
-    
-    &:hover {
-      background: darken(map-get($github-colors, border), 15%);
-    }
-  }
+  flex-wrap: wrap;
+  gap: map-get($spacing, sm);
+  padding-bottom: map-get($spacing, xs);
 }
 
 .attachment-item {
@@ -876,8 +1106,8 @@ $spacing: (
   align-items: center;
   background: map-get($github-colors, bg-secondary);
   border: 1px solid map-get($github-colors, border);
-  border-radius: 4px;
-  padding: map-get($spacing, xs) map-get($spacing, sm);
+  border-radius: 8px;
+  padding: map-get($spacing, sm);
   min-width: 180px;
   max-width: 180px;
   cursor: pointer;
@@ -885,7 +1115,8 @@ $spacing: (
   
   &:hover {
     background: map-get($github-colors, hover);
-    border-color: darken(map-get($github-colors, border), 5%);
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(31, 35, 40, 0.1);
   }
 
   .attachment-info {
@@ -893,10 +1124,11 @@ $spacing: (
     align-items: center;
     gap: map-get($spacing, sm);
     flex: 1;
-    min-width: 0; // For text truncation
+    min-width: 0;
     
     .attachment-name {
       font-size: 12px;
+      font-weight: 500;
       color: map-get($github-colors, text-primary);
       white-space: nowrap;
       overflow: hidden;
@@ -1051,21 +1283,23 @@ $spacing: (
   bottom: 0;
   background: rgb(var(--v-theme-surface));
   z-index: 1;
+  padding: map-get($spacing, lg);
 }
 
 .loading-content {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   max-width: 720px;
   margin: 0 auto;
 }
 
 .loading-item {
   padding: 16px;
-  border: 1px solid #eaecef;
-  border-radius: 6px;
+  border: 1px solid rgba(map-get($github-colors, border), 0.7);
+  border-radius: 12px;
   background: #ffffff;
+  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.04);
 }
 
 .loading-header {
@@ -1125,6 +1359,7 @@ $spacing: (
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite linear;
+  border-radius: 4px;
 }
 
 @keyframes shimmer {
