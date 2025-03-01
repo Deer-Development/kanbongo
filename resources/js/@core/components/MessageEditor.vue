@@ -10,6 +10,7 @@ import { Text } from '@tiptap/extension-text'
 import { TaskItem } from '@tiptap/extension-task-item'
 import { TaskList } from '@tiptap/extension-task-list'
 import { Emoji, gitHubEmojis } from '@tiptap-pro/extension-emoji'
+import { Link } from '@tiptap/extension-link'
 import {
   EditorContent,
   useEditor,
@@ -217,7 +218,16 @@ const editor = useEditor({
         ...suggestionEmojis,
       },
     }),
-
+    Link.configure({
+      openOnClick: true,
+      autolink: true,
+      linkOnPaste: true,
+      HTMLAttributes: {
+        class: 'tiptap-link',
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      },
+    }),
   ],
   onUpdate() {
     if (!editor.value)
@@ -415,7 +425,30 @@ const editorActions = [
     command: { textAlign: 'right' },
     action: editor => editor.chain().focus().setTextAlign('right').run(),
     tooltip: 'Align right'
-  }
+  },
+  {
+    icon: 'tabler-link',
+    command: 'link',
+    action: editor => {
+      const previousUrl = editor.getAttributes('link').href
+      const url = window.prompt('URL', previousUrl)
+      
+      // cancelled
+      if (url === null) {
+        return
+      }
+      
+      // empty
+      if (url === '') {
+        editor.chain().focus().extendMarkRange('link').unsetLink().run()
+        return
+      }
+      
+      // update link
+      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    },
+    tooltip: 'Insert link'
+  },
 ]
 </script>
 
@@ -740,6 +773,16 @@ $spacing: (
       border-radius: 4px;
       font-weight: 500;
       white-space: nowrap;
+    }
+
+    .tiptap-link {
+      color: map-get($github-colors, accent);
+      text-decoration: underline;
+      cursor: pointer;
+      
+      &:hover {
+        text-decoration: none;
+      }
     }
 
     .attachment-placeholder {

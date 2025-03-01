@@ -754,6 +754,16 @@ $spacing: (
       }
     }
   }
+  
+  :deep(.tiptap-link) {
+    color: map-get($github-colors, accent);
+    text-decoration: underline;
+    cursor: pointer;
+    
+    &:hover {
+      text-decoration: none;
+    }
+  }
 }
 
 .chat-parent-message-preview {
@@ -772,6 +782,16 @@ $spacing: (
   line-height: 1.5;
   margin: 0;
   word-break: break-word;
+  
+  :deep(.tiptap-link) {
+    color: map-get($github-colors, accent);
+    text-decoration: underline;
+    cursor: pointer;
+    
+    &:hover {
+      text-decoration: none;
+    }
+  }
 }
 
 .message-actions {
@@ -1126,6 +1146,18 @@ $spacing: (
   }
   to {
     opacity: 1;
+  }
+}
+
+:deep(.tiptap) {
+  .tiptap-link {
+    color: map-get($github-colors, accent);
+    text-decoration: underline;
+    cursor: pointer;
+    
+    &:hover {
+      text-decoration: none;
+    }
   }
 }
 </style>
