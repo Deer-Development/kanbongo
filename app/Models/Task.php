@@ -18,6 +18,11 @@ class Task extends Model
 
     protected $guarded = ['id'];
 
+    /**
+     * Specificăm doar coloanele pe care vrem să le urmărim pentru activități
+     */
+    protected static array $recordableFields = ['name'];
+
     // Definim doar pentru referință, nu mai sunt folosite direct
     public static array $customActivityEvents = [
         'member_added',

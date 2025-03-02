@@ -28,6 +28,11 @@ class ContainerActivities extends BaseController
         $formattedActivities = $activities->map(function ($activity) {
             $description = $this->getActivityDescription($activity);
             
+            // Nu returnăm activitățile fără descriere
+            if (empty($description)) {
+                return null;
+            }
+            
             return [
                 'id' => $activity->id,
                 'description' => $description,
@@ -47,7 +52,10 @@ class ContainerActivities extends BaseController
                 'created_at' => $activity->created_at->diffForHumans(),
                 'created_at_formatted' => $activity->created_at->format('Y-m-d H:i:s'),
             ];
-        });
+        })
+        ->filter()
+        ->values() // Reindexează array-ul după filtrare
+        ->all();   // Convertește colecția în array
 
         return $this->successResponse([
             'activities' => $formattedActivities,
@@ -74,9 +82,14 @@ class ContainerActivities extends BaseController
                        ($taskBadge ? " {$taskBadge}" : '');
             
             case 'updated':
+                if (empty($activity->properties['attributes'])) {
+                    return ''; // Nu afișăm activitatea dacă nu sunt modificări urmărite
+                }
+                
                 $changes = collect($activity->properties['attributes'])->map(function ($value, $key) {
                     return ucfirst($key);
                 })->join(', ');
+                
                 return "{$userName} updated {$changes} in" . ($taskBadge ? " {$taskBadge}" : '');
             
             case 'deleted':
@@ -112,6 +125,11 @@ class ContainerActivities extends BaseController
                 $timeEntryUser = optional(\App\Models\User::find($activity->properties['user_id']))->full_name;
                 return "{$userName} updated {$timeEntryUser}'s time entry from {$oldTimeFormatted} to {$newTimeFormatted} on" . 
                        ($taskBadge ? " {$taskBadge}" : '');
+            
+            case 'task_moved':
+                // $boards = $activity->properties['boards'];
+                // Returnăm doar textul, board-urile vor fi afișate ca badge-uri în frontend
+                return "{$userName} moved {$taskBadge} ";
             
             default:
                 return "{$userName} performed {$activity->event} on" . ($taskBadge ? " {$taskBadge}" : '');

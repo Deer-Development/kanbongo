@@ -45,13 +45,43 @@ class BoardService extends BaseService
             ];
         }
 
-        DB::transaction(function () use ($updateData) {
+        DB::transaction(function () use ($updateData, $board) {
             foreach ($updateData as $task) {
-                Task::where('id', $task['id'])
-                    ->update([
+                $taskModel = Task::with('board')->find($task['id']);
+                
+                if ($taskModel && $taskModel->board_id !== $task['board_id']) {
+                    $oldBoard = $taskModel->board;
+                    
+                    $taskModel->update([
                         'board_id' => $task['board_id'],
                         'order' => $task['order'],
                     ]);
+                    
+                    // Înregistrăm activitatea cu informații complete despre board-uri
+                    $taskModel->recordActivity('task_moved', [
+                        'attributes' => [
+                            'sequence_id' => $taskModel->sequence_id,
+                        ],
+                        'boards' => [
+                            'from' => [
+                                'id' => $oldBoard->id,
+                                'name' => $oldBoard->name,
+                                'color' => $oldBoard->color
+                            ],
+                            'to' => [
+                                'id' => $board->id,
+                                'name' => $board->name,
+                                'color' => $board->color
+                            ]
+                        ]
+                    ]);
+                } else {
+                    Task::where('id', $task['id'])
+                        ->update([
+                            'board_id' => $task['board_id'],
+                            'order' => $task['order'],
+                        ]);
+                }
             }
         });
 

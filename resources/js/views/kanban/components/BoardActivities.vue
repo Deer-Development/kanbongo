@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, onMounted } from 'vue'
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   boardId: {
@@ -45,7 +45,19 @@ const filteredActivities = computed(() => {
   })
 })
 
+// Cleanup function pentru a reseta state-ul
+const resetState = () => {
+  activities.value = []
+  isLoading.value = false
+  isLoadingMore.value = false
+  currentPage.value = 1
+  hasMore.value = true
+  isInitialized.value = false
+}
+
 const fetchActivities = async (page = 1) => {
+  if (!props.isActive) return
+  
   isLoading.value = true
   try {
     const res = await $api(`/container/${props.boardId}/board-activities`, {
@@ -91,10 +103,29 @@ const getEventIcon = (activity) => {
       return { icon: 'tabler-user-minus', color: 'text-warning' }
     case 'time_entry_completed':
       return { icon: 'tabler-clock-check', color: 'text-success' }
+    case 'task_moved':
+      return { icon: 'tabler-arrows-left-right', color: 'text-info' }
     default:
       return { icon: 'tabler-activity', color: 'text-grey' }
   }
 }
+
+// Cleanup când componenta este distrusă
+onBeforeUnmount(() => {
+  resetState()
+})
+
+// Watch pentru schimbări ale tab-ului
+watch(() => props.isActive, (newValue, oldValue) => {
+  if (newValue) {
+    if (!isInitialized.value) {
+      fetchActivities()
+    }
+  } else {
+    // Resetăm state-ul când drawer-ul se închide
+    resetState()
+  }
+}, { immediate: true })
 
 // Fetch la montarea componentei dacă tab-ul este activ
 onMounted(() => {
@@ -103,18 +134,14 @@ onMounted(() => {
   }
 })
 
-// Watch pentru schimbări ulterioare ale tab-ului
-watch(() => props.isActive, (newValue) => {
-  if (newValue && !isInitialized.value) {
-    fetchActivities()
-  }
-})
-
 defineExpose({ fetchActivities })
 </script>
 
 <template>
-  <div class="activities-wrapper">
+  <div 
+    v-if="isActive" 
+    class="activities-wrapper"
+  >
     <div class="activities-header">
       <VSelect
         v-model="filterType"
@@ -176,6 +203,29 @@ defineExpose({ fetchActivities })
                 >
                   Task #{{ activity.properties.attributes.sequence_id }}
                 </VChip>
+                
+                <!-- Board badges pentru task_moved -->
+                <template v-if="activity.event === 'task_moved' && activity.properties.boards">
+                  <span class="mx-1">from</span>
+                  <VChip
+                    size="x-small"
+                    :color="activity.properties.boards.from.color"
+                    class="board-badge mx-1"
+                  >
+                    {{ activity.properties.boards.from.name }}
+                  </VChip>
+                  
+                  <span class="mx-1">to</span>
+
+                  <VChip
+                    size="x-small"
+                    :color="activity.properties.boards.to.color"
+                    class="board-badge mx-1"
+                  >
+                    {{ activity.properties.boards.to.name }}
+                  </VChip>
+                </template>
+                
                 {{ activity.description.split('Task #')[1]?.split(' ').slice(1).join(' ') }}
               </span>
             </div>
@@ -321,15 +371,25 @@ defineExpose({ fetchActivities })
 }
 
 .activity-content {
-  .task-badge {
+  .task-badge,
+  .board-badge {
     display: inline-flex;
     vertical-align: middle;
     font-size: 0.75rem;
     font-weight: 500;
     padding: 0 6px;
     height: 20px;
+  }
+  
+  .task-badge {
     background-color: rgba(var(--v-theme-primary), 0.12);
     color: rgb(var(--v-theme-primary));
+  }
+  
+  .board-badge {
+    &:first-of-type {
+      opacity: 0.8;
+    }
   }
 }
 

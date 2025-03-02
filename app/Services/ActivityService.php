@@ -9,7 +9,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class ActivityService
 {
-    public function getContainerActivities(Container $container, array $filters = [], int $perPage = 20): LengthAwarePaginator
+    public function getContainerActivities(Container $container, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = Activity::query()
             ->where('container_id', $container->id)
@@ -31,6 +31,9 @@ class ActivityService
             ->with(['causer', 'subject'])
             ->latest();
         
+        $query->whereHas('subject')
+              ->whereNotNull('event');
+
         return $query->paginate($perPage);
     }
 } 

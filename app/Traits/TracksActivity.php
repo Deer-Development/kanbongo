@@ -15,12 +15,22 @@ trait TracksActivity
 
     protected static function bootTracksActivity(): void
     {
-        // Verificăm proprietatea din model
         if (static::shouldTrackActivity() === false) return;
 
         foreach (self::$defaultRecordableEvents as $event) {
             static::$event(function (Model $model) use ($event) {
-                $model->recordActivity($event);
+                // Pentru update, verificăm dacă există modificări în câmpurile urmărite
+                if ($event === 'updated') {
+                    $recordableFields = static::$recordableFields ?? array_keys($model->getDirty());
+                    $changes = array_intersect_key($model->getDirty(), array_flip($recordableFields));
+                    
+                    // Înregistrăm activitatea doar dacă există modificări în câmpurile urmărite
+                    if (!empty($changes)) {
+                        $model->recordActivity($event);
+                    }
+                } else {
+                    $model->recordActivity($event);
+                }
             });
         }
     }
@@ -92,16 +102,38 @@ trait TracksActivity
     protected function getActivityProperties(string $event): array
     {
         if ($event === 'updated') {
+            $dirty = $this->getDirty();
+            $recordableFields = static::$recordableFields ?? array_keys($dirty);
+            
+            // Filtrăm doar coloanele pe care vrem să le urmărim
+            $changes = array_intersect_key($dirty, array_flip($recordableFields));
+            
+            // Dacă nu există modificări în câmpurile urmărite, returnăm array-uri goale
+            if (empty($changes)) {
+                return [
+                    'old' => [],
+                    'attributes' => []
+                ];
+            }
+            
+            $original = array_intersect_key($this->getOriginal(), $changes);
+
             return [
-                'old' => array_intersect_key(
-                    $this->getOriginal(), 
-                    $this->getDirty()
-                ),
-                'attributes' => $this->getDirty()
+                'old' => $original,
+                'attributes' => $changes
             ];
         }
 
-        return ['attributes' => $this->getAttributes()];
+        // Pentru alte evenimente, returnăm doar atributele specificate
+        $attributes = $this->getAttributes();
+        if (isset(static::$recordableFields)) {
+            $attributes = array_intersect_key(
+                $attributes, 
+                array_flip(static::$recordableFields)
+            );
+        }
+
+        return ['attributes' => $attributes];
     }
 
     public static function withBatch(?string $uuid = null): string
