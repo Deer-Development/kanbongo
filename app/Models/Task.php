@@ -10,12 +10,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Log;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\TracksActivity;
 
 class Task extends Model
 {
-    use SoftDeletes, Filterable;
+    use SoftDeletes, Filterable, TracksActivity;
 
     protected $guarded = ['id'];
+
+    // Definim doar pentru referință, nu mai sunt folosite direct
+    public static array $customActivityEvents = [
+        'member_added',
+        'member_removed',
+        'time_entry_completed'
+    ];
 
     protected static function boot()
     {

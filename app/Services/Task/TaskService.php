@@ -9,6 +9,7 @@ use App\Services\BaseService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class TaskService extends BaseService
 {
@@ -28,7 +29,6 @@ class TaskService extends BaseService
 
             $board->tasks()->increment('order');
 
-            // Get the next sequence_id for this container
             $maxSequence = Task::query()
                 ->whereHas('board', function ($query) use ($board) {
                     $query->where('container_id', $board->container_id);
@@ -42,6 +42,8 @@ class TaskService extends BaseService
                 'container_id' => $board->container_id,
             ]);
 
+            // Activity va fi înregistrată automat prin evenimentul created
+
             DB::commit();
 
             return $task;
@@ -54,25 +56,32 @@ class TaskService extends BaseService
     public function toggleTimer(array $data, int $taskId)
     {
         $task = $this->getById($taskId);
-        $userId = $data['user_id'] ?? auth()->id();
+        $userId = $data['user_id'] ?? Auth::id();
         
-        // Verificăm dacă există un time entry activ pentru acest utilizator și task
         $timeEntry = $task->timeEntries()
             ->where('user_id', $userId)
             ->whereNull('end')
             ->first();
         
         $action = 'unknown';
-        
+
         if ($timeEntry) {
-            // Oprim timer-ul
             $timeEntry->update([
                 'end' => now(),
                 'stopped_by_system' => $data['stopped_by_system'] ?? false
             ]);
+
+            // Înregistrăm activitatea doar când se completează time entry-ul
+            $duration = $timeEntry->end->diffInSeconds($timeEntry->start);
+            $task->recordActivity('time_entry_completed', [
+                'time_entry_id' => $timeEntry->id,
+                'duration' => $duration,
+                'user_id' => $userId
+            ]);
+
             $action = 'stopped';
         } else {
-            // Pornim timer-ul
+            // Pornim timer-ul fără a înregistra activitate
             $task->timeEntries()->create([
                 'user_id' => $userId,
                 'start' => now(),
@@ -80,14 +89,12 @@ class TaskService extends BaseService
                 'billable' => $data['billable'],
                 'billable_rate' => $data['billable_rate'],
             ]);
+
             $action = 'started';
         }
         
-        // Reîncărcăm task-ul cu relațiile necesare
-        $task = $this->getById($taskId);
-        
         return [
-            'model' => $task,
+            'model' => $this->getById($taskId),
             'action' => $action
         ];
     }
@@ -95,10 +102,12 @@ class TaskService extends BaseService
     public function update(int $id, array $data): Task
     {
         $task = $this->getById($id);
-
+        
         DB::beginTransaction();
-
+        
         try {
+            $batchUuid = Task::withBatch();
+            
             $task->update([
                 'name' => $data['name'],
                 'priority' => $data['priority'],
@@ -106,13 +115,12 @@ class TaskService extends BaseService
             ]);
 
             $existingMemberIds = $task->members()->pluck('user_id')->toArray();
-
             $membersToRemove = array_diff($existingMemberIds, $data['members']);
-
             $membersToAdd = array_diff($data['members'], $existingMemberIds);
 
-            if (!empty($membersToRemove)) {
-                $task->members()->whereIn('user_id', $membersToRemove)->delete();
+            foreach ($membersToRemove as $userId) {
+                $task->members()->where('user_id', $userId)->delete();
+                $task->recordActivity('member_removed', ['user_id' => $userId]);
             }
 
             $containerMembers = $task->board->container->members()->get();
@@ -125,10 +133,10 @@ class TaskService extends BaseService
                     'billable' => $containerMember->billable,
                     'billable_rate' => $containerMember->billable_rate,
                 ]);
+                $task->recordActivity('member_added', ['user_id' => $userId]);
             }
 
             DB::commit();
-
             return $task;
         } catch (\Exception $e) {
             DB::rollBack();
@@ -141,19 +149,31 @@ class TaskService extends BaseService
         $task = $this->getById($taskId);
 
         DB::beginTransaction();
-//        dd($data);
         try {
             foreach ($data as $timer) {
                 if(isset($timer['deleted']) && $timer['deleted']) {
-                    TimeEntry::destroy($timer['id']);
+                    $timeEntry = TimeEntry::find($timer['id']);
+                    if ($timeEntry) {
+                        // Înregistrăm activitate pentru ștergere manuală
+                        $task->recordActivity('time_entry_deleted', [
+                            'time_entry_id' => $timeEntry->id,
+                            'duration' => $timeEntry->end?->diffInSeconds($timeEntry->start),
+                            'user_id' => $timeEntry->user_id
+                        ]);
+                        TimeEntry::destroy($timer['id']);
+                    }
                     continue;
                 }
+
                 if (isset($timer['id']) && $timer['id']) {
                     $timeEntry = TimeEntry::find($timer['id']);
 
                     if (!$timeEntry) {
                         throw new \Exception('Time entry not found.');
                     }
+
+                    $oldStart = $timeEntry->start;
+                    $oldEnd = $timeEntry->end;
 
                     $start = isset($timer['start'])
                         ? Carbon::parse($timer['start'])->format('Y-m-d H:i:s')
@@ -166,26 +186,43 @@ class TaskService extends BaseService
                     $timeEntry->update([
                         'start' => $start,
                         'end' => $end,
+                        'added_manually' => true
                     ]);
+
+                    // Înregistrăm activitate pentru modificări manuale
+                    if ($oldStart != $timeEntry->start || $oldEnd != $timeEntry->end) {
+                        $task->recordActivity('time_entry_updated', [
+                            'time_entry_id' => $timeEntry->id,
+                            'old_duration' => $oldEnd?->diffInSeconds($oldStart),
+                            'new_duration' => $timeEntry->end?->diffInSeconds($timeEntry->start),
+                            'user_id' => $timeEntry->user_id
+                        ]);
+                    }
                 } else {
                     if (!empty($timer['start'])) {
                         $start = Carbon::parse($timer['start'])->format('Y-m-d H:i:s');
-
-                        $end = !empty($timer['end'])
+                        $end = isset($timer['end'])
                             ? Carbon::parse($timer['end'])->format('Y-m-d H:i:s')
                             : null;
 
-                        if ($start || $end) {
-                            TimeEntry::create([
-                                'task_id' => $taskId,
-                                'member_id' => $timer['member_id'] ?? null,
-                                'added_manually' => true,
+                        $timeEntry = $task->timeEntries()->create([
+                            'member_id' => $timer['member_id'] ?? null,
+                            'added_manually' => true,
+                            'user_id' => $timer['user_id'],
+                            'container_id' => $task->board->container_id,
+                            'billable' => $task->board->container->members()->where('user_id', $timer['user_id'])->first()->billable,
+                            'billable_rate' => $task->board->container->members()->where('user_id', $timer['user_id'])->first()->billable_rate,
+                            'start' => $start,
+                            'end' => $end,
+                        ]);
+
+                        // Înregistrăm activitate pentru time entry creat manual cu end time
+                        if ($timeEntry->end) {
+                            $task->recordActivity('time_entry_completed', [
+                                'time_entry_id' => $timeEntry->id,
+                                'duration' => $timeEntry->end->diffInSeconds($timeEntry->start),
                                 'user_id' => $timer['user_id'],
-                                'container_id' => $task->board->container_id,
-                                'billable' => $task->board->container->members()->where('user_id', $timer['user_id'])->first()->billable,
-                                'billable_rate' => $task->board->container->members()->where('user_id', $timer['user_id'])->first()->billable_rate,
-                                'start' => $start,
-                                'end' => $end,
+                                'added_manually' => true
                             ]);
                         }
                     }
@@ -193,8 +230,7 @@ class TaskService extends BaseService
             }
 
             DB::commit();
-
-            return $task;
+            return $task->load('timeEntries');
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
