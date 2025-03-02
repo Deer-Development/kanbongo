@@ -7,6 +7,7 @@ use App\Services\ActivityService;
 use App\Services\Container\ContainerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ContainerActivities extends BaseController
 {
@@ -28,10 +29,13 @@ class ContainerActivities extends BaseController
         $formattedActivities = $activities->map(function ($activity) {
             $description = $this->getActivityDescription($activity);
             
-            // Nu returnăm activitățile fără descriere
-            if (empty($description)) {
-                return null;
-            }
+            // Adăugăm logging pentru debug
+            Log::info('Formatting Activity:', [
+                'activity_id' => $activity->id,
+                'description' => $description,
+                'event' => $activity->event,
+                'properties' => $activity->properties
+            ]);
             
             return [
                 'id' => $activity->id,
@@ -69,32 +73,49 @@ class ContainerActivities extends BaseController
     {
         $userName = $activity->causer->full_name;
         
+        // Adăugăm logging pentru debug
+        Log::info('Processing Activity:', [
+            'event' => $activity->event,
+            'properties' => $activity->properties,
+            'subject_type' => $activity->subject_type,
+            'subject' => $activity->subject
+        ]);
+        
         // Obținem sequence_id din properties pentru task-uri
         $taskBadge = '';
         if ($activity->subject_type === 'App\\Models\\Task') {
-            $sequenceId = $activity->properties['attributes']['sequence_id'] ?? null;
+            // Verificăm și în subject dacă nu găsim în properties
+            $sequenceId = $activity->properties['attributes']['sequence_id'] 
+                ?? $activity->subject->sequence_id 
+                ?? null;
             $taskBadge = $sequenceId ? "Task #{$sequenceId}" : '';
         }
 
         switch ($activity->event) {
             case 'created':
-                return "{$userName} created " . strtolower(class_basename($activity->subject_type)) . 
-                       ($taskBadge ? " {$taskBadge}" : '');
+                return "{$userName} created" . ($taskBadge ? " {$taskBadge}" : '');
             
             case 'updated':
                 if (empty($activity->properties['attributes'])) {
-                    return ''; // Nu afișăm activitatea dacă nu sunt modificări urmărite
+                    return '';
                 }
                 
-                $changes = collect($activity->properties['attributes'])->map(function ($value, $key) {
-                    return ucfirst($key);
-                })->join(', ');
+                if (isset($activity->properties['attributes']['name'])) {
+                    $oldName = $activity->properties['old']['name'] ?? '';
+                    $newName = $activity->properties['attributes']['name'];
+                    return "{$userName} renamed from \"{$oldName}\" to \"{$newName}\"";
+                }
                 
-                return "{$userName} updated {$changes} in" . ($taskBadge ? " {$taskBadge}" : '');
+                return "{$userName} updated" . ($taskBadge ? " {$taskBadge}" : '');
             
             case 'deleted':
-                return "{$userName} deleted " . strtolower(class_basename($activity->subject_type)) . 
-                       ($taskBadge ? " {$taskBadge}" : '');
+                // Nu mai includem Task #sequence_id în descriere, va fi adăugat ca badge în frontend
+                $description = "{$userName} deleted";
+                Log::info('Deleted Activity Description:', [
+                    'description' => $description,
+                    'properties' => $activity->properties
+                ]);
+                return $description;
             
             case 'member_added':
                 $memberName = optional(\App\Models\User::find($activity->properties['user_id']))->full_name;

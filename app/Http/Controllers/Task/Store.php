@@ -20,8 +20,17 @@ class Store extends BaseController
 
     public function __invoke(ValidateTaskStore $request): JsonResponse
     {
-        $model = $this->service->create($request->validated());
+        $task = $this->service->create($request->validated());
 
-        return $this->successResponse(new TaskResource($model), 'Task created successfully.', Response::HTTP_CREATED);
+        // Înregistrăm activitatea cu toate detaliile necesare
+        $task->recordActivity('created', [
+            'attributes' => [
+                'id' => $task->id,
+                'sequence_id' => $task->sequence_id,
+                'name' => $task->name
+            ]
+        ]);
+
+        return $this->successResponse(new TaskResource($task), 'Task created successfully.', Response::HTTP_CREATED);
     }
 }

@@ -30,9 +30,8 @@ class TaskService extends BaseService
             $board->tasks()->increment('order');
 
             $maxSequence = Task::query()
-                ->whereHas('board', function ($query) use ($board) {
-                    $query->where('container_id', $board->container_id);
-                })
+                ->withTrashed()
+                ->where('container_id', $board->container_id)
                 ->max('sequence_id') ?? 0;
 
             $task = $board->tasks()->create([
@@ -74,6 +73,9 @@ class TaskService extends BaseService
             // Înregistrăm activitatea doar când se completează time entry-ul
             $duration = $timeEntry->end->diffInSeconds($timeEntry->start);
             $task->recordActivity('time_entry_completed', [
+                'attributes' => [
+                    'sequence_id' => $task->sequence_id,
+                ],
                 'time_entry_id' => $timeEntry->id,
                 'duration' => $duration,
                 'user_id' => $userId
@@ -120,7 +122,12 @@ class TaskService extends BaseService
 
             foreach ($membersToRemove as $userId) {
                 $task->members()->where('user_id', $userId)->delete();
-                $task->recordActivity('member_removed', ['user_id' => $userId]);
+                $task->recordActivity('member_removed', [
+                    'attributes' => [
+                        'sequence_id' => $task->sequence_id,
+                    ],
+                    'user_id' => $userId
+                ]);
             }
 
             $containerMembers = $task->board->container->members()->get();
@@ -133,7 +140,12 @@ class TaskService extends BaseService
                     'billable' => $containerMember->billable,
                     'billable_rate' => $containerMember->billable_rate,
                 ]);
-                $task->recordActivity('member_added', ['user_id' => $userId]);
+                $task->recordActivity('member_added', [
+                    'attributes' => [
+                        'sequence_id' => $task->sequence_id,
+                    ],
+                    'user_id' => $userId
+                ]);
             }
 
             DB::commit();
@@ -156,6 +168,9 @@ class TaskService extends BaseService
                     if ($timeEntry) {
                         // Înregistrăm activitate pentru ștergere manuală
                         $task->recordActivity('time_entry_deleted', [
+                            'attributes' => [
+                                'sequence_id' => $task->sequence_id,
+                            ],
                             'time_entry_id' => $timeEntry->id,
                             'duration' => $timeEntry->end?->diffInSeconds($timeEntry->start),
                             'user_id' => $timeEntry->user_id
@@ -192,6 +207,9 @@ class TaskService extends BaseService
                     // Înregistrăm activitate pentru modificări manuale
                     if ($oldStart != $timeEntry->start || $oldEnd != $timeEntry->end) {
                         $task->recordActivity('time_entry_updated', [
+                            'attributes' => [
+                                'sequence_id' => $task->sequence_id,
+                            ],
                             'time_entry_id' => $timeEntry->id,
                             'old_duration' => $oldEnd?->diffInSeconds($oldStart),
                             'new_duration' => $timeEntry->end?->diffInSeconds($timeEntry->start),
@@ -219,6 +237,9 @@ class TaskService extends BaseService
                         // Înregistrăm activitate pentru time entry creat manual cu end time
                         if ($timeEntry->end) {
                             $task->recordActivity('time_entry_completed', [
+                                           'attributes' => [
+                                    'sequence_id' => $task->sequence_id,
+                                ],
                                 'time_entry_id' => $timeEntry->id,
                                 'duration' => $timeEntry->end->diffInSeconds($timeEntry->start),
                                 'user_id' => $timer['user_id'],

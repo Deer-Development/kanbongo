@@ -20,8 +20,21 @@ class Update extends BaseController
 
     public function __invoke(ValidateTaskUpdate $request, int $id): JsonResponse
     {
-        $model = $this->service->update($id, $request->validated());
+        $task = $this->service->update($id, $request->validated());
 
-        return $this->successResponse(new TaskResource($model), 'Task updated successfully.', Response::HTTP_OK);
+        // Înregistrăm activitatea doar dacă s-a modificat numele
+        if ($task->wasChanged('name')) {
+            $task->recordActivity('updated', [
+                'attributes' => [
+                    'sequence_id' => $task->sequence_id,
+                    'name' => $task->name
+                ],
+                'old' => [
+                    'name' => $task->getOriginal('name')
+                ]
+            ]);
+        }
+
+        return $this->successResponse(new TaskResource($task), 'Task updated successfully.', Response::HTTP_OK);
     }
 }

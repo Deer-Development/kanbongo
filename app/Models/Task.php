@@ -21,7 +21,7 @@ class Task extends Model
     /**
      * Specificăm doar coloanele pe care vrem să le urmărim pentru activități
      */
-    protected static array $recordableFields = ['name'];
+    protected static array $recordableFields = ['id', 'sequence_id', 'name'];
 
     // Definim doar pentru referință, nu mai sunt folosite direct
     public static array $customActivityEvents = [

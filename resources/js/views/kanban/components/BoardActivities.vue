@@ -134,6 +134,11 @@ onMounted(() => {
   }
 })
 
+// Adăugăm un watcher pentru debugging
+watch(() => activities.value, (newActivities) => {
+  console.log('Activities updated:', newActivities);
+}, { deep: true });
+
 defineExpose({ fetchActivities })
 </script>
 
@@ -194,16 +199,43 @@ defineExpose({ fetchActivities })
                 class="me-1"
               />
               <span class="activity-text">
-                {{ activity.description.split('Task #')[0] }}
-                <VChip
-                  v-if="activity.properties?.attributes?.sequence_id"
-                  size="x-small"
-                  color="primary"
-                  class="task-badge mx-1"
-                >
-                  Task #{{ activity.properties.attributes.sequence_id }}
-                </VChip>
-                
+                <template v-if="activity.event === 'deleted'">
+                  {{ activity.description.split('Task #')[0] }}
+                  <VChip
+                    v-if="activity.properties?.attributes?.sequence_id"
+                    size="x-small"
+                    color="primary"
+                    class="task-badge mx-1"
+                  >
+                    Task #{{ activity.properties.attributes.sequence_id }}
+                  </VChip>
+                  {{ activity.properties?.attributes?.name ? `"${activity.properties.attributes.name}"` : '' }}
+                </template>
+                <template v-else-if="activity.event === 'updated' && activity.properties?.attributes?.name">
+                  {{ activity.description.split(' from')[0] }}
+                  <VChip
+                    v-if="activity.properties?.attributes?.sequence_id"
+                    size="x-small"
+                    color="primary"
+                    class="task-badge mx-1"
+                  >
+                    Task #{{ activity.properties.attributes.sequence_id }}
+                  </VChip>
+                  from "{{ activity.properties.old.name }}" to "{{ activity.properties.attributes.name }}"
+                </template>
+                <template v-else>
+                  {{ activity.description.split('Task #')[0] }}
+                  <VChip
+                    v-if="activity.properties?.attributes?.sequence_id"
+                    size="x-small"
+                    color="primary"
+                    class="task-badge mx-1"
+                  >
+                    Task #{{ activity.properties.attributes.sequence_id }}
+                  </VChip>
+                  {{ activity.description.split('Task #')[1]?.split(' ').slice(1).join(' ') }}
+                </template>
+
                 <!-- Board badges pentru task_moved -->
                 <template v-if="activity.event === 'task_moved' && activity.properties.boards">
                   <span class="mx-1">from</span>
@@ -225,8 +257,6 @@ defineExpose({ fetchActivities })
                     {{ activity.properties.boards.to.name }}
                   </VChip>
                 </template>
-                
-                {{ activity.description.split('Task #')[1]?.split(' ').slice(1).join(' ') }}
               </span>
             </div>
             

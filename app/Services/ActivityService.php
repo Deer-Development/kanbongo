@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\Container;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class ActivityService
 {
@@ -28,12 +29,32 @@ class ActivityService
             ->when(isset($filters['date_to']), function (Builder $query) use ($filters) {
                 $query->whereDate('created_at', '<=', $filters['date_to']);
             })
-            ->with(['causer', 'subject'])
+            ->with(['causer'])
+            ->whereHas('subject', function ($query) {
+                $query->withTrashed();
+            })
+            ->whereNotNull('event')
             ->latest();
         
-        $query->whereHas('subject')
-              ->whereNotNull('event');
+        // Adăugăm logging pentru debug
+        Log::info('Activities Query:', [
+            'sql' => $query->toSql(),
+            'bindings' => $query->getBindings()
+        ]);
 
-        return $query->paginate($perPage);
+        $activities = $query->paginate($perPage);
+        
+        // Încărcăm subject-ul cu withTrashed pentru a include și task-urile șterse
+        $activities->load(['subject' => function ($query) {
+            $query->withTrashed();
+        }]);
+        
+        // Verificăm activitățile returnate
+        Log::info('Activities Results:', [
+            'total' => $activities->total(),
+            'items' => $activities->items()
+        ]);
+
+        return $activities;
     }
 } 
