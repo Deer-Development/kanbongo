@@ -96,7 +96,7 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 // The github-style-dropdown class is already defined in MentionList.vue
 // Here we just add emoji-specific styling
 

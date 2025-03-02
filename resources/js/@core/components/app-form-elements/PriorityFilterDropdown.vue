@@ -2,15 +2,23 @@
   <div class="relative inline-block text-left">
     <button
       ref="btn"
-      class="custom-badge github-style-badge"
+      class="github-style-badge"
+      :class="{ 'has-selections': modelValue.length }"
     >
       <VIcon
-        size="16"
+        :size="modelValue.length ? 12 : 16"
         class="icon"
         :color="modelValue.length ? 'primary' : ''"
       >
         tabler-flag
       </VIcon>
+
+      <span 
+        v-if="modelValue.length" 
+        class="selection-indicator"
+      >
+        {{ modelValue.length }}
+      </span>
     </button>
 
     <div
@@ -18,10 +26,16 @@
       class="dropdown-menu github-style-dropdown hidden"
     >
       <div class="dropdown-header">
-        Priority
+        <VIcon 
+          size="14" 
+          icon="tabler-flag" 
+          class="header-icon"
+        />
+        Filter by priority
       </div>
 
-      <button
+      <div class="dropdown-content">
+        <button
         class="dropdown-item"
         :class="{ 'is-selected': modelValue.includes('unflagged') }"
         @click="toggleUnflagged"
@@ -37,50 +51,62 @@
           color="accent"
           class="ms-auto"
         />
-      </button>
+        </button>
 
-      <VDivider />
-
-      <button
-        v-for="(label, key) in Priority.data"
-        :key="key"
-        class="dropdown-item"
-        :class="{ 'is-selected': modelValue.includes(key) }"
-        @click="selectPriority(key)"
-      >
-        <div class="priority-icon" :style="{ backgroundColor: `${getPriorityColor(key)}15` }">
-          <VIcon
-            size="14"
-            :color="getPriorityColor(key)"
+        <template v-if="Priority.data">
+          <button
+            v-for="(label, key) in Priority.data"
+            :key="key"
+            class="dropdown-item"
+            :class="{ 'is-selected': modelValue.includes(key) }"
+            @click="selectPriority(key)"
           >
-            tabler-flag-3-filled
-          </VIcon>
-        </div>
-        <span class="priority-badge" :style="{ backgroundColor: `${getPriorityColor(key)}15`, color: getPriorityColor(key) }">
-          {{ label }}
-        </span>
-        <VIcon 
-          v-if="modelValue.includes(key)"
-          size="16" 
-          icon="tabler-check" 
-          color="accent"
-          class="ms-auto"
-        />
-      </button>
+            <div class="priority-icon" :style="{ backgroundColor: `${getPriorityColor(key)}15` }">
+              <VIcon
+                size="14"
+                :color="getPriorityColor(key)"
+              >
+                tabler-flag-3-filled
+              </VIcon>
+            </div>
+            <span class="priority-badge" :style="{ backgroundColor: `${getPriorityColor(key)}15`, color: getPriorityColor(key) }">
+              {{ label }}
+            </span>
+            <VIcon 
+              v-if="modelValue.includes(key)"
+              size="16" 
+              icon="tabler-check" 
+              color="accent"
+              class="ms-auto"
+            />
+          </button>
 
-      <VDivider />
+          <button
+            v-if="modelValue.length"
+            class="dropdown-item clear-action"
+            @click="clearSelection"
+          >
+            <VIcon
+              size="14"
+              class="clear-icon"
+            >
+              tabler-x
+            </VIcon>
+            <span>Clear priority filter</span>
+          </button>
+        </template>
 
-      <div
-        class="dropdown-item clear-action"
-        @click="clearSelection"
-      >
-        <VIcon
-          size="16"
-          class="me-2"
+        <div
+          v-else
+          class="dropdown-empty"
         >
-          tabler-circle-off
-        </VIcon>
-        <span>Clear all filters</span>
+          <VIcon 
+            size="20" 
+            icon="tabler-flag-off" 
+            class="empty-icon"
+          />
+          <p>No matching priority found</p>
+        </div>
       </div>
     </div>
   </div>
@@ -171,7 +197,46 @@ onMounted(() => {
 <style lang="scss">
 @import './shared-github-styles.scss';
 
+.github-style-badge {
+  &.has-selections {
+    position: relative;
+    
+    .selection-indicator {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #637ff1;
+      color: white;
+      border-radius: 10px;
+      padding: 0 3px;
+      font-size: 8px;
+      font-weight: 600;
+      min-width: 12px;
+      height: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid white;
+    }
+  }
+}
+
 .dropdown-menu.github-style-dropdown {
+  .dropdown-content {
+    padding: 0 !important;
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      transition: all 0.2s ease;
+      border-bottom: 0 !important;
+
+      &.clear-action {
+        margin-top: 0 !important;
+      }
+    }
+  }
   .priority-icon {
     width: 20px;
     height: 20px;

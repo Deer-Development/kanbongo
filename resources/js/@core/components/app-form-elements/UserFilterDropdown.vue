@@ -2,15 +2,22 @@
   <div class="relative inline-block text-left">
     <button
       ref="btn"
-      class="custom-badge github-style-badge"
+      class="github-style-badge"
+      :class="{ 'has-selections': modelValue.length }"
     >
       <VIcon
         size="16"
         class="icon"
-        :color="modelValue.length ? 'primary' : ''"
       >
-        tabler-users
+        {{ modelValue.length ? 'tabler-users-group' : 'tabler-users' }}
       </VIcon>
+      
+      <span 
+        v-if="modelValue.length" 
+        class="selection-indicator"
+      >
+        {{ modelValue.length }}
+      </span>
     </button>
 
     <div
@@ -18,72 +25,93 @@
       class="dropdown-menu github-style-dropdown hidden"
     >
       <div class="dropdown-header">
-        Assignees
+        <VIcon size="14" icon="tabler-users" />
+        Filter by assignee
       </div>
 
-      <button
-        class="dropdown-item"
-        :class="{ 'is-selected': modelValue.includes('unassigned') }"
-        @click="toggleUnassigned"
-      >
-        <div class="user-avatar unassigned">
-          <VIcon size="14">tabler-user-off</VIcon>
-        </div>
-        <span class="user-name">Unassigned</span>
-      </button>
-
-      <VDivider />
-
-      <template v-if="users.length">
-        <button
-          v-for="user in users"
-          :key="user.id"
-          class="dropdown-item"
-          :class="{ 'is-selected': modelValue.includes(user.id) }"
-          @click="selectUser(user)"
+      <div class="dropdown-search">
+        <VTextField
+          v-model="searchQuery"
+          density="compact"
+          placeholder="Filter users..."
+          variant="outlined"
+          hide-details
+          clearable
+          class="search-field"
         >
-          <div class="user-avatar">
-            {{ user.full_name.charAt(0) }}
+          <template #prepend-inner>
+            <VIcon size="16" icon="tabler-search" />
+          </template>
+        </VTextField>
+      </div>
+
+      <div class="dropdown-content">
+        <button
+          class="dropdown-item"
+          :class="{ 'is-selected': modelValue.includes('unassigned') }"
+          @click="toggleUnassigned"
+        >
+          <div class="user-avatar unassigned">
+            <VIcon size="12">tabler-user-off</VIcon>
           </div>
-          <span class="user-name">{{ user.full_name }}</span>
+          <span class="user-name">Unassigned</span>
           <VIcon 
-            v-if="modelValue.includes(user.id)"
-            size="16" 
+            v-if="modelValue.includes('unassigned')"
+            size="14" 
             icon="tabler-check" 
-            color="accent"
-            class="ms-auto"
+            color="primary"
           />
         </button>
 
-        <VDivider />
+        <template v-if="filteredUsers.length">
+          <button
+            v-for="user in filteredUsers"
+            :key="user.id"
+            class="dropdown-item"
+            :class="{ 'is-selected': modelValue.includes(user.id) }"
+            @click="selectUser(user)"
+          >
+            <div class="user-avatar">
+              {{ user.full_name.charAt(0) }}
+            </div>
+            <span class="user-name">{{ user.full_name }}</span>
+            <VIcon 
+              v-if="modelValue.includes(user.id)"
+              size="14" 
+              icon="tabler-check" 
+              color="primary"
+            />
+          </button>
+
+          <button
+            v-if="modelValue.length"
+            class="dropdown-item clear-action"
+            @click="clearSelection"
+          >
+            <VIcon
+              size="14"
+              class="me-2"
+            >
+              tabler-x
+            </VIcon>
+            <span>Clear assignee filter</span>
+          </button>
+        </template>
 
         <div
-          class="dropdown-item clear-action"
-          @click="clearSelection"
+          v-else
+          class="dropdown-empty"
         >
-          <VIcon
-            size="16"
-            class="me-2"
-          >
-            tabler-circle-off
-          </VIcon>
-          <span>Clear all filters</span>
+          <VIcon size="20" icon="tabler-users-off" />
+          <p>No matching users found</p>
         </div>
-      </template>
-
-      <div
-        v-else
-        class="dropdown-empty"
-      >
-        <VIcon size="16" icon="tabler-users-off" class="me-2" />
-        No users available
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, onMounted } from "vue"
+import { ref, defineProps, defineEmits, onMounted, computed } from "vue"
 import tippy from "tippy.js"
 import "tippy.js/animations/shift-away.css"
 
@@ -97,6 +125,18 @@ const btn = ref(null)
 const dropdown = ref(null)
 const users = ref([])
 const route = useRoute()
+
+// Add new reactive ref for search
+const searchQuery = ref('')
+
+// Add computed property for filtered users
+const filteredUsers = computed(() => {
+  if (!searchQuery.value) return users.value
+  
+  return users.value.filter(user => 
+    user.full_name.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+})
 
 const selectUser = user => {
   const selected = [...props.modelValue]
@@ -151,45 +191,63 @@ onMounted(() => {
 })
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 @import './shared-github-styles.scss';
-
-.dropdown-menu.github-style-dropdown {
-  .user-avatar {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background-color: map-get($github-colors, avatar-bg);
-    color: map-get($github-colors, text-primary);
+.has-selections {
+  position: relative;
+  
+  .selection-indicator {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #6366f1;
+    color: white;
+    border-radius: 10px;
+    padding: 0 3px !important;
+    font-size: 8px !important;
+    font-weight: 600;
+    min-width: 12px !important;
+    height: 12px !important;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
-    font-weight: 500;
-    flex-shrink: 0;
-    border: 1px solid rgba(31, 35, 40, 0.06);
-    
-    &.unassigned {
-      background-color: #f0f0f0;
-      color: map-get($github-colors, text-tertiary);
+    border: 2px solid white;
+  }
+}
+
+.dropdown-search {
+  padding: 8px 12px;
+  border-bottom: 1px solid map-get($github-colors, border-subtle);
+  
+  .search-field {
+    :deep(.v-field) {
+      border-radius: 6px;
+      
+      &.v-field--focused {
+        .v-field__outline {
+          --v-field-border-width: 1px;
+          border-color: map-get($github-colors, accent);
+        }
+      }
+      
+      .v-field__input {
+        font-size: 13px;
+        min-height: 32px;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      
+      .v-field__append-inner {
+        padding-inline-start: 8px;
+        color: rgba(0, 0, 0, 0.38);
+      }
     }
   }
-  
-  .user-name {
-    font-size: 13px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-weight: 400;
-    letter-spacing: 0.01em;
-  }
-  
-  .dropdown-item.is-selected {
-    .user-avatar {
-      background-color: rgba(map-get($github-colors, accent), 0.12);
-      color: map-get($github-colors, accent);
-      border-color: rgba(map-get($github-colors, accent), 0.2);
-    }
-  }
+}
+
+.dropdown-content {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px;
 }
 </style>

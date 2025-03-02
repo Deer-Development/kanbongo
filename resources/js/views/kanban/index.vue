@@ -577,60 +577,48 @@ const getWeeklyProgressDisplay = (entry) => {
           </template>
         </VBreadcrumbs>
         <div class="d-flex gap-1 align-center">
-          <VBadge
-            location="top start"
-            bordered
-            :color="priorityFilter.length || usersFilter.length || tagsFilter.length || searchFilter ? 'primary' : ''"
-          >
-            <template #badge>
-              <VIcon
-                icon="tabler-filter"
-                size="12"
-              />
-            </template>
 
-            <div class="d-flex align-center gap-2 filters-container">
-              <PriorityFilterDropdown
-                :model-value="priorityFilter"
-                @update:model-value="setPriority($event)"
-              />
 
-              <UserFilterDropdown
-                :model-value="usersFilter"
-                @update:model-value="setUsersFilter($event)"
-              />
+          <div class="d-flex align-center gap-2 filters-container">
+            <PriorityFilterDropdown
+              :model-value="priorityFilter"
+              @update:model-value="setPriority($event)"
+            />
 
-              <TagsFilterDropdown
-                :model-value="tagsFilter"
-                @update:model-value="setTagsFilter($event)"
-              />
+            <UserFilterDropdown
+              :model-value="usersFilter"
+              @update:model-value="setUsersFilter($event)"
+            />
 
-              <SearchFilterDropdown
-                :model-value="searchFilter"
-                @update:model-value="setSearchFilter($event)"
-              />
-            </div>
-          </VBadge>
+            <TagsFilterDropdown
+              :model-value="tagsFilter"
+              @update:model-value="setTagsFilter($event)"
+            />
+
+            <SearchFilterDropdown
+              :model-value="searchFilter"
+              @update:model-value="setSearchFilter($event)"
+            />
+          </div>
 
           <VMenu
             v-model="activeUsersMenu"
             offset-y
           >
             <template #activator="{ props }">
-              <VChip
+              <button
                 v-bind="props"
-                size="small"
-                :color="kanban?.active_users?.length ? 'rgb(56, 161, 105)' : ''"
                 variant="elevated"
-                class="cursor-pointer"
+                class="cursor-pointer github-style-badge"
               >
                 <VIcon
                   left
                   size="16"
+                  :color="kanban?.active_users?.length ? 'rgb(56, 161, 105)' : ''"
                 >
-                  tabler-hourglass
+                  {{ kanban?.active_users?.length ? 'tabler-hourglass' : 'tabler-hourglass-empty' }}
                 </VIcon>
-              </VChip>
+              </button>
             </template>
 
             <div class="users-box">
@@ -765,47 +753,48 @@ const getWeeklyProgressDisplay = (entry) => {
             </div>
           </VMenu>
 
-          <VChip
+          <button
             v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id || kanban.members.find(member => member.user.id === userData.id && member.is_admin)"
-            size="small"
             variant="elevated"
+            class="cursor-pointer github-style-badge"
             @click="isEditContainerDialogVisible = true"
           >
             <VIcon
               left
               size="16"
+              color="primary"
             >
               tabler-user-edit
             </VIcon>
-          </VChip>
+          </button>
 
-          <VChip
-            size="small"
+          <button
             variant="elevated"
-            class="comments-chip"
+            class="cursor-pointer github-style-badge"
             @click="isMessagesDialogVisible = true"
           >
             <VIcon
               left
               size="16"
+              color="warning"
             >
               tabler-message
             </VIcon>
-          </VChip>
+          </button>
 
-          <VChip
-            size="small"
+          <button
             variant="elevated"
-            class="comments-chip"
+            class="cursor-pointer github-style-badge"
             @click="isPaymentDetailsDialogVisible = true"
           >
             <VIcon
               left
               size="16"
+              color="info"
             >
               tabler-credit-card
             </VIcon>
-          </VChip>
+          </button>
         </div>
       </div>
     </div>
@@ -892,24 +881,139 @@ const getWeeklyProgressDisplay = (entry) => {
 
   .kanban-header {
     background: #ffffff;
-    padding: 0.2rem 0.85rem;
+    padding-right: 0.55rem;
     margin-bottom: 0.5rem;
     border-bottom: 1px solid #e1e4e8;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    
+    .kanban-header-content {
+      display: flex;
+      flex-direction: column;
+      padding: 0.5rem 1rem;
+      
+      @media (min-width: 768px) {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+    }
+    
+    .kanban-breadcrumbs {
+      flex-grow: 1;
+      overflow-x: auto;
+      white-space: nowrap;
+      
+      .breadcrumbs-container {
+        padding: 0.25rem 0;
+      }
+      
+      .v-breadcrumbs-item {
+        font-size: 0.875rem;
+      }
+    }
+    
+    .kanban-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      
+      @media (min-width: 768px) {
+        margin-top: 0;
+        justify-content: flex-end;
+      }
+    }
+    
+    // .filters-container {
+    //   display: flex;
+    //   flex-wrap: wrap;
+    //   align-items: center;
+    //   gap: 0.25rem;
+    //   // background: #f6f8fa;
+    //   border-radius: 6px;
+    //   border: 1px solid #d0d7de;
+    //   overflow: hidden;
 
-    .v-chip {
-      height: 28px;
+    // }
+    
+    .filter-icon {
+      color: #57606a;
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.7;
+      pointer-events: none; /* Make it non-interactive */
+    }
+
+    /* Force filter components to match height */
+    :deep(.filters-container .v-input) {
+      height: 24px !important;
+      min-height: 24px !important;
+    }
+
+    :deep(.filters-container .v-field) {
+      height: 24px !important;
+      min-height: 24px !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
+
+    :deep(.filters-container .v-select__selection) {
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+
+    :deep(.filters-container .v-field__input) {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      min-height: 24px !important;
+    }
+    
+    .action-btn {
+      height: 32px;
       font-size: 0.8125rem;
+      color: #24292f;
       background: #f6f8fa;
       border: 1px solid #d0d7de;
-      color: #57606a;
+      border-radius: 6px;
+      padding: 0 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
       transition: all 0.2s ease;
-
+      
       &:hover {
-        border-color: #0969da;
-        color: #0969da;
         background: #f3f4f6;
+        border-color: #bbb;
+        color: #0969da; /* GitHub blue on hover */
       }
+      
+      &:active {
+        background: #ebecf0;
+        border-color: #aaa;
+      }
+      
+      &.active-users-btn {
+        color: #1a7f37;
+        
+        &:hover {
+          color: #116329; /* Darker green on hover */
+        }
+      }
+      
+      /* GitHub-style icon alignment */
+      :deep(.v-btn__prepend) {
+        margin-right: 4px;
+        opacity: 0.8;
+      }
+    }
+    
+    .active-count {
+      font-size: 0.75rem;
+      height: 18px;
+      min-width: 18px;
+      padding: 0 4px;
     }
   }
 }

@@ -2,7 +2,8 @@
   <div class="relative inline-block text-left">
     <button
       ref="btn"
-      class="custom-badge"
+      class="github-style-badge"
+      :class="{ 'has-selections': modelValue }"
     >
       <VIcon
         size="16"
@@ -11,23 +12,41 @@
       >
         tabler-search
       </VIcon>
+
+      <span 
+        v-if="modelValue" 
+        class="selection-indicator"
+      >
+        <VIcon
+          size="12"
+          icon="tabler-circle-check"
+        />
+      </span>
     </button>
 
     <div
       ref="dropdown"
-      class="dropdown-menu hidden"
+      class="dropdown-menu github-style-dropdown hidden"
     >
-      <AppTextField
-        v-model="search"
-        placeholder="Search..."
-        class="p-2 search-input"
-        hint="Will search for tasks ID and title"
-        dense
-        outlined
-        clearable
-        hide-details
-        @click:clear="onClear"
-      />
+      <div class="dropdown-header">
+        <VIcon
+          size="14"
+          icon="tabler-search"
+        />
+        Search by ID or title
+      </div>
+      <div class="dropdown-search">
+        <AppTextField
+          v-model="search"
+          placeholder="Search..."
+          class="search-field"
+          prepend-inner-icon="tabler-search"
+          dense
+          outlined
+          clearable
+          @click:clear="onClear"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -70,65 +89,59 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.dropdown-menu {
-  background: white;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(27, 31, 36, 0.15);
-  border: 1px solid #d0d7de;
-  overflow: hidden;
-  z-index: 10;
-  min-width: 220px;
-}
+<style lang="scss" scoped>
+@import './shared-github-styles.scss';
 
-.dropdown-header {
+.github-style-badge {
+  &.has-selections {
+    position: relative;
+    
+    .selection-indicator {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #6366f1;
+      color: white;
+      border-radius: 20px;
+      padding: 0 !important;
+      font-size: 8px !important;
+      font-weight: 600;
+      min-width: 10px !important;
+      height: 12px !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid white;
+    }
+  }
+}
+.dropdown-search {
   padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #57606a;
-  border-bottom: 1px solid #d0d7de;
-  background: #f6f8fa;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 4px;
-  background: rgba(241, 243, 245, 0.7);
-  color: #333;
-  border: 1px solid #d0d7de;
-  gap: 2px;
-  cursor: pointer;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
-  transition: background 0.2s;
-  color: #24292e;
-  cursor: pointer;
-}
-
-.dropdown-item:hover {
-  background: #f6f8fa;
-}
-
-.is-selected {
-  background: rgba(9, 105, 218, 0.1);
-  font-weight: 600;
-}
-
-.no-result {
-  padding: 12px;
-  text-align: center;
-  color: #57606a;
-  font-size: 14px;
+  border-bottom: 1px solid map-get($github-colors, border-subtle);
+  
+  .search-field {
+    :deep(.v-field) {
+      border-radius: 6px;
+      
+      &.v-field--focused {
+        .v-field__outline {
+          --v-field-border-width: 1px;
+          border-color: map-get($github-colors, accent);
+        }
+      }
+      
+      .v-field__input {
+        font-size: 13px;
+        min-height: 32px;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      
+      .v-field__append-inner {
+        padding-inline-start: 8px;
+        color: rgba(0, 0, 0, 0.38);
+      }
+    }
+  }
 }
 </style>
