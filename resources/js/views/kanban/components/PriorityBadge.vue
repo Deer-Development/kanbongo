@@ -6,6 +6,7 @@
     <template #activator="{ props }">
       <div
         v-bind="props"
+        class="priority-badge"
       >
         <VIcon
           left
@@ -91,3 +92,48 @@ const setPriority = priority => {
   emit('updatePriority', { itemId: props.itemId, priority })
 }
 </script>
+
+<style lang="scss" scoped>
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+}
+
+.priority-options {
+  min-width: 150px;
+  padding: 8px 0;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.priority-option, .priority-clear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  span {
+    font-size: 0.875rem;
+  }
+}
+
+.priority-clear {
+  color: #666;
+}
+</style>

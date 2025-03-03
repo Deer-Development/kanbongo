@@ -248,7 +248,7 @@ watchDebounced(
           @update-priority="setPriority"
         />
         <div
-          class="cursor-pointer"
+          class="message-badge"
           @click="$emit('editKanbanItem', item.id)"
         >
           <VIcon
@@ -401,6 +401,20 @@ watchDebounced(
 
   :deep(.v-field__append-inner) {
     padding-top: 2px;
+  }
+}
+
+.message-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
   }
 }
 </style>

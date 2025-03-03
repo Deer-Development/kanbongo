@@ -11,6 +11,7 @@ import Messenger from "@/views/kanban/components/Messenger.vue"
 import { useRouter } from "vue-router"
 import { useTimerStore } from '@/stores/useTimerStore'
 import DeleteBoardDialog from './dialogs/DeleteBoardDialog.vue'
+import ActivityDrawer from './components/ActivityDrawer.vue'
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -37,6 +38,7 @@ const deleteBoardDetails = ref(null)
 const isFromGeneralMessenger = ref(false)
 const progressUpdateInterval = ref(null)
 const toast = useToast()
+const isActivityDrawerOpen = ref(false)
 
 const refetchKanban = async () => {
   const wasOpen = isMessengerDrawerOpen.value
@@ -795,6 +797,20 @@ const getWeeklyProgressDisplay = (entry) => {
               tabler-credit-card
             </VIcon>
           </button>
+
+          <button
+            variant="elevated"
+            class="cursor-pointer github-style-badge"
+            @click="isActivityDrawerOpen = true"
+          >
+            <VIcon
+              left
+              size="16"
+              color="success"
+            >
+              tabler-activity
+            </VIcon>
+          </button>
         </div>
       </div>
     </div>
@@ -871,6 +887,12 @@ const getWeeklyProgressDisplay = (entry) => {
       :available-boards="deleteBoardDetails.availableBoards"
       @confirm="deleteBoard"
       @cancel="cancelDeleteBoard"
+    />
+    <ActivityDrawer
+      v-if="kanban"
+      v-model:is-drawer-open="isActivityDrawerOpen"
+      :board-id="kanban.id"
+      @refresh-kanban-data="refetchKanban"
     />
   </div>
 </template>

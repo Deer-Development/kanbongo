@@ -235,7 +235,7 @@ watch(statusFilter, (newValue, oldValue) => {
       :item-name="selectedItem?.name"
       item-type="project"
       message="This action cannot be undone. This will permanently delete this project and all its boards, tasks, and associated data."
-      confirmation-text="delete"
+      :confirmation-text="selectedItem?.name"
       :loading="isDeleteLoading"
       @confirm="handleDeleteConfirm"
     />

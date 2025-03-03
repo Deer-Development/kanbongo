@@ -244,7 +244,7 @@ const canEditBoard = board => {
     :item-name="boardDetails?.name"
     item-type="board"
     message="This action cannot be undone. This will permanently delete this board and remove all associated data, including tasks, comments, and files."
-    confirmation-text="delete"
+    :confirmation-text="boardDetails?.name"
     @confirm="handleDeleteConfirm"
   />
   
