@@ -23,6 +23,7 @@ const chatLogPS = ref()
 const filterOption = ref("with_unread_comments")
 const ticketSearch = ref("")
 const boardData = ref({ boards: [] })
+const isLoading = ref(false)
 
 const filtersContent = [
   { title: "All", value: "all" },
@@ -37,13 +38,20 @@ const handleDrawerModelValueUpdate = val => {
 }
 
 const fetchBoardActivities = async () => {
-  const res = await $api(`/container/activities/${props.boardId}`, {
-    method: "POST",
-    body: { filters: filterOption.value, search: ticketSearch.value },
-  })
+  isLoading.value = true
+  try {
+    const res = await $api(`/container/activities/${props.boardId}`, {
+      method: "POST",
+      body: { filters: filterOption.value, search: ticketSearch.value },
+    })
 
-  if (res) {
-    boardData.value = res.data
+    if (res) {
+      boardData.value = res.data
+    }
+  } finally {
+    setTimeout(() => {
+      isLoading.value = false
+    }, 300)
   }
 }
 
@@ -173,6 +181,7 @@ defineExpose({ fetchBoardActivities })
         <div class="board-chat-section px-4 py-3">
           <div 
             class="board-chat-card"
+            :class="{ 'skeleton': isLoading }"
             @click="openBoardChat(null, 'board')"
           >
             <div class="chat-content">
@@ -193,45 +202,56 @@ defineExpose({ fetchBoardActivities })
         <!-- Board Stats -->
         <div class="board-stats px-4 py-3">
           <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon" :style="{ backgroundColor: '#E3F2FD' }">
-                <VIcon color="primary">tabler-list-check</VIcon>
+            <template v-if="isLoading">
+              <div v-for="n in 4" :key="n" class="stat-card skeleton">
+                <div class="stat-icon skeleton-box" />
+                <div class="stat-info">
+                  <span class="stat-value skeleton-text" />
+                  <span class="stat-label skeleton-text" />
+                </div>
               </div>
-              <div class="stat-info">
-                <span class="stat-value">{{ boardData.boards?.length || 0 }}</span>
-                <span class="stat-label">Lists</span>
+            </template>
+            <template v-else>
+              <div class="stat-card">
+                <div class="stat-icon" :style="{ backgroundColor: '#FFF3E0' }">
+                  <VIcon color="primary">tabler-list-check</VIcon>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-value">{{ boardData.boards?.length || 0 }}</span>
+                  <span class="stat-label">Lists</span>
+                </div>
               </div>
-            </div>
-            
-            <div class="stat-card">
-              <div class="stat-icon" :style="{ backgroundColor: '#F3E5F5' }">
-                <VIcon color="purple">tabler-clipboard-list</VIcon>
+              
+              <div class="stat-card">
+                <div class="stat-icon" :style="{ backgroundColor: '#F3E5F5' }">
+                  <VIcon color="#800080">tabler-clipboard-list</VIcon>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-value">{{ getTotalTasks }}</span>
+                  <span class="stat-label">Tasks</span>
+                </div>
               </div>
-              <div class="stat-info">
-                <span class="stat-value">{{ getTotalTasks }}</span>
-                <span class="stat-label">Tasks</span>
-              </div>
-            </div>
 
-            <div class="stat-card">
-              <div class="stat-icon" :style="{ backgroundColor: '#E8F5E9' }">
-                <VIcon color="success">tabler-clock-play</VIcon>
+              <div class="stat-card">
+                <div class="stat-icon" :style="{ backgroundColor: '#E8F5E9' }">
+                  <VIcon color="success">tabler-clock-play</VIcon>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-value time-value">{{ formatTime(getTotalTrackedTime) }}</span>
+                  <span class="stat-label">Total Time</span>
+                </div>
               </div>
-              <div class="stat-info">
-                <span class="stat-value time-value">{{ formatTime(getTotalTrackedTime) }}</span>
-                <span class="stat-label">Total Time</span>
-              </div>
-            </div>
 
-            <div class="stat-card">
-              <div class="stat-icon" :style="{ backgroundColor: '#FFF3E0' }">
-                <VIcon color="warning">tabler-messages</VIcon>
+              <div class="stat-card">
+                <div class="stat-icon" :style="{ backgroundColor: '#FFF3E0' }">
+                  <VIcon color="warning">tabler-messages</VIcon>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-value">{{ getTotalComments }}</span>
+                  <span class="stat-label">Comments</span>
+                </div>
               </div>
-              <div class="stat-info">
-                <span class="stat-value">{{ getTotalComments }}</span>
-                <span class="stat-label">Comments</span>
-              </div>
-            </div>
+            </template>
           </div>
         </div>
 
@@ -239,59 +259,86 @@ defineExpose({ fetchBoardActivities })
 
         <!-- Tasks List -->
         <div class="tasks-section px-4 py-3">
-          <template v-for="board in boardData.boards" :key="board.id">
-            <div class="board-section mb-4">
+          <template v-if="isLoading">
+            <div v-for="n in 3" :key="n" class="board-section mb-4">
               <div class="board-header d-flex align-center gap-2 mb-2">
-                <div 
-                  class="color-dot" 
-                  :style="{ backgroundColor: board.color }"
-                />
-                <h3 class="text-subtitle-2 font-weight-medium mb-0">
-                  {{ board.name }}
-                  <span class="text-caption text-medium-emphasis">
-                    ({{ board.tasks?.length || 0 }} tasks)
-                  </span>
-                </h3>
+                <div class="color-dot skeleton" />
+                <h3 class="skeleton-text" style="width: 120px" />
               </div>
 
               <div class="tasks-list">
-                <div 
-                  v-for="task in board.tasks" 
-                  :key="task.id"
-                  class="task-item"
-                  @click="openTaskChat(task)"
-                >
+                <div v-for="t in 2" :key="t" class="task-item skeleton">
                   <div class="task-content">
                     <div class="d-flex align-center gap-2">
-                      <VIcon 
-                        size="16"
-                        :color="task.has_unread_comments ? 'warning' : 'grey'"
-                      >
-                        {{ task.has_unread_comments ? 'tabler-message-circle-2-filled' : 'tabler-message-circle' }}
-                      </VIcon>
-                      <span class="task-name">{{ task.name }}</span>
+                      <div class="skeleton-circle" />
+                      <span class="skeleton-text" style="width: 70%" />
                     </div>
-                    
                     <div class="task-meta">
-                      <div class="meta-item" v-if="task.tracked_time">
-                        <VIcon size="14" color="success">tabler-clock</VIcon>
-                        <span>{{ task.tracked_time.trackedTimeDisplay }}</span>
-                      </div>
-                      <div class="meta-item" v-if="task.comments_count">
-                        <VIcon size="14">tabler-messages</VIcon>
-                        <span>{{ task.comments_count }}</span>
-                      </div>
-                      <div class="meta-item" v-if="task.members?.length">
-                        <VIcon size="14">tabler-users</VIcon>
-                        <span>{{ task.members.length }}</span>
+                      <div v-for="m in 3" :key="m" class="meta-item">
+                        <div class="skeleton-circle" />
+                        <span class="skeleton-text" style="width: 30px" />
                       </div>
                     </div>
                   </div>
-
-                  <VIcon size="16" class="arrow-icon">tabler-chevron-right</VIcon>
                 </div>
               </div>
             </div>
+          </template>
+          <template v-else>
+            <template v-for="board in boardData.boards" :key="board.id">
+              <div class="board-section mb-4">
+                <div class="board-header d-flex align-center gap-2 mb-2">
+                  <div 
+                    class="color-dot" 
+                    :style="{ backgroundColor: board.color }"
+                  />
+                  <h3 class="text-subtitle-2 font-weight-medium mb-0">
+                    {{ board.name }}
+                    <span class="text-caption text-medium-emphasis">
+                      ({{ board.tasks?.length || 0 }} tasks)
+                    </span>
+                  </h3>
+                </div>
+
+                <div class="tasks-list">
+                  <div 
+                    v-for="task in board.tasks" 
+                    :key="task.id"
+                    class="task-item"
+                    @click="openTaskChat(task)"
+                  >
+                    <div class="task-content">
+                      <div class="d-flex align-center gap-2">
+                        <VIcon 
+                          size="16"
+                          :color="task.has_unread_comments ? 'warning' : 'grey'"
+                        >
+                          {{ task.has_unread_comments ? 'tabler-message-circle-2-filled' : 'tabler-message-circle' }}
+                        </VIcon>
+                        <span class="task-name">{{ task.name }}</span>
+                      </div>
+                      
+                      <div class="task-meta">
+                        <div class="meta-item" v-if="task.tracked_time">
+                          <VIcon size="14" color="success">tabler-clock</VIcon>
+                          <span>{{ task.tracked_time.trackedTimeDisplay }}</span>
+                        </div>
+                        <div class="meta-item" v-if="task.comments_count">
+                          <VIcon size="14">tabler-messages</VIcon>
+                          <span>{{ task.comments_count }}</span>
+                        </div>
+                        <div class="meta-item" v-if="task.members?.length">
+                          <VIcon size="14">tabler-users</VIcon>
+                          <span>{{ task.members.length }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <VIcon size="16" class="arrow-icon">tabler-chevron-right</VIcon>
+                  </div>
+                </div>
+              </div>
+            </template>
           </template>
         </div>
       </div>
@@ -477,7 +524,7 @@ defineExpose({ fetchBoardActivities })
             justify-content: center;
             width: 40px;
             height: 40px;
-            background: #e3f2fd;
+            background: #FFF3E0;
             border-radius: 8px;
           }
 
@@ -505,5 +552,100 @@ defineExpose({ fetchBoardActivities })
       }
     }
   }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #f6f7f8;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0,
+      rgba(255, 255, 255, 0.6) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    animation: shimmer 2s infinite;
+  }
+
+  &.task-item {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    
+    .skeleton-circle {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #e5e7eb;
+    }
+  }
+}
+
+.skeleton-text {
+  height: 14px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.skeleton-box {
+  background: #e5e7eb;
+  border-radius: 8px;
+}
+
+.stat-card.skeleton {
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .stat-info {
+    .stat-value {
+      width: 40px;
+      height: 20px;
+      margin-bottom: 4px;
+    }
+    
+    .stat-label {
+      width: 60px;
+      height: 14px;
+    }
+  }
+}
+
+.board-chat-card.skeleton {
+  .chat-icon {
+    background: #e5e7eb !important;
+  }
+  
+  .chat-info {
+    .chat-title, .chat-description {
+      background: #e5e7eb;
+      height: 14px;
+      width: 120px;
+      border-radius: 4px;
+      margin: 4px 0;
+    }
+  }
+}
+
+.task-item, .stat-card, .board-chat-card {
+  transition: all 0.3s ease;
 }
 </style>
