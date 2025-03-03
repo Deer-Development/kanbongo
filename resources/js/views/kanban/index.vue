@@ -764,7 +764,6 @@ const getWeeklyProgressDisplay = (entry) => {
             <VIcon
               left
               size="16"
-              color="primary"
             >
               tabler-user-edit
             </VIcon>
