@@ -138,7 +138,7 @@ onMounted(() => {
             <VListItem
               class="notification-item px-6"
               :class="{ 'unseen': !notification.isSeen }"
-              @click="handleToggleReadStatus(notification)"
+              @click="handleActionClick(notification)"
             >
               <template #prepend>
                 <div class="notification-icon-wrapper">
@@ -202,13 +202,17 @@ onMounted(() => {
               <template #append>
                 <div class="d-flex align-center gap-2">
                   <VBtn
-                    variant="tonal"
-                    :color="notification.data?.context?.color || 'primary'"
+                    variant="text"
+                    :color="notification.isSeen ? 'medium-emphasis' : 'primary'"
                     size="small"
-                    :prepend-icon="notification.data?.action?.icon || 'tabler-eye'"
-                    @click.stop="handleActionClick(notification)"
+                    @click.stop="handleToggleReadStatus(notification)"
                   >
-                    {{ notification.data?.action?.text || 'View' }}
+                    <VIcon 
+                      size="20" 
+                      :icon="notification.isSeen ? 'tabler-mail-opened' : 'tabler-mail'" 
+                      class="me-1"
+                    />
+                    {{ notification.isSeen ? 'Mark as unread' : 'Mark as read' }}
                   </VBtn>
                   
                   <VBtn
@@ -247,14 +251,15 @@ onMounted(() => {
     transition: all 0.2s ease;
 
     &:hover {
-      background-color: #f6f8fa;
+      background-color: rgba(var(--v-theme-primary), 0.04);
     }
 
     &.unseen {
       background-color: #f1f8ff;
+      border-left: 3px solid rgb(var(--v-theme-primary));
 
       .notification-title {
-        color: #0969da;
+        color: rgb(var(--v-theme-primary));
         font-weight: 600;
       }
     }
@@ -314,13 +319,13 @@ onMounted(() => {
       }
 
       .notification-preview {
-        background-color: #f6f8fa;
-        border: 1px solid #d0d7de;
-        border-radius: 6px;
-        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-        font-size: 0.8125rem;
-        color: #57606a;
-        max-width: 800px;
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        line-height: 1.5;
+        max-height: 100px;
+        overflow-y: auto;
       }
     }
   }

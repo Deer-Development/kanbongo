@@ -40,10 +40,6 @@ const isAllMarkRead = computed(() => {
 const router = useRouter();
 
 const handleNotificationClick = (notification) => {
-  emit('toggle-read-status', notification);
-}
-
-const handleActionClick = (notification) => {
   if (!notification?.data?.project_id || !notification?.data?.container_id) {
     return
   }
@@ -62,6 +58,11 @@ const handleActionClick = (notification) => {
     },
     replace: true
   })
+}
+
+const handleToggleReadStatus = (notification, event) => {
+  event.stopPropagation();
+  emit('toggle-read-status', notification);
 }
 </script>
 
@@ -146,12 +147,6 @@ const handleActionClick = (notification) => {
                 :class="{ 'unseen': !notification.isSeen }"
                 @click="handleNotificationClick(notification)"
               >
-                <VTooltip
-                  activator="parent"
-                  location="start"
-                >
-                  Click to toggle read/unread
-                </VTooltip>
                 <template #prepend>
                   <div class="notification-icon-wrapper">
                     <VAvatar
@@ -198,7 +193,7 @@ const handleActionClick = (notification) => {
                     <div class="text-body-2">{{ notification.data.comment_preview }}</div>
                   </div>
 
-                  <div class="notification-actions d-flex align-center justify-space-between">
+                  <div class="notification-actions d-flex align-center justify-space-between mt-2">
                     <div class="time-wrapper d-flex align-center">
                       <VIcon
                         size="14"
@@ -209,22 +204,26 @@ const handleActionClick = (notification) => {
                       <span class="text-medium-emphasis">{{ notification.time }}</span>
                     </div>
                     
-                    <div class="d-flex align-center">
+                    <div class="d-flex align-center gap-2">
                       <VBtn
-                        size="small"
-                        :color="notification.data?.context?.color || 'primary'"
+                        size="x-small"
+                        :color="notification.isSeen ? 'medium-emphasis' : 'primary'"
                         variant="text"
-                        class="action-btn me-2"
-                        :prepend-icon="notification.data?.action?.icon || 'tabler-eye'"
-                        @click.stop="handleActionClick(notification)"
+                        class="read-status-btn"
+                        @click.stop="handleToggleReadStatus(notification, $event)"
                       >
-                        {{ notification.data?.action?.text || 'View' }}
+                        <VIcon 
+                          size="16" 
+                          :icon="notification.isSeen ? 'tabler-mail-opened' : 'tabler-mail'" 
+                          class="me-1"
+                        />
+                        {{ notification.isSeen ? 'Mark unread' : 'Mark read' }}
                       </VBtn>
+
                       <VBtn
                         icon
-                        size="small"
+                        size="x-small"
                         variant="text"
-                        class="delete-btn"
                         color="error"
                         @click.stop="$emit('remove', notification.id)"
                       >
@@ -314,28 +313,11 @@ const handleActionClick = (notification) => {
   border-left: 2px solid transparent;
 
   &:hover {
-    background-color: #f6f8fa;
-
-    .delete-btn {
-      opacity: 0.7;
-    }
-
+    background-color: rgba(var(--v-theme-primary), 0.04);
+    
     .notification-actions {
       opacity: 1;
-      transform: translateX(0);
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: rgba(var(--v-theme-primary), 0.5);
-      transition: all 0.2s ease;
+      transform: translateY(0);
     }
   }
 
@@ -438,31 +420,16 @@ const handleActionClick = (notification) => {
     }
 
     .notification-actions {
-      margin-top: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      opacity: 0.8;
+      transform: translateY(4px);
+      transition: all 0.2s ease;
 
-      .action-btn {
+      .read-status-btn {
         font-size: 0.75rem;
-        height: 24px;
-        padding: 0 8px;
-        color: #0969da;
-        font-weight: 500;
-
-        &:hover {
-          background-color: #f3f4f6;
-        }
-      }
-
-      .delete-btn {
-        opacity: 0.7;
-        transition: all 0.2s ease;
-        margin-left: 4px;
+        letter-spacing: 0;
         
         &:hover {
-          opacity: 1;
-          background-color: rgb(var(--v-theme-error), 0.12);
+          background-color: rgba(var(--v-theme-primary), 0.08);
         }
       }
     }
