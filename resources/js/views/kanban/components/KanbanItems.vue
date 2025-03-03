@@ -471,14 +471,6 @@ const refreshData = () => {
             >
               Create task
             </VBtn>
-            <VBtn
-              size="small"
-              variant="text"
-              color="secondary"
-              @click="hideAddNewForm"
-            >
-              Cancel
-            </VBtn>
           </div>
         </VForm>
       </div>
