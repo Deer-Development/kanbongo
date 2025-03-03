@@ -38,7 +38,7 @@ class ProjectResource extends JsonResource
                 )->count(),
                 'total_tasks' => $this->containers()
                     ->where(
-                        function ($q) use ($user, $isSuperAdmin) {
+                        function ($q) use ($user) {
                             if ($user->hasRole('Super-Admin')) {
                                 $q->with(['members' => function ($q) {
                                     $q->with('user');
