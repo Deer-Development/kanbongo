@@ -12,6 +12,7 @@ import { useRouter } from "vue-router"
 import { useTimerStore } from '@/stores/useTimerStore'
 import DeleteBoardDialog from './dialogs/DeleteBoardDialog.vue'
 import ActivityDrawer from './components/ActivityDrawer.vue'
+import DocumentationDialog from './dialogs/DocumentationDialog.vue'
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -39,6 +40,7 @@ const isFromGeneralMessenger = ref(false)
 const progressUpdateInterval = ref(null)
 const toast = useToast()
 const isActivityDrawerOpen = ref(false)
+const isDocumentationDialogVisible = ref(false)
 
 const refetchKanban = async () => {
   const wasOpen = isMessengerDrawerOpen.value
@@ -810,6 +812,20 @@ const getWeeklyProgressDisplay = (entry) => {
               tabler-activity
             </VIcon>
           </button>
+
+          <button
+            variant="elevated"
+            class="cursor-pointer github-style-badge"
+            @click="isDocumentationDialogVisible = true"
+          >
+            <VIcon
+              left
+              size="16"
+              color="info"
+            >
+              tabler-file-text
+            </VIcon>
+          </button>
         </div>
       </div>
     </div>
@@ -892,6 +908,11 @@ const getWeeklyProgressDisplay = (entry) => {
       v-model:is-drawer-open="isActivityDrawerOpen"
       :board-id="kanban.id"
       @refresh-kanban-data="refetchKanban"
+    />
+    <DocumentationDialog
+      v-if="kanban"
+      v-model:is-dialog-visible="isDocumentationDialogVisible"
+      :container-id="kanban.id"
     />
   </div>
 </template>

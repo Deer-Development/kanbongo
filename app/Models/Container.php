@@ -59,4 +59,9 @@ class Container extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+    public function documentationTabs(): HasMany
+    {
+        return $this->hasMany(DocumentationTab::class);
+    }
 }

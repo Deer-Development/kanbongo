@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\General\Statuses;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\DocumentationController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
 
@@ -52,4 +53,10 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     Route::patch('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
     Route::patch('/notifications/{notification}/mark-as-unread', [NotificationController::class, 'markAsUnread']);
+
+    Route::get('/container/{container}/documentation-tabs', [DocumentationController::class, 'index']);
+    Route::post('/container/{container}/documentation-tab', [DocumentationController::class, 'store']);
+    Route::get('/container/documentation-tab/{tab}', [DocumentationController::class, 'show']);
+    Route::put('/container/documentation-tab/{tab}', [DocumentationController::class, 'update']);
+    Route::delete('/container/documentation-tab/{tab}', [DocumentationController::class, 'destroy']);
 });
