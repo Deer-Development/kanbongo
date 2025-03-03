@@ -305,7 +305,7 @@ watchDebounced(
 
 <style lang="scss" scoped>
 .card-header {
-  padding: 8px;
+  padding: 8px 8px 8px 0;
   position: relative;
 }
 
