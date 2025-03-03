@@ -17,7 +17,6 @@
           :class="{
             'timer-btn-active': isTiming,
           }"
-          :disabled="isTimerDisabled"
           @click.stop="toggleTimer"
           :icon="getTimerIcon"
           :color="getTimerColor"
@@ -338,6 +337,7 @@ watch(
 )
 
 const toggleTimer = () => {
+  if (isTimerDisabled.value) return
   timerStore.clearTimer(props.auth.id)
   
   isTiming.value = false
@@ -435,8 +435,8 @@ const isTimerDisabled = computed(() => {
 
 const getTimerIcon = computed(() => { 
   if (isTiming.value) return 'tabler-player-pause-filled'
-  if (!localMember.value) return 'tabler-hourglass-filled'
-  return 'tabler-player-play-filled'
+  if (!localMember.value) return 'tabler-hourglass'
+  return 'tabler-player-play'
 })
 
 const getTimerColor = computed(() => {
