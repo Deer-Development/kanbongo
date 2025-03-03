@@ -353,7 +353,7 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
                         {{ entry.is_paid ? 'Paid' : 'Unpaid' }}
                       </span>
                     </td>
-                    <td>{{ entry.amount_paid ? `$${entry.amount_paid.toFixed(2)}` : '--' }}</td>
+                    <td>{{ entry.amount_paid ? `$${entry.amount_paid}` : '--' }}</td>
                     <td>{{ entry.paid_rate ? `$${entry.paid_rate}` : '--' }}</td>
                   </tr>
                 </tbody>

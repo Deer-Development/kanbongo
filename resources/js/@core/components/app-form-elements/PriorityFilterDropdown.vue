@@ -195,7 +195,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss">
-@import './shared-github-styles.scss';
+@import '@styles/shared-github-styles';
 
 .github-style-badge {
   &.has-selections {

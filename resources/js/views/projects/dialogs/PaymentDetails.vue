@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, ref, watch, computed } from "vue"
+import { defineProps, ref, watch, computed, onMounted } from "vue"
 import MemberPaymentDetails from "@/views/projects/components/MemberPaymentDetails.vue"
 import PaycheckDetails from "@/views/projects/components/PaycheckDetails.vue"
 
@@ -24,6 +24,7 @@ const selectedEntries = ref([])
 
 const selectedDateRange = ref("")
 const paymentStatusFilter = ref('all')
+const datePreset = ref('custom')
 
 const filteredMembers = computed(() => {
   return members.value.filter(member => {
@@ -60,7 +61,9 @@ watch(() => props.boardId, value => {
 
 watch(() => props.isDialogVisible, value => {
   boardIdLocal.value = props.boardId
-  if (value) fetchMemberDetails()
+  if (value) {
+    fetchMemberDetails()
+  }
 })
 
 watch(selectedDateRange, () => {
@@ -69,6 +72,12 @@ watch(selectedDateRange, () => {
 
 watch(paymentStatusFilter, () => {
   if (boardIdLocal.value !== 0 && !selectedMember.value) fetchMemberDetails()
+})
+
+watch(selectedDateRange, () => {
+  if (selectedDateRange.value === '') {
+    datePreset.value = 'custom'
+  }
 })
 
 const onReset = () => {
@@ -146,6 +155,77 @@ const goBack = () => {
   showPaychecks.value = false
   fetchMemberDetails()
 }
+
+const setDatePreset = (preset) => {
+  datePreset.value = preset
+  const now = new Date()
+  
+  switch (preset) {
+    case 'this-week': {
+      const start = new Date(now)
+      const day = start.getDay() || 7 // Convert Sunday (0) to 7
+      start.setDate(start.getDate() - day + 1) // Monday
+      const end = new Date(start)
+      end.setDate(end.getDate() + 6) // Sunday
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
+    case 'last-week': {
+      const start = new Date(now)
+      const day = start.getDay() || 7
+      start.setDate(start.getDate() - day - 6) // Previous Monday
+      const end = new Date(start)
+      end.setDate(end.getDate() + 6) // Previous Sunday
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
+    case 'this-month': {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
+    case 'this-year': {
+      const start = new Date(now.getFullYear(), 0, 1)
+      const end = new Date(now.getFullYear(), 11, 31)
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
+    case 'custom':
+      selectedDateRange.value = ''
+      break
+  }
+}
+
+const showDateMenu = ref(false)
+
+const datePresets = [
+  { label: 'This Week', value: 'this-week', icon: 'tabler-calendar-event' },
+  { label: 'Last Week', value: 'last-week', icon: 'tabler-calendar-minus' },
+  { label: 'This Month', value: 'this-month', icon: 'tabler-calendar-month' },
+  { label: 'This Year', value: 'this-year', icon: 'tabler-calendar-stats' },
+]
+
+const getDateRangeLabel = computed(() => {
+  if (!selectedDateRange.value) return 'Select date range'
+  
+  const preset = datePresets.find(p => p.value === datePreset.value)
+  if (preset) return preset.label
+  
+  const [start, end] = selectedDateRange.value.split(' to ')
+  if (!end) return 'Custom range'
+  
+  return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
+})
+
+const showCustomDateMenu = ref(false)
+
+const getCustomDateLabel = computed(() => {
+  if (!selectedDateRange.value) return 'Custom'
+  const [start, end] = selectedDateRange.value.split(' to ')
+  if (!end) return 'Custom'
+  return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
+})
 </script>
 
 <template>
@@ -204,68 +284,98 @@ const goBack = () => {
         </div>
 
         <div class="filters-section" v-if="!showPaychecks">
-          <div class="date-range-section">
-            <AppDateTimePicker
-              v-model="selectedDateRange"
-              :config="{ mode: 'range' }"
-              placeholder="Date"
-              clearable
-              class="github-input date-picker"
-            />
+          <div class="date-filters">
+            <div class="filters-group">
+              <div class="date-presets">
+                <VBtn
+                  v-for="preset in datePresets"
+                  :key="preset.value"
+                  :color="datePreset === preset.value ? 'primary' : undefined"
+                  :variant="datePreset === preset.value ? 'tonal' : 'text'"
+                  size="x-small"
+                  class="preset-btn"
+                  @click="setDatePreset(preset.value)"
+                >
+                  <VIcon 
+                    size="14" 
+                    class="mr-1"
+                    :color="datePreset === preset.value ? undefined : '#57606a'"
+                  >
+                    {{ preset.icon }}
+                  </VIcon>
+                  {{ preset.label }}
+                </VBtn>
+              </div>
+
+              <VDivider vertical class="mx-2" />
+
+              <div class="custom-date-wrapper">
+                <AppDateTimePicker
+                  v-model="selectedDateRange"
+                  :config="{ mode: 'range' }"
+                  placeholder="Select custom date range"
+                  clearable
+                  class="github-input date-picker"
+                  @update:model-value="datePreset = 'custom'"
+                />
+              </div>
+            </div>
+
+
+            <VBtnGroup 
+              class="btn-group-status-filter"
+              density="compact"
+            >
+              <VBtn
+                :color="paymentStatusFilter === 'all' ? 'primary' : undefined"
+                :variant="paymentStatusFilter === 'all' ? 'tonal' : 'outlined'"
+                size="x-small"
+                class="filter-btn"
+                @click="paymentStatusFilter = 'all'"
+              >
+                <VIcon 
+                  size="14" 
+                  class="mr-1"
+                  :color="paymentStatusFilter === 'all' ? undefined : '#57606a'"
+                >
+                  tabler-filter
+                </VIcon>
+                All
+              </VBtn>
+              <VBtn
+                :color="paymentStatusFilter === 'paid' ? 'success' : undefined"
+                :variant="paymentStatusFilter === 'paid' ? 'tonal' : 'outlined'"
+                size="x-small"
+                class="filter-btn"
+                @click="paymentStatusFilter = 'paid'"
+              >
+                <VIcon 
+                  size="14" 
+                  class="mr-1"
+                  :color="paymentStatusFilter === 'paid' ? undefined : '#57606a'"
+                >
+                  tabler-cash
+                </VIcon>
+                Paid
+              </VBtn>
+              <VBtn
+                :color="paymentStatusFilter === 'pending' ? 'warning' : undefined"
+                :variant="paymentStatusFilter === 'pending' ? 'tonal' : 'outlined'"
+                size="x-small"
+                class="filter-btn"
+                @click="paymentStatusFilter = 'pending'"
+              >
+                <VIcon 
+                  size="14" 
+                  class="mr-1"
+                  :color="paymentStatusFilter === 'pending' ? undefined : '#57606a'"
+                >
+                  tabler-clock-dollar
+                </VIcon>
+                Pending
+              </VBtn>
+            </VBtnGroup>
           </div>
-          <VBtnGroup 
-            class="btn-group-status-filter"
-            density="compact"
-          >
-            <VBtn
-              :color="paymentStatusFilter === 'all' ? 'primary' : undefined"
-              :variant="paymentStatusFilter === 'all' ? 'tonal' : 'outlined'"
-              size="x-small"
-              class="filter-btn"
-              @click="paymentStatusFilter = 'all'"
-            >
-              <VIcon 
-                size="14" 
-                class="mr-1"
-                :color="paymentStatusFilter === 'all' ? undefined : '#57606a'"
-              >
-                tabler-filter
-              </VIcon>
-              All
-            </VBtn>
-            <VBtn
-              :color="paymentStatusFilter === 'paid' ? 'success' : undefined"
-              :variant="paymentStatusFilter === 'paid' ? 'tonal' : 'outlined'"
-              size="x-small"
-              class="filter-btn"
-              @click="paymentStatusFilter = 'paid'"
-            >
-              <VIcon 
-                size="14" 
-                class="mr-1"
-                :color="paymentStatusFilter === 'paid' ? undefined : '#57606a'"
-              >
-                tabler-cash
-              </VIcon>
-              Paid
-            </VBtn>
-            <VBtn
-              :color="paymentStatusFilter === 'pending' ? 'warning' : undefined"
-              :variant="paymentStatusFilter === 'pending' ? 'tonal' : 'outlined'"
-              size="x-small"
-              class="filter-btn"
-              @click="paymentStatusFilter = 'pending'"
-            >
-              <VIcon 
-                size="14" 
-                class="mr-1"
-                :color="paymentStatusFilter === 'pending' ? undefined : '#57606a'"
-              >
-                tabler-clock-dollar
-              </VIcon>
-              Pending
-            </VBtn>
-          </VBtnGroup>
         </div>
 
         <div 
@@ -927,47 +1037,69 @@ const goBack = () => {
   }
 
   .filters-section {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-    width: 100%;
-
-    .date-range-section {
-      width: auto;
-      flex: 1;
-      max-width: 300px;
-
-      .date-picker {
-        :deep(.v-field) {
-          border-radius: 6px;
-          border: 1px solid #d0d7de;
-          background: #ffffff;
-          height: 32px;
-          color: #24292f;
+    .date-filters {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      
+      .filters-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 0;
+        
+        .date-presets {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+          flex-wrap: wrap;
           
-          &:hover {
-            border-color: #0969da;
+          .preset-btn {
+            height: 24px;
+            font-size: 0.75rem;
+            text-transform: none;
+            letter-spacing: normal;
+            white-space: nowrap;
+            
+            &:hover {
+              background: #f3f4f6;
+            }
           }
+        }
+        
+        .custom-date-wrapper {
+          flex: 1;
+          min-width: 200px;
+          max-width: 300px;
           
-          &.v-field--focused {
-            border-color: #0969da;
-            box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
-          }
+          .date-picker {
+            :deep(.v-field) {
+              border-radius: 6px;
+              border: 1px solid #d0d7de;
+              background: #ffffff;
+              height: 24px;
+              min-height: 24px;
+              font-size: 0.75rem;
+              
+              &:hover {
+                border-color: #0969da;
+              }
+              
+              &.v-field--focused {
+                border-color: #0969da;
+                box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+              }
 
-          .v-field__input {
-            font-size: 0.875rem;
-            min-height: 30px;
-            padding-top: 0;
-            padding-bottom: 0;
+              .v-field__input {
+                min-height: 24px;
+                padding-top: 0;
+                padding-bottom: 0;
+              }
+            }
           }
         }
       }
-    }
-
-    .btn-group-status-filter {
-      max-width: 240px;
     }
   }
 }
@@ -975,5 +1107,168 @@ const goBack = () => {
 .text-success { color: #1a7f37; }
 .text-danger { color: #cf222e; }
 .text-primary { color: #0969da; }
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.date-menu-card {
+  border: 1px solid #d0d7de;
+  box-shadow: 0 8px 24px rgba(140,149,159,0.2);
+  
+  .dropdown-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-bottom: 1px solid #d0d7de;
+    background: #f6f8fa;
+    
+    .header-icon {
+      color: inherit;
+      opacity: 0.8;
+    }
+  }
+
+  .date-presets-list {
+    padding: 4px 0;
+
+    :deep(.v-list-item) {
+      min-height: 32px;
+      padding: 4px 12px;
+      cursor: pointer;
+      
+      &:hover {
+        background: #f6f8fa;
+      }
+      
+      &.v-list-item--active {
+        background: #f0f3f9;
+        color: #0969da;
+      }
+
+      .v-list-item__prepend {
+        margin-right: 8px;
+      }
+    }
+  }
+
+  .date-picker {
+    :deep(.v-field) {
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      background: #ffffff;
+      height: 32px;
+      
+      &:hover {
+        border-color: #0969da;
+      }
+      
+      &.v-field--focused {
+        border-color: #0969da;
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+      }
+    }
+  }
+}
+
+.btn-group-status-filter {
+  max-width: 240px;
+}
+
+.date-filter-btn {
+  height: 24px;
+  min-width: 160px;
+  font-size: 0.75rem;
+  border-color: #d0d7de;
+  text-transform: none;
+  letter-spacing: normal;
+  
+  &:hover {
+    border-color: #0969da;
+    background: #f3f4f6;
+  }
+  
+  .v-icon {
+    color: #57606a;
+  }
+  
+  &.v-btn--active {
+    .v-icon {
+      color: inherit;
+    }
+  }
+}
+
+.custom-date-card {
+  padding: 0.75rem;
+  border: 1px solid #d0d7de;
+  box-shadow: 0 8px 24px rgba(140,149,159,0.2);
+  
+  .date-picker {
+    :deep(.v-field) {
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      background: #ffffff;
+      height: 32px;
+      
+      &:hover {
+        border-color: #0969da;
+      }
+      
+      &.v-field--focused {
+        border-color: #0969da;
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .filters-section {
+    .date-filters {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+      
+      .filters-group {
+        flex-direction: column;
+        
+        .v-divider {
+          display: none;
+        }
+        
+        .date-presets {
+          justify-content: flex-start;
+          width: 100%;
+          
+          .preset-btn {
+            flex: 1;
+          }
+        }
+        
+        .custom-date-wrapper {
+          width: 100%;
+          max-width: none;
+        }
+      }
+      
+      .btn-group-status-filter {
+        width: 100%;
+        
+        .v-btn {
+          flex: 1;
+        }
+      }
+    }
+  }
+}
 </style>
 

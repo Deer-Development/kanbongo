@@ -239,8 +239,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@import './shared-github-styles.scss';
-
+@import '@styles/shared-github-styles';
 .github-style-badge {
   &.has-selections {
     position: relative;

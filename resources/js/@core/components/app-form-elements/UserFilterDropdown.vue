@@ -192,7 +192,8 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@import './shared-github-styles.scss';
+@import '@styles/shared-github-styles';
+
 .has-selections {
   position: relative;
   
