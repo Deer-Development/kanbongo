@@ -1023,13 +1023,13 @@ $spacing: (
     align-items: center;
     justify-content: center;
     background: transparent;
-    width: 24px;
+    width: 28px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: all 0.15s ease;
     position: relative;
     
     &:hover {
-      background-color: rgba(map-get($github-colors, bg-secondary), 0.5);
+      background-color: #f6f8fa;
       
       .custom-action-btn {
         display: flex;
@@ -1038,16 +1038,17 @@ $spacing: (
         height: 100%;
         width: 100%;
         opacity: 1;
+        background-color: #f3f4f6;
       }
     }
     
     .chat-right & {
-      border-left: 1px solid rgba(map-get($github-colors, border), 0.15);
+      border-left: 1px solid #d0d7de;
       border-right: none;
     }
     
     .chat-left & {
-      border-right: 1px solid rgba(map-get($github-colors, border), 0.15);
+      border-right: 1px solid #d0d7de;
       border-left: none;
     }
   }
@@ -1061,21 +1062,29 @@ $spacing: (
   justify-content: center;
   
   .custom-action-btn {
-    opacity: 0.4;
-    transition: opacity 0.2s ease;
+    opacity: 0.85;
+    transition: all 0.15s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
     height: 100%;
+    padding: 6px;
+    border-radius: 3px;
+    background-color: #f6f8fa;
     
     @media (max-width: 768px) {
-      opacity: 0.6;
+      opacity: 0.9;
+    }
+    
+    &:hover {
+      opacity: 1;
+      background-color: #e9ebef;
     }
     
     .v-icon {
-      font-size: 12px;
-      color: map-get($github-colors, text-secondary);
+      font-size: 14px;
+      color: #24292f;
     }
   }
 }
