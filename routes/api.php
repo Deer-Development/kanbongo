@@ -60,4 +60,10 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
     Route::put('/container/documentation-tab/{tab}', [DocumentationController::class, 'update']);
     Route::delete('/container/documentation-tab/{tab}', [DocumentationController::class, 'destroy']);
     Route::put('/container/documentation-tabs/order', [DocumentationController::class, 'updateOrder']);
+
+    Route::prefix('container')->group(function () {
+        Route::post('documentation-tab/{tab}/version', [DocumentationController::class, 'createVersion']);
+        Route::get('documentation-tab/{tab}/versions', [DocumentationController::class, 'getVersions']);
+        Route::post('documentation-tab/{tab}/version/{version}/restore', [DocumentationController::class, 'restoreVersion']);
+    });
 });

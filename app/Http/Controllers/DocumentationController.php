@@ -6,6 +6,8 @@ use App\Models\Container;
 use App\Models\DocumentationTab;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
+use Illuminate\Support\Str;
+use App\Models\DocumentationVersion;
 
 class DocumentationController extends BaseController
 {
@@ -83,5 +85,41 @@ class DocumentationController extends BaseController
             null,
             'Documentation tabs order updated successfully'
         );
+    }
+
+    public function createVersion(Request $request, DocumentationTab $tab)
+    {
+        $validated = $request->validate([
+            'comment' => 'required|string|max:255'
+        ]);
+
+        $lastVersion = $tab->versions()->latest('version_number')->first();
+        $newVersionNumber = $lastVersion ? $lastVersion->version_number + 1 : 1;
+
+        $version = $tab->versions()->create([
+            'content' => $tab->content,
+            'version_number' => $newVersionNumber,
+            'created_by' => auth()->id(),
+            'comment' => $validated['comment']
+        ]);
+
+        return $this->successResponse($version, 'Version created successfully');
+    }
+
+    public function getVersions(DocumentationTab $tab)
+    {
+        $versions = $tab->versions()
+            ->with('creator:id,first_name,last_name')
+            ->orderByDesc('version_number')
+            ->get();
+
+        return $this->successResponse($versions, 'Versions fetched successfully');
+    }
+
+    public function restoreVersion(DocumentationTab $tab, DocumentationVersion $version)
+    {
+        $tab->update(['content' => $version->content]);
+        
+        return $this->successResponse($tab, 'Version restored successfully');
     }
 } 

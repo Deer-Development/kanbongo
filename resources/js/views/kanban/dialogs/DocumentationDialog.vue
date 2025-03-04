@@ -68,6 +68,10 @@ const tabToDelete = ref(null)
 const showRenameDialog = ref(false)
 const tabToRename = ref(null)
 const newName = ref('')
+const showVersionDialog = ref(false)
+const versions = ref([])
+const versionComment = ref('')
+const selectedVersion = ref(null)
 
 const editor = useEditor({
   content: '',
@@ -483,6 +487,45 @@ const updateTabsOrder = async () => {
     isSaving.value = false
   }
 }
+
+const createVersion = async () => {
+  try {
+    await $api(`/container/documentation-tab/${activeTab.value.id}/version`, {
+      method: 'POST',
+      body: {
+        comment: versionComment.value
+      }
+    })
+    versionComment.value = ''
+    await loadVersions()
+  } catch (error) {
+    console.error('Failed to create version:', error)
+  }
+}
+
+const loadVersions = async () => {
+  try {
+    const response = await $api(`/container/documentation-tab/${activeTab.value.id}/versions`, {
+      method: 'GET'
+    })
+    versions.value = response.data
+  } catch (error) {
+    console.error('Failed to load versions:', error)
+  }
+}
+
+const restoreVersion = async (version) => {
+  try {
+    await $api(
+      `/container/documentation-tab/${activeTab.value.id}/version/${version.id}/restore`,
+      { method: 'POST' }
+    )
+    await selectTab(activeTab.value)
+    showVersionDialog.value = false
+  } catch (error) {
+    console.error('Failed to restore version:', error)
+  }
+}
 </script>
 
 <template>
@@ -688,6 +731,18 @@ const updateTabsOrder = async () => {
                   <VIcon size="16">{{ action.icon }}</VIcon>
                 </VBtn>
               </VBtnGroup>
+
+              <!-- Version History -->
+              <VBtnGroup density="compact" variant="text" class="ms-2">
+                <VBtn
+                  v-if="activeTab"
+                  size="x-small"
+                  title="Version History"
+                  @click="showVersionDialog = true; loadVersions()"
+                >
+                  <VIcon size="16">tabler-history</VIcon>
+                </VBtn>
+              </VBtnGroup>
             </div>
           </div>
 
@@ -791,6 +846,151 @@ const updateTabsOrder = async () => {
             Save
           </VBtn>
         </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Add Version History Dialog -->
+    <VDialog
+      v-model="showVersionDialog"
+      max-width="800"
+      class="version-dialog"
+    >
+      <VCard class="version-history-card">
+        <VCardTitle class="d-flex align-center pa-6 header">
+          <div>
+            <div class="text-h6 mb-1">Version History</div>
+            <div class="text-body-2 text-medium-emphasis">
+              Track and manage document versions
+            </div>
+          </div>
+          <VSpacer />
+          <VBtn
+            variant="text"
+            icon
+            size="small"
+            @click="showVersionDialog = false"
+          >
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
+        </VCardTitle>
+
+        <VDivider />
+
+        <VCardText class="pa-6">
+          <!-- New Version Form -->
+          <div class="new-version-form mb-6">
+            <div class="d-flex align-center mb-2">
+              <VIcon
+                size="20"
+                color="primary"
+                class="me-2"
+              >
+                tabler-git-branch
+              </VIcon>
+              <span class="text-subtitle-2 font-weight-medium">Create New Version</span>
+            </div>
+            
+            <div class="d-flex gap-2">
+              <VTextField
+                v-model="versionComment"
+                placeholder="Describe your changes..."
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                class="flex-grow-1"
+                @keyup.enter="createVersion"
+              />
+              <VBtn
+                color="primary"
+                :loading="isSaving"
+                :disabled="!versionComment"
+                min-width="120"
+                @click="createVersion"
+              >
+                Save Version
+              </VBtn>
+            </div>
+          </div>
+
+          <VDivider class="mb-6" />
+
+          <!-- Versions Timeline -->
+          <div class="versions-timeline">
+            <div 
+              v-for="(version, index) in versions" 
+              :key="version.id"
+              class="version-item"
+              :class="{ 'pb-6': index !== versions.length - 1 }"
+            >
+              <div class="d-flex">
+                <!-- Timeline Line & Dot -->
+                <div class="timeline-indicator">
+                  <div class="timeline-line" />
+                  <div class="timeline-dot">
+                    <VIcon
+                      size="16"
+                      color="primary"
+                    >
+                      tabler-git-commit
+                    </VIcon>
+                  </div>
+                </div>
+
+                <!-- Version Content -->
+                <div class="version-content flex-grow-1">
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <div class="d-flex align-center">
+                      <span class="font-weight-medium">Version {{ version.version_number }}</span>
+                      <VChip
+                        size="small"
+                        color="primary"
+                        variant="flat"
+                        class="ms-2"
+                        density="comfortable"
+                      >
+                        {{ new Date(version.created_at).toLocaleString() }}
+                      </VChip>
+                    </div>
+                    <VBtn
+                      size="small"
+                      variant="tonal"
+                      color="primary"
+                      :disabled="isSaving"
+                      @click="restoreVersion(version)"
+                    >
+                      <VIcon
+                        size="16"
+                        start
+                        class="me-1"
+                      >
+                        tabler-history
+                      </VIcon>
+                      Restore
+                    </VBtn>
+                  </div>
+
+                  <div class="d-flex align-center text-body-2 text-medium-emphasis mb-2">
+                    <VIcon
+                      size="16"
+                      start
+                      class="me-1"
+                    >
+                      tabler-user
+                    </VIcon>
+                    {{ version.creator?.first_name }} {{ version.creator?.last_name }}
+                  </div>
+
+                  <VCard
+                    variant="flat"
+                    class="version-comment pa-3 bg-grey-lighten-4"
+                  >
+                    {{ version.comment }}
+                  </VCard>
+                </div>
+              </div>
+            </div>
+          </div>
+        </VCardText>
       </VCard>
     </VDialog>
   </VDialog>
@@ -1098,5 +1298,90 @@ $github-colors: (
   margin: 4px 0;
   border-radius: 8px;
   background: rgba(var(--v-theme-primary), 0.05);
+}
+
+.version-history-card {
+  .header {
+    background: #f6f8fa;
+  }
+
+  .new-version-form {
+    background: white;
+    border-radius: 8px;
+  }
+
+  .versions-timeline {
+    .version-item {
+      position: relative;
+
+      .timeline-indicator {
+        position: relative;
+        width: 24px;
+        margin-right: 16px;
+
+        .timeline-line {
+          position: absolute;
+          top: 24px;
+          bottom: -24px;
+          left: 50%;
+          width: 2px;
+          background: #e1e4e8;
+          transform: translateX(-50%);
+        }
+
+        .timeline-dot {
+          position: relative;
+          width: 24px;
+          height: 24px;
+          background: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid rgb(var(--v-theme-primary));
+          z-index: 1;
+        }
+      }
+
+      &:last-child {
+        .timeline-line {
+          display: none;
+        }
+      }
+
+      .version-content {
+        padding-top: 2px;
+      }
+
+      .version-comment {
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      }
+    }
+  }
+}
+
+.version-list {
+  max-height: 600px;
+  overflow-y: auto;
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+    
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
 }
 </style> 
