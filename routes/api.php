@@ -10,6 +10,7 @@ use App\Http\Controllers\General\Statuses;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DocumentationController;
+use App\Http\Controllers\DocumentationCommentController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
 
@@ -65,5 +66,13 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
         Route::post('documentation-tab/{tab}/version', [DocumentationController::class, 'createVersion']);
         Route::get('documentation-tab/{tab}/versions', [DocumentationController::class, 'getVersions']);
         Route::post('documentation-tab/{tab}/version/{version}/restore', [DocumentationController::class, 'restoreVersion']);
+        Route::get('documentation-tab/{tab}/comments', [DocumentationCommentController::class, 'index']);
+        Route::post('documentation-tab/{tab}/comment', [DocumentationCommentController::class, 'store']);
+        Route::put('documentation-comment/{comment}', [DocumentationCommentController::class, 'update']);
+        Route::delete('documentation-comment/{comment}', [DocumentationCommentController::class, 'destroy']);
+        Route::post('documentation-comment/{comment}/resolve', [DocumentationCommentController::class, 'resolve']);
+        Route::post('documentation-comment/{comment}/unresolve', [DocumentationCommentController::class, 'unresolve']);
     });
+
+    Route::get('/container/{container}/documentation-search', [DocumentationController::class, 'search']);
 });

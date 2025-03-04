@@ -32,6 +32,7 @@ import {
 } from '@formkit/drag-and-drop'
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import DeleteConfirmDialog from '@/components/dialogs/DeleteConfirmDialog.vue'
+import CommentSystem from '@/components/documentation/CommentSystem.vue'
 
 const props = defineProps({
   isDialogVisible: Boolean,
@@ -72,6 +73,14 @@ const showVersionDialog = ref(false)
 const versions = ref([])
 const versionComment = ref('')
 const selectedVersion = ref(null)
+const showComments = ref(false)
+const showSearchPanel = ref(false)
+const searchFilter = ref('all')
+const searchResults = ref([])
+const isSearching = ref(false)
+const dateFrom = ref(null)
+const dateTo = ref(null)
+const searchDateMenu = ref(false)
 
 const editor = useEditor({
   content: '',
@@ -308,7 +317,6 @@ const createNewTab = async () => {
     showNewTabDialog.value = false
     newTabName.value = ''
 
-    remapNodes(refTabsList.value)
   } catch (error) {
     console.error('Failed to create tab:', error)
   } finally {
@@ -334,7 +342,6 @@ const handleDeleteConfirm = async () => {
       }
     }
 
-    remapNodes(refTabsList.value)
   } catch (error) {
     console.error('Failed to delete tab:', error)
   }
@@ -422,19 +429,6 @@ onBeforeUnmount(() => {
     debouncedSaveContent.cancel()
   }
 })
-
-const saveChanges = async () => {
-  if (!activeTab.value || !hasUnsavedChanges.value) return
-  
-  try {
-    isSaving.value = true
-    await saveContent()
-  } catch (error) {
-    console.error('Failed to save changes:', error)
-  } finally {
-    isSaving.value = false
-  }
-}
 
 const isSidebarOpen = ref(false)
 
@@ -526,63 +520,192 @@ const restoreVersion = async (version) => {
     console.error('Failed to restore version:', error)
   }
 }
+
+const searchDocumentation = async () => {
+  if (searchQuery.value.length < 2) return
+  
+  try {
+    isSearching.value = true
+    
+    const params = new URLSearchParams({
+      query: searchQuery.value,
+      filter: searchFilter.value
+    })
+    
+    if (dateFrom.value) {
+      params.append('date_from', dateFrom.value)
+    }
+    
+    if (dateTo.value) {
+      params.append('date_to', dateTo.value)
+    }
+    
+    const response = await $api(`/container/${props.containerId}/documentation-search?${params.toString()}`, {
+      method: 'GET'
+    })
+    
+    searchResults.value = response.data
+  } catch (error) {
+    console.error('Search failed:', error)
+  } finally {
+    isSearching.value = false
+  }
+}
+
+const debouncedSearch = useDebounceFn(searchDocumentation, 500)
+
+watch(() => searchQuery.value, (newVal) => {
+  if (newVal.length >= 2) {
+    debouncedSearch()
+  } else {
+    searchResults.value = []
+  }
+})
+
+watch([() => searchFilter.value, () => dateFrom.value, () => dateTo.value], () => {
+  if (searchQuery.value.length >= 2) {
+    debouncedSearch()
+  }
+})
+
+const goToSearchResult = async (tabId) => {
+  const tab = tabs.value.find(t => t.id === tabId)
+  if (tab) {
+    await selectTab(tab)
+    showSearchPanel.value = false
+    
+    setTimeout(() => {
+      const editorElement = document.querySelector('.ProseMirror')
+      if (editorElement) {
+        const textNodes = []
+        const walker = document.createTreeWalker(
+          editorElement,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        )
+        
+        let node
+        while (node = walker.nextNode()) {
+          if (node.textContent.toLowerCase().includes(searchQuery.value.toLowerCase())) {
+            textNodes.push(node)
+          }
+        }
+        
+        if (textNodes.length > 0) {
+          const firstNode = textNodes[0]
+          firstNode.parentElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          })
+        }
+      }
+    }, 300)
+  }
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const closeDialog = () => {
+  emit('update:isDialogVisible', false)
+}
+
+const openVersionHistory = () => {
+  showVersionDialog.value = true
+  loadVersions()
+}
+
+watch(tabs, () => {
+  remapNodes(refTabsList.value)
+})
 </script>
 
 <template>
   <VDialog
     :model-value="isDialogVisible"
     fullscreen
+    :scrim="false"
+    transition="dialog-bottom-transition"
     class="documentation-dialog"
     @update:model-value="handleClose"
   >
-    <VCard class="h-100">
-      <!-- Header -->
-      <VCardTitle class="header d-flex align-center py-3 px-4">
-        <!-- Mobile Sidebar Toggle -->
+    <VCard>
+      <VToolbar color="surface" class="header border-b">
+        <!-- Buton pentru a deschide sidebar-ul pe mobile -->
         <VBtn
-          v-show="$vuetify.display.mdAndDown"
+          v-if="$vuetify.display.mdAndDown"
           icon
-          size="small"
           variant="text"
-          class="me-2"
           @click="toggleSidebar"
+          class="me-2"
         >
           <VIcon>tabler-menu-2</VIcon>
         </VBtn>
         
-        <span class="text-h6 font-weight-medium">Documentation</span>
+        <VToolbarTitle>Documentation</VToolbarTitle>
+        
         <VSpacer />
-        <div class="d-flex align-center gap-2">
-          <VBtn
-            icon
-            size="32"
-            variant="text"
-            @click="$emit('update:isDialogVisible', false)"
-          >
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
-        </div>
-      </VCardTitle>
-
-      <VDivider />
-
-      <VCardText class="pa-0 d-flex fill-height">
-        <!-- Sidebar cu clasă dinamică pentru mobile -->
-        <div 
-          class="sidebar" 
-          :class="{ 'sidebar-open': isSidebarOpen }"
+        
+        <!-- Buton pentru căutare -->
+        <VBtn
+          v-if="tabs.length > 0"
+          icon
+          variant="text"
+          @click="showSearchPanel = !showSearchPanel; showComments = false"
+          :color="showSearchPanel ? 'primary' : undefined"
+          class="me-2"
+          title="Search documentation"
         >
-          <div class="pa-4">
-            <VTextField
-              v-model="searchQuery"
-              placeholder="Search pages..."
-              density="compact"
-              variant="outlined"
-              prepend-inner-icon="tabler-search"
-              hide-details
-              class="search-field mb-4"
-            />
+          <VIcon>tabler-search</VIcon>
+        </VBtn>
+        
+        <!-- Buton pentru comentarii -->
+        <VBtn
+          v-if="activeTab"
+          icon
+          variant="text"
+          @click="showComments = !showComments; showSearchPanel = false"
+          :color="showComments ? 'primary' : undefined"
+          class="me-2"
+          title="Comments"
+        >
+          <VIcon>tabler-message-circle</VIcon>
+        </VBtn>
+        
+        <VBtn
+          v-if="activeTab"
+          icon
+          variant="text"
+          @click="openVersionHistory"
+          class="me-2"
+          title="Version history"
+        >
+          <VIcon>tabler-history</VIcon>
+        </VBtn>
+        
+        <VBtn
+          icon
+          @click="closeDialog"
+        >
+          <VIcon>tabler-x</VIcon>
+        </VBtn>
+      </VToolbar>
 
+      <div class="documentation-container">
+        <!-- Overlay pentru mobile când sidebar-ul este deschis -->
+        <div
+          v-show="isSidebarOpen && $vuetify.display.mdAndDown"
+          class="sidebar-overlay"
+          @click="toggleSidebar"
+        />
+        
+        <!-- Tabs sidebar -->
+        <div class="tabs-sidebar" :class="{ 'sidebar-open': isSidebarOpen }">
+          <div class="pa-4">
             <div class="d-flex align-center justify-space-between mb-3">
               <div class="text-subtitle-2 text-medium-emphasis font-weight-medium">Pages</div>
               <VBtn
@@ -658,15 +781,8 @@ const restoreVersion = async (version) => {
           </div>
         </div>
 
-        <!-- Overlay pentru mobile când sidebar-ul este deschis -->
-        <div
-          v-show="isSidebarOpen && $vuetify.display.mdAndDown"
-          class="sidebar-overlay"
-          @click="toggleSidebar"
-        />
-
-        <!-- Editor Area -->
-        <div class="editor-wrapper flex-grow-1">
+        <!-- Main content area -->
+        <div class="content-area">
           <!-- Editor Toolbar -->
           <div class="editor-toolbar px-4 py-1">
             <div class="d-flex align-center flex-wrap gap-1">
@@ -731,24 +847,12 @@ const restoreVersion = async (version) => {
                   <VIcon size="16">{{ action.icon }}</VIcon>
                 </VBtn>
               </VBtnGroup>
-
-              <!-- Version History -->
-              <VBtnGroup density="compact" variant="text" class="ms-2">
-                <VBtn
-                  v-if="activeTab"
-                  size="x-small"
-                  title="Version History"
-                  @click="showVersionDialog = true; loadVersions()"
-                >
-                  <VIcon size="16">tabler-history</VIcon>
-                </VBtn>
-              </VBtnGroup>
             </div>
           </div>
 
           <VDivider />
 
-          <div v-if="activeTab" class="editor-content pa-6">
+          <div v-if="activeTab" class="editor-content">
             <editor-content :editor="editor" class="documentation-editor" />
           </div>
           <div v-else class="empty-state d-flex align-center justify-center flex-grow-1">
@@ -758,8 +862,115 @@ const restoreVersion = async (version) => {
               <div class="text-body-2 text-grey">Choose an existing page or create a new one to start editing</div>
             </div>
           </div>
+
+          <!-- Panoul de comentarii -->
+          <VSlideXTransition>
+            <div v-if="showComments && activeTab" class="comments-sidebar">
+              <CommentSystem :tab-id="activeTab.id" :editor="editor" @close="showComments = false" />
+            </div>
+          </VSlideXTransition>
+          
+          <!-- Panoul de căutare -->
+          <VSlideXTransition>
+            <div v-if="showSearchPanel" class="search-sidebar">
+              <div class="pa-4">
+                <div class="d-flex align-center mb-4">
+                  <h3 class="text-h6 mb-0">Search Documentation</h3>
+                  <VSpacer />
+                  <VBtn
+                    icon
+                    variant="text"
+                    size="small"
+                    @click="showSearchPanel = false"
+                  >
+                    <VIcon>tabler-x</VIcon>
+                  </VBtn>
+                </div>
+                
+                <div class="search-form mb-4">
+                  <VTextField
+                    v-model="searchQuery"
+                    placeholder="Search..."
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    class="mb-3"
+                    prepend-inner-icon="tabler-search"
+                    clearable
+                  />
+                  
+                  <!-- <div class="d-flex align-center">
+                    <VSelect
+                      v-model="searchFilter"
+                      :items="[
+                        { title: 'All', value: 'all' },
+                        { title: 'Title', value: 'name' },
+                        { title: 'Content', value: 'content' }
+                      ]"
+                      label="Filter by"
+                      variant="outlined"
+                      density="comfortable"
+                      hide-details
+                      class="me-2"
+                    />
+                  </div> -->
+                </div>
+                
+                <VDivider class="mb-4" />
+                
+                <!-- Rezultatele căutării -->
+                <div v-if="isSearching" class="d-flex justify-center my-4">
+                  <VProgressCircular indeterminate color="primary" />
+                </div>
+                
+                <div v-else-if="searchResults.length === 0 && searchQuery.length >= 2" class="text-center my-4 text-medium-emphasis">
+                  No results found
+                </div>
+                
+                <div v-else class="search-results">
+                  <VCard
+                    v-for="result in searchResults"
+                    :key="result.id"
+                    variant="outlined"
+                    class="mb-3 search-result-card"
+                    @click="goToSearchResult(result.id)"
+                  >
+                    <VCardItem>
+                      <template #prepend>
+                        <VIcon
+                          :color="result.matches_title ? 'primary' : 'grey'"
+                          class="me-2"
+                        >
+                          {{ result.matches_title ? 'tabler-file-text' : 'tabler-file' }}
+                        </VIcon>
+                      </template>
+                      
+                      <VCardTitle>
+                        <span v-if="result.matches_title" v-html="result.name.replace(new RegExp(`(${searchQuery})`, 'gi'), '<mark>$1</mark>')" />
+                        <span v-else>{{ result.name }}</span>
+                      </VCardTitle>
+                      
+                      <template #append>
+                        <VChip
+                          size="small"
+                          color="grey"
+                          variant="flat"
+                        >
+                          {{ formatDate(result.updated_at) }}
+                        </VChip>
+                      </template>
+                    </VCardItem>
+                    
+                    <VCardText v-if="result.snippet" class="pt-0">
+                      <div class="search-snippet" v-html="result.snippet"></div>
+                    </VCardText>
+                  </VCard>
+                </div>
+              </div>
+            </div>
+          </VSlideXTransition>
         </div>
-      </VCardText>
+      </div>
     </VCard>
 
     <!-- New Page Dialog -->
@@ -1013,17 +1224,48 @@ $github-colors: (
 
 .documentation-dialog {
   .header {
-    background: #f6f8fa;
+    background: #f6f8fa !important;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
     height: 56px; // Fixed height for consistency
+    border-bottom: 1px solid #e1e4e8;
+    
+    .v-btn {
+      color: #24292e;
+      
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
+      
+      &.v-btn--active {
+        color: #0366d6;
+      }
+    }
 
     @media (max-width: 600px) {
       height: 48px;
     }
   }
 
-  .sidebar {
+  .documentation-container {
+    display: flex;
+    height: calc(100vh - 56px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+    backdrop-filter: blur(2px);
+  }
+
+  .tabs-sidebar {
     width: 280px;
     border-right: 1px solid #e1e4e8;
     background: #f6f8fa;
@@ -1037,100 +1279,34 @@ $github-colors: (
       bottom: 0;
       transform: translateX(-100%);
       box-shadow: none;
-
-      &.sidebar-open {
-        transform: translateX(0);
-        box-shadow: 4px 0 8px rgba(0, 0, 0, 0.1);
-      }
     }
-
-    .search-field :deep(.v-field) {
-      background: white;
-      box-shadow: 0 1px 2px rgba(31, 35, 40, 0.085);
-    }
-
-    .pages-list {
-      .tab-item {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        
-        &.dragging {
-          transform: scale(1.02);
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-          background: rgb(var(--v-theme-surface));
-          z-index: 100;
-        }
-      }
-
-      .drag-handle {
-        cursor: grab;
-        opacity: 0.6;
-        transition: opacity 0.2s ease;
-
-        &:active {
-          cursor: grabbing;
-        }
-
-        &:hover {
-          opacity: 1;
-        }
-      }
+    
+    &.sidebar-open {
+      transform: translateX(0);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
     }
   }
 
-  .editor-wrapper {
+  .content-area {
+    flex: 1;
+    overflow: hidden;
+    background: white;
+    position: relative;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 64px); // înălțimea totală minus header
-    background: white;
+  }
+  
+  .editor-toolbar {
+    background: #f6f8fa;
+    border-bottom: 1px solid #e1e4e8;
+    z-index: 1;
+  }
+  
+  .editor-content {
+    flex: 1;
+    overflow: auto;
 
-    .editor-toolbar {
-      background: #f6f8fa;
-      border-bottom: 1px solid #e1e4e8;
-      padding: 8px;
-      
-      &::-webkit-scrollbar {
-        height: 4px;
-      }
-
-      &::-webkit-scrollbar-thumb {
-        background: #dfe2e5;
-        border-radius: 4px;
-      }
-
-      :deep(.v-btn) {
-        height: 28px;
-        min-width: 28px;
-        padding: 0 4px;
-        
-        .v-btn__content {
-          font-size: 14px;
-        }
-        
-        &:hover {
-          background-color: rgba(9, 105, 218, 0.1);
-        }
-        
-        &.v-btn--active {
-          background-color: rgba(9, 105, 218, 0.15);
-        }
-      }
-
-      @media (max-width: 600px) {
-        .v-btn-group {
-          margin-right: 4px !important;
-        }
-
-        .v-divider {
-          margin: 0 4px !important;
-        }
-      }
-    }
-
-    .editor-content {
-      height: calc(100% - 44px); // înălțimea totală minus toolbar
-      position: relative;
-      
-      :deep(.documentation-editor) {
+    :deep(.documentation-editor) {
         height: 100%;
         
         .ProseMirror {
@@ -1249,37 +1425,135 @@ $github-colors: (
             font-size: 85%;
             font-family: 'JetBrains Mono', 'SF Mono', monospace;
           }
+
+          table {
+            border-collapse: collapse;
+            margin: 0;
+            overflow: hidden;
+            table-layout: fixed;
+            width: 100%;
+
+            td,
+            th {
+              border: 1px solid var(--gray-3);
+              box-sizing: border-box;
+              min-width: 1em;
+              padding: 6px 8px;
+              position: relative;
+              vertical-align: top;
+
+              > * {
+                margin-bottom: 0;
+              }
+            }
+
+            th {
+              background-color: var(--gray-1);
+              font-weight: bold;
+              text-align: left;
+            }
+
+            .selectedCell:after {
+              background: var(--gray-2);
+              content: "";
+              left: 0; right: 0; top: 0; bottom: 0;
+              pointer-events: none;
+              position: absolute;
+              z-index: 2;
+            }
+
+            .column-resize-handle {
+              background-color: var(--purple);
+              bottom: -2px;
+              pointer-events: none;
+              position: absolute;
+              right: -2px;
+              top: 0;
+              width: 4px;
+            }
+          }
+
+          .tableWrapper {
+            margin: 1.5rem 0;
+            overflow-x: auto;
+          }
+
+          &.resize-cursor {
+            cursor: ew-resize;
+            cursor: col-resize;
+          }
         }
+    }
+  }
+
+  .comments-sidebar,
+  .search-sidebar {
+    width: 350px;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    right: 0;
+    border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    background-color: rgb(var(--v-theme-surface));
+    overflow-y: auto;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+  }
+
+  .search-results {
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+      
+      &:hover {
+        background: #a8a8a8;
       }
     }
   }
 
-  // Overlay pentru mobile
-  .sidebar-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 99;
-    animation: fadeIn 0.2s ease;
+  .search-result-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #e1e4e8;
+    
+    &:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+      border-color: #0366d6;
+    }
+    
+    .search-snippet {
+      font-size: 0.875rem;
+      color: #586069;
+      
+      mark {
+        background-color: #fff8c5;
+        color: #24292e;
+        padding: 0 2px;
+        border-radius: 2px;
+      }
+    }
   }
 
-  // Animație pentru overlay
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  // Ajustări pentru header pe mobile
-  .header {
-    .v-btn--icon {
-      margin-left: -8px; // Aliniere mai bună pentru butonul de menu
+  .date-filter-btn {
+    min-width: 120px;
+    border-color: #e1e4e8;
+    color: #24292e;
+    
+    &:hover {
+      border-color: #0366d6;
     }
   }
 }

@@ -563,6 +563,15 @@ const getWeeklyProgressDisplay = (entry) => {
   
   return `${hours}h ${minutes}m / ${limitDisplay}`
 }
+
+// Adaugă un watcher pentru isDocumentationDialogVisible
+watch(isDocumentationDialogVisible, (newValue, oldValue) => {
+  // Dacă dialogul tocmai s-a închis (era deschis și acum e închis)
+  if (oldValue === true && newValue === false) {
+    // Reîncarcă pagina complet
+    window.location.reload()
+  }
+})
 </script>
 
 <template>
