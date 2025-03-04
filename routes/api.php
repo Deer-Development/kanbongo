@@ -59,4 +59,5 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
     Route::get('/container/documentation-tab/{tab}', [DocumentationController::class, 'show']);
     Route::put('/container/documentation-tab/{tab}', [DocumentationController::class, 'update']);
     Route::delete('/container/documentation-tab/{tab}', [DocumentationController::class, 'destroy']);
+    Route::put('/container/documentation-tabs/order', [DocumentationController::class, 'updateOrder']);
 });

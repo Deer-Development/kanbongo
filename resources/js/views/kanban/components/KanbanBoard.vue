@@ -402,14 +402,14 @@ defineExpose({
     </div>
   </div>
 
-  <EditTimerDialog
+  <!-- <EditTimerDialog
     v-model:is-dialog-visible="isEditTimerDialogVisible"
     v-model:member-details="memberDetails"
     v-model:task-id="taskId"
     v-model:task-name="taskName"
     @form-submitted="closeDialog"
     @unassign-member="memberUnassigned"
-  />
+  /> -->
 </template>
 
 <style lang="scss">

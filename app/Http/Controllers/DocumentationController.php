@@ -67,4 +67,21 @@ class DocumentationController extends BaseController
             'Documentation tab deleted successfully'
         );
     }
+
+    public function updateOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'tabs' => 'required|array',
+            'tabs.*' => 'required|integer|exists:documentation_tabs,id',
+        ]);
+
+        foreach ($validated['tabs'] as $index => $tabId) {
+            DocumentationTab::where('id', $tabId)->update(['order' => $index]);
+        }
+
+        return $this->successResponse(
+            null,
+            'Documentation tabs order updated successfully'
+        );
+    }
 } 

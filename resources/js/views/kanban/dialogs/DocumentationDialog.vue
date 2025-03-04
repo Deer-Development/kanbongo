@@ -24,6 +24,14 @@ import { FileHandler } from '@tiptap-pro/extension-file-handler'
 import { Emoji, gitHubEmojis } from '@tiptap-pro/extension-emoji'
 import suggestionEmojis from "@/components/messages/suggestionEmojis"
 import { useDebounceFn } from '@vueuse/core'
+import {
+  animations,
+  handleEnd,
+  performTransfer,
+  remapNodes
+} from '@formkit/drag-and-drop'
+import { dragAndDrop } from '@formkit/drag-and-drop/vue'
+import DeleteConfirmDialog from '@/components/dialogs/DeleteConfirmDialog.vue'
 
 const props = defineProps({
   isDialogVisible: Boolean,
@@ -54,6 +62,12 @@ const hasUnsavedChanges = ref(false)
 const isAutoSaving = ref(false)
 const lastSavedAt = ref(null)
 const initialContent = ref('')
+const refTabsList = ref()
+const showDeleteDialog = ref(false)
+const tabToDelete = ref(null)
+const showRenameDialog = ref(false)
+const tabToRename = ref(null)
+const newName = ref('')
 
 const editor = useEditor({
   content: '',
@@ -264,9 +278,7 @@ const loadTabs = async () => {
 
 const selectTab = async (tab) => {
   if (hasUnsavedChanges.value) {
-    if (await confirm('You have unsaved changes. Do you want to save them before switching tabs?')) {
-      await saveChanges()
-    }
+    await saveContent()
   }
   
   activeTab.value = tab
@@ -291,6 +303,8 @@ const createNewTab = async () => {
     await selectTab(response.data)
     showNewTabDialog.value = false
     newTabName.value = ''
+
+    remapNodes(refTabsList.value)
   } catch (error) {
     console.error('Failed to create tab:', error)
   } finally {
@@ -299,21 +313,55 @@ const createNewTab = async () => {
 }
 
 const deleteTab = async (tab) => {
-  if (!confirm('Are you sure you want to delete this page?')) return
-  
+  tabToDelete.value = tab
+  showDeleteDialog.value = true
+}
+
+const handleDeleteConfirm = async () => {
   try {
-    await $api(`/container/documentation-tab/${tab.id}`, {
+    await $api(`/container/documentation-tab/${tabToDelete.value.id}`, {
       method: 'DELETE'
     })
-    const index = tabs.value.findIndex(t => t.id === tab.id)
+    const index = tabs.value.findIndex(t => t.id === tabToDelete.value.id)
     if (index !== -1) {
       tabs.value.splice(index, 1)
-      if (activeTab.value?.id === tab.id) {
+      if (activeTab.value?.id === tabToDelete.value.id) {
         activeTab.value = tabs.value[0] || null
       }
     }
+
+    remapNodes(refTabsList.value)
   } catch (error) {
     console.error('Failed to delete tab:', error)
+  }
+}
+
+const renameTab = (tab) => {
+  tabToRename.value = tab
+  newName.value = tab.name
+  showRenameDialog.value = true
+}
+
+const handleRename = async () => {
+  try {
+    isSaving.value = true
+    await $api(`/container/documentation-tab/${tabToRename.value.id}`, {
+      method: 'PUT',
+      body: {
+        name: newName.value
+      }
+    })
+    
+    const tab = tabs.value.find(t => t.id === tabToRename.value.id)
+    if (tab) {
+      tab.name = newName.value
+    }
+    
+    showRenameDialog.value = false
+  } catch (error) {
+    console.error('Failed to rename tab:', error)
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -352,22 +400,9 @@ watch(() => props.isDialogVisible, async (newVal) => {
   }
 })
 
-const formatLastSaved = (date) => {
-  if (!date) return ''
-  const now = new Date()
-  const diff = Math.floor((now - date) / 1000)
-  
-  if (diff < 60) return 'Saved just now'
-  if (diff < 3600) return `Saved ${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `Saved ${Math.floor(diff / 3600)}h ago`
-  return `Saved on ${date.toLocaleDateString()}`
-}
-
 const handleClose = async () => {
   if (hasUnsavedChanges.value) {
-    if (await confirm('You have unsaved changes. Do you want to save them before closing?')) {
-      await saveChanges()
-    }
+    await saveContent()
   }
   emit('update:isDialogVisible', false)
 }
@@ -416,6 +451,38 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
+
+dragAndDrop({
+  parent: refTabsList,
+  values: tabs,
+  group: 'documentation-tabs',
+  draggable: child => child.classList.contains('tab-item'),
+  dragHandle: '.drag-handle',
+  plugins: [animations()],
+  performTransfer: (state, data) => {
+    performTransfer(state, data)
+  },
+  handleEnd: async data => {
+    handleEnd(data)
+    await updateTabsOrder()
+  },
+})
+
+const updateTabsOrder = async () => {
+  try {
+    isSaving.value = true
+    await $api('/container/documentation-tabs/order', {
+      method: 'PUT',
+      body: {
+        tabs: tabs.value.map(tab => tab.id)
+      }
+    })
+  } catch (error) {
+    console.error('Failed to update tabs order:', error)
+  } finally {
+    isSaving.value = false
+  }
+}
 </script>
 
 <template>
@@ -443,18 +510,6 @@ onBeforeUnmount(() => {
         <span class="text-h6 font-weight-medium">Documentation</span>
         <VSpacer />
         <div class="d-flex align-center gap-2">
-          <VBtn
-            v-if="hasUnsavedChanges"
-            :loading="isSaving"
-            color="primary"
-            size="small"
-            variant="tonal"
-            class="save-btn"
-            @click="saveChanges"
-          >
-            <VIcon size="18" class="me-1">tabler-device-floppy</VIcon>
-            Save changes
-          </VBtn>
           <VBtn
             icon
             size="32"
@@ -499,6 +554,7 @@ onBeforeUnmount(() => {
             </div>
 
             <VList
+              ref="refTabsList"
               density="compact"
               nav
               class="pages-list rounded-lg"
@@ -510,11 +566,20 @@ onBeforeUnmount(() => {
                 :active="activeTab?.id === tab.id"
                 :title="tab.name"
                 rounded="lg"
-                class="mb-1"
+                class="mb-1 tab-item"
                 @click="selectTab(tab)"
               >
                 <template #prepend>
-                  <VIcon size="18" class="me-2">tabler-file-text</VIcon>
+                  <VIcon
+                    size="18"
+                    icon="tabler-grip-vertical"
+                    class="me-2 drag-handle"
+                  />
+                  <VIcon
+                    size="18"
+                    icon="tabler-file-text"
+                    class="me-2"
+                  />
                 </template>
                 <template #append>
                   <VMenu location="bottom end" :close-on-content-click="true">
@@ -530,6 +595,12 @@ onBeforeUnmount(() => {
                       </VBtn>
                     </template>
                     <VList density="compact" class="menu-list" min-width="120">
+                      <VListItem
+                        @click="renameTab(tab)"
+                        prepend-icon="tabler-edit"
+                        title="Rename"
+                      />
+                      <VDivider />
                       <VListItem
                         @click="deleteTab(tab)"
                         prepend-icon="tabler-trash"
@@ -673,6 +744,55 @@ onBeforeUnmount(() => {
         </VCardActions>
       </VCard>
     </VDialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <DeleteConfirmDialog
+      v-model:isDialogVisible="showDeleteDialog"
+      :loading="isSaving"
+      title="Delete page"
+      :item-name="tabToDelete?.name"
+      item-type="page"
+      message="This action cannot be undone. This will permanently delete this page and all its content."
+      @confirm="handleDeleteConfirm"
+    />
+
+    <!-- Rename Dialog -->
+    <VDialog
+      v-model="showRenameDialog"
+      max-width="400"
+      persistent
+      class="rename-dialog"
+    >
+      <VCard>
+        <VCardTitle class="pa-4">Rename page</VCardTitle>
+        <VCardText class="pt-2">
+          <VTextField
+            v-model="newName"
+            label="Page name"
+            variant="outlined"
+            hide-details
+            autofocus
+          />
+        </VCardText>
+        <VCardActions class="pa-4 pt-0">
+          <VSpacer />
+          <VBtn
+            variant="tonal"
+            @click="showRenameDialog = false"
+          >
+            Cancel
+          </VBtn>
+          <VBtn
+            color="primary"
+            :loading="isSaving"
+            :disabled="!newName || newName === tabToRename?.name"
+            @click="handleRename"
+          >
+            Save
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </VDialog>
 </template>
 
@@ -730,27 +850,27 @@ $github-colors: (
     }
 
     .pages-list {
-      :deep(.v-list-item) {
-        min-height: 36px;
-      }
-
-      :deep(.v-list-item--active) {
-        background: #0969da15;
-        color: #0969da;
-        font-weight: 500;
+      .tab-item {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
         
-        .v-icon {
-          color: #0969da;
+        &.dragging {
+          transform: scale(1.02);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+          background: rgb(var(--v-theme-surface));
+          z-index: 100;
         }
       }
 
-      :deep(.v-list-item) {
-        .action-btn {
-          opacity: 0;
-          transition: opacity 0.2s;
+      .drag-handle {
+        cursor: grab;
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+
+        &:active {
+          cursor: grabbing;
         }
 
-        &:hover .action-btn {
+        &:hover {
           opacity: 1;
         }
       }
@@ -971,5 +1091,12 @@ $github-colors: (
 .empty-state {
   height: calc(100vh - 180px);
   background: #f6f8fa15;
+}
+
+.drop-preview {
+  border: 2px dashed rgba(var(--v-theme-primary), 0.4);
+  margin: 4px 0;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-primary), 0.05);
 }
 </style> 
