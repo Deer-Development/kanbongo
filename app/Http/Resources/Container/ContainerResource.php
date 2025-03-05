@@ -140,7 +140,11 @@ class ContainerResource extends JsonResource
                         'task_deleted_at' => $lastTimeEntry->task?->deleted_at,
                     ] : null,
                 ];
-            });
+            })
+            ->sortByDesc(function ($user) {
+                return $user['last_time_entry']['end'] ?? null;
+            })
+            ->values();
 
         return [
             'id' => $this->id,

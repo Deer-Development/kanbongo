@@ -362,6 +362,12 @@
     "useTemplateRef": true,
     "useAuthApi": true,
     "maxLengthValidator": true,
-    "useAvailableSpace": true
+    "useAvailableSpace": true,
+    "formatCurrency": true,
+    "formatDuration": true,
+    "formatHours": true,
+    "getAvatarColor": true,
+    "timeAgo": true,
+    "formatPercent": true
   }
 }

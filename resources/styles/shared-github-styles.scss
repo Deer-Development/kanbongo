@@ -34,7 +34,6 @@ $modern-colors: (
   height: 24px;
   border-radius: 6px;
   background: transparent;
-  border: 1px solid map-get($github-colors, border);
   cursor: pointer;
   transition: all 0.15s ease;
   

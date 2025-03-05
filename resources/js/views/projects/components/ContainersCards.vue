@@ -87,12 +87,10 @@ const goToBoard = board => {
   if (board.is_active) {
     // Prevent any race conditions by using nextTick
     nextTick(() => {
-      router.push({ 
+      router.replace({ 
         name: 'container-view', 
-        params: { 
-          id: projectDataLocal.value.id, 
-          containerId: board.id 
-        }
+        params: { id: projectDataLocal.value.id, containerId: board.id },
+        query: { _: Date.now() }
       })
     })
   }

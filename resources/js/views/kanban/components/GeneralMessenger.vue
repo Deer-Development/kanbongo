@@ -86,34 +86,6 @@ watchDebounced(
   { debounce: 500, maxWait: 1000 },
 )
 
-const getTotalTasks = computed(() => {
-  return boardData.value.boards?.reduce((acc, board) => 
-    acc + (board.tasks?.length || 0), 0) || 0
-})
-
-const getTotalTrackedTime = computed(() => {
-  return boardData.value.boards?.reduce((acc, board) => {
-    return acc + board.tasks?.reduce((taskAcc, task) => 
-      taskAcc + (task.tracked_time?.trackedTime || 0), 0) || 0
-  }, 0) || 0
-})
-
-const getTotalComments = computed(() => {
-  return boardData.value.boards?.reduce((acc, board) => {
-    return acc + board.tasks?.reduce((taskAcc, task) => 
-      taskAcc + (task.comments_count || 0), 0) || 0
-  }, 0) || 0
-})
-
-const formatTime = (seconds) => {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours >= 1000) {
-    return `${(hours/1000).toFixed(1)}k h`
-  }
-  return `${hours}h`
-}
-
 defineExpose({ fetchBoardActivities })
 </script>
 
@@ -211,54 +183,11 @@ defineExpose({ fetchBoardActivities })
                 </div>
               </div>
             </template>
-            <template v-else>
-              <div class="stat-card">
-                <div class="stat-icon" :style="{ backgroundColor: '#FFF3E0' }">
-                  <VIcon color="primary">tabler-list-check</VIcon>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-value">{{ boardData.boards?.length || 0 }}</span>
-                  <span class="stat-label">Lists</span>
-                </div>
-              </div>
-              
-              <div class="stat-card">
-                <div class="stat-icon" :style="{ backgroundColor: '#F3E5F5' }">
-                  <VIcon color="#800080">tabler-clipboard-list</VIcon>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-value">{{ getTotalTasks }}</span>
-                  <span class="stat-label">Tasks</span>
-                </div>
-              </div>
-
-              <div class="stat-card">
-                <div class="stat-icon" :style="{ backgroundColor: '#E8F5E9' }">
-                  <VIcon color="success">tabler-clock-play</VIcon>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-value time-value">{{ formatTime(getTotalTrackedTime) }}</span>
-                  <span class="stat-label">Total Time</span>
-                </div>
-              </div>
-
-              <div class="stat-card">
-                <div class="stat-icon" :style="{ backgroundColor: '#FFF3E0' }">
-                  <VIcon color="warning">tabler-messages</VIcon>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-value">{{ getTotalComments }}</span>
-                  <span class="stat-label">Comments</span>
-                </div>
-              </div>
-            </template>
           </div>
         </div>
 
-        <VDivider />
-
         <!-- Tasks List -->
-        <div class="tasks-section px-4 py-3">
+        <div class="tasks-section px-4 py-1">
           <template v-if="isLoading">
             <div v-for="n in 3" :key="n" class="board-section mb-4">
               <div class="board-header d-flex align-center gap-2 mb-2">

@@ -538,7 +538,6 @@ const getWeeklyProgressPercent = (entry) => {
     }
   }
   
-  // Fallback la calculul static
   return (entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100
 }
 
@@ -788,7 +787,6 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
             <VIcon
               left
               size="16"
-              color="warning"
             >
               tabler-message
             </VIcon>
@@ -802,7 +800,6 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
             <VIcon
               left
               size="16"
-              color="info"
             >
               tabler-credit-card
             </VIcon>
@@ -816,7 +813,6 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
             <VIcon
               left
               size="16"
-              color="success"
             >
               tabler-activity
             </VIcon>
@@ -830,7 +826,6 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
             <VIcon
               left
               size="16"
-              color="info"
             >
               tabler-file-text
             </VIcon>
@@ -1071,9 +1066,9 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
 
 .filters-container {
   background: #ffffff;
-  padding: 4px;
+  padding: 2px;
   border-radius: 6px;
-  border: 1px solid #d0d7de;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .filter-chip {

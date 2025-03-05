@@ -76,3 +76,5 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
 
     Route::get('/container/{container}/documentation-search', [DocumentationController::class, 'search']);
 });
+
+Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->middleware('auth:sanctum');
