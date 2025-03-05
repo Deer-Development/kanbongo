@@ -23,6 +23,10 @@ const props = defineProps({
   isLoading: {
     type: Boolean,
     default: false
+  },
+  hasOwnedContainers: {
+    type: Boolean,
+    default: false
   }
 })
 </script>
@@ -75,7 +79,7 @@ const props = defineProps({
     </VCol>
     
     <!-- Spending Card -->
-    <VCol cols="12" md="6">
+    <VCol v-if="hasOwnedContainers" cols="12" md="6">
       <VCard class="summary-card spending-card" :loading="isLoading" elevation="0" border>
         <VCardItem>
           <template #prepend>
@@ -90,31 +94,52 @@ const props = defineProps({
               size="small"
               :color="spending?.total_spending > 0 ? 'error' : 'secondary'"
               variant="flat"
-              class="trend-chip"
+              class="ml-2"
             >
-              {{ formatCurrency(spending?.total_spending || 0) }}
+              {{ formatCurrency(spending?.grand_total || 0) }}
             </VChip>
           </VCardTitle>
         </VCardItem>
         
-        <VCardText>
-          <div class="summary-grid">
-            <div class="stat-item">
-              <span class="stat-label">Paid Spending</span>
-              <span class="stat-value">{{ formatCurrency(spending?.total_spending || 0) }}</span>
-              <span v-if="spending?.pending_spending" class="pending-value">
-                +{{ formatCurrency(spending?.pending_spending) }} pending
-              </span>
+        <template v-if="spending?.containers?.length === 0">
+          <VCardText class="empty-state">
+            <VIcon
+              size="40"
+              icon="tabler-mood-empty"
+              color="secondary"
+              class="mb-2"
+            />
+            <div class="empty-text">
+              <p class="text-medium-emphasis">
+                You are not an owner of any boards yet.
+              </p>
+              <p class="text-caption">
+                Spending data will be available when you own boards with active time entries.
+              </p>
             </div>
-            
-            <div class="stat-item">
-              <span class="stat-label">Total Budget Used</span>
-              <span class="stat-value">
-                {{ formatCurrency((spending?.total_spending || 0) + (spending?.pending_spending || 0)) }}
-              </span>
+          </VCardText>
+        </template>
+        
+        <template v-else>
+          <VCardText>
+            <div class="summary-grid">
+              <div class="stat-item">
+                <span class="stat-label">Paid Spending</span>
+                <span class="stat-value">{{ formatCurrency(spending?.total_spending || 0) }}</span>
+                <span v-if="spending?.pending_spending" class="pending-value">
+                  +{{ formatCurrency(spending?.pending_spending) }} pending
+                </span>
+              </div>
+              
+              <div class="stat-item">
+                <span class="stat-label">Total Budget Used</span>
+                <span class="stat-value">
+                  {{ formatCurrency((spending?.total_spending || 0) + (spending?.pending_spending || 0)) }}
+                </span>
+              </div>
             </div>
-          </div>
-        </VCardText>
+          </VCardText>
+        </template>
       </VCard>
     </VCol>
   </VRow>
@@ -122,9 +147,7 @@ const props = defineProps({
 
 <style lang="scss" scoped>
 .financial-summary {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  
+  margin-top: 1.5rem;
   .summary-card {
     transition: all 0.2s ease;
     border: 1px solid #d0d7de !important;
@@ -257,6 +280,27 @@ const props = defineProps({
       width: 120px;
       height: 16px;
       border-radius: 4px;
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    
+    .empty-text {
+      margin-top: 0.5rem;
+      
+      p {
+        margin: 0;
+        
+        &:not(:last-child) {
+          margin-bottom: 0.25rem;
+        }
+      }
     }
   }
 }

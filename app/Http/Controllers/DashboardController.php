@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Container;
-use App\Models\Project;
 use App\Models\TimeEntry;
-use App\Models\Paycheck;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -17,32 +15,25 @@ class DashboardController extends BaseController
     public function index(Request $request): JsonResponse
     {
         $user = Auth::user();
-        $period = $request->input('period', 'month');
-        $startDate = null;
-        $endDate = null;
+        $period = $request->get('period', 'current_month');
+        $dateRange = null;
 
-        // Set date range based on period
-        switch ($period) {
-            case 'week':
-                $startDate = Carbon::now()->startOfWeek();
-                $endDate = Carbon::now()->endOfWeek();
-                break;
-            case 'month':
-                $startDate = Carbon::now()->startOfMonth();
-                $endDate = Carbon::now()->endOfMonth();
-                break;
-            case 'year':
-                $startDate = Carbon::now()->startOfYear();
-                $endDate = Carbon::now()->endOfYear();
-                break;
-            case 'custom':
-                $dateRange = $request->input('date_range');
-                if ($dateRange) {
-                    [$start, $end] = array_pad(explode(' to ', $dateRange), 2, null);
-                    $startDate = Carbon::parse($start)->startOfDay();
-                    $endDate = $end ? Carbon::parse($end)->endOfDay() : now()->endOfDay();
-                }
-                break;
+        if ($period === 'custom') {
+            $dateRange = $request->get('date_range');
+            if (!$dateRange || count($dateRange) !== 2) {
+                return $this->errorResponse('Invalid date range provided', 422);
+            }
+            
+            $startDate = Carbon::parse($dateRange[0])->startOfDay();
+            $endDate = Carbon::parse($dateRange[1])->endOfDay();
+        } else {
+            $dateRange = $this->getDateRangeForPeriod($period);
+            if (!$dateRange) {
+                return $this->errorResponse('Invalid period provided', 422);
+            }
+            
+            $startDate = $dateRange['start'];
+            $endDate = $dateRange['end'];
         }
 
         // Get user's containers (as member)
@@ -113,12 +104,8 @@ class DashboardController extends BaseController
             // Get time entries for this user in this container
             $timeEntries = TimeEntry::where('user_id', $userId)
                 ->where('container_id', $container->id)
-                ->when($startDate, function ($query) use ($startDate) {
-                    return $query->where('start', '>=', $startDate);
-                })
-                ->when($endDate, function ($query) use ($endDate) {
-                    return $query->where('end', '<=', $endDate);
-                })
+                ->where('start', '>=', $startDate)
+                ->where('end', '<=', $endDate)
                 ->whereNotNull('end')
                 ->get();
 
@@ -136,43 +123,49 @@ class DashboardController extends BaseController
                 if ($entry->is_paid) {
                     $containerPaidTime += $trackedTime;
                     $containerPaidAmount += $amount;
+                    $totalIncome += $amount;
+                    $totalHours += $trackedHours;
                 } else {
                     $containerUnpaidTime += $trackedTime;
                     $containerUnpaidAmount += $amount;
+                    $pendingIncome += $amount;
+                    $pendingHours += $trackedHours;
                 }
             }
 
-            $containerPaidHours = $containerPaidTime / 3600;
-            $containerUnpaidHours = $containerUnpaidTime / 3600;
-
-            if ($containerPaidHours > 0 || $containerUnpaidHours > 0) {
-                $containerIncomes[] = [
-                    'id' => $container->id,
-                    'name' => $container->name,
-                    'project_name' => $container->project->name,
-                    'paid_hours' => round($containerPaidHours, 2),
-                    'paid_amount' => round($containerPaidAmount, 2),
-                    'unpaid_hours' => round($containerUnpaidHours, 2),
-                    'unpaid_amount' => round($containerUnpaidAmount, 2),
-                    'total_hours' => round($containerPaidHours + $containerUnpaidHours, 2),
-                    'total_amount' => round($containerPaidAmount + $containerUnpaidAmount, 2),
-                    'hourly_rate' => $member->billable_rate,
-                ];
-
-                $totalIncome += $containerPaidAmount;
-                $totalHours += $containerPaidHours;
-                $pendingIncome += $containerUnpaidAmount;
-                $pendingHours += $containerUnpaidHours;
+            // Calculate total hours for this period
+            $totalHoursThisMonth = 0;
+            foreach ($timeEntries as $entry) {
+                $trackedTime = Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end));
+                $totalHoursThisMonth += $trackedTime / 3600;
             }
+
+            // Skip containers with no activity
+            if ($containerPaidTime === 0 && $containerUnpaidTime === 0) {
+                continue;
+            }
+
+            $containerIncomes[] = [
+                'id' => $container->id,
+                'name' => $container->name,
+                'project' => $container->project,
+                'project_name' => $container->project->name,
+                'paid_time' => $this->formatTime($containerPaidTime),
+                'paid_amount' => $containerPaidAmount,
+                'unpaid_time' => $this->formatTime($containerUnpaidTime),
+                'unpaid_amount' => $containerUnpaidAmount,
+                'total_hours' => round($totalHoursThisMonth, 2),
+                'total_amount' => $containerPaidAmount + $containerUnpaidAmount
+            ];
         }
 
         return [
             'containers' => $containerIncomes,
-            'total_income' => round($totalIncome, 2),
-            'total_hours' => round($totalHours, 2),
-            'pending_income' => round($pendingIncome, 2),
-            'pending_hours' => round($pendingHours, 2),
-            'grand_total' => round($totalIncome + $pendingIncome, 2),
+            'total_income' => $totalIncome,
+            'total_hours' => $totalHours,
+            'pending_income' => $pendingIncome,
+            'pending_hours' => $pendingHours,
+            'grand_total' => $totalIncome + $pendingIncome
         ];
     }
 
@@ -183,95 +176,105 @@ class DashboardController extends BaseController
         $pendingSpending = 0;
 
         foreach ($containers as $container) {
-            // Eager load all required relationships for better performance
-            $container->load([
-                'tasks.timeEntries' => function ($query) use ($startDate, $endDate) {
-                    $query->whereNotNull('end');
-                    $query->where(function ($query) use ($startDate, $endDate) {
-                        if ($startDate) {
-                            $query->where('start', '>=', $startDate);
-                        }
-                        if ($endDate) {
-                            $query->where('end', '<=', $endDate);
-                        }
-                    });
-                },
-                'members.user',
-                'project'
-            ]);
+            $timeEntries = TimeEntry::whereHas('task', function ($query) use ($container) {
+                $query->whereHas('board', function ($query) use ($container) {
+                    $query->where('container_id', $container->id);
+                });
+            })
+                ->where('start', '>=', $startDate)
+                ->where('end', '<=', $endDate)
+                ->whereNotNull('end')
+                ->get();
 
-            $memberStats = [];
+            $containerPaidTime = 0;
             $containerPaidAmount = 0;
+            $containerUnpaidTime = 0;
             $containerUnpaidAmount = 0;
+            $memberStats = [];
 
-            // Process each member's time entries and paychecks
-            foreach ($container->members as $member) {
-                $memberPaidAmount = 0;
-                $memberUnpaidAmount = 0;
-                $memberPaidSeconds = 0;
-                $memberUnpaidSeconds = 0;
+            foreach ($timeEntries as $entry) {
+                $member = $container->members->where('user_id', $entry->user_id)->first();
+                if (!$member) continue;
 
-                // Calculate from time entries
-                foreach ($container->boards as $board) {
-                    foreach ($board->tasks as $task) {
-                        $timeEntries = $task->timeEntries->where('user_id', $member->user_id);
-                        
-                        foreach ($timeEntries as $timeEntry) {
-                            $trackedTime = $this->calculateTrackedTime($timeEntry);
-                            $trackedHours = $trackedTime / 3600;
-                            $amount = $trackedHours * $member->billable_rate;
+                $trackedTime = Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end));
+                $trackedHours = $trackedTime / 3600;
+                $amount = $trackedHours * $member->billable_rate;
 
-                            if ($timeEntry->is_paid) {
-                                $memberPaidSeconds += $trackedTime;
-                                $memberPaidAmount += $timeEntry->amount_paid ?? $amount;
-                            } else {
-                                $memberUnpaidSeconds += $trackedTime;
-                                $memberUnpaidAmount += $amount;
-                            }
-                        }
-                    }
-                }
-
-                // Only include members with activity
-                if ($memberPaidAmount > 0 || $memberUnpaidAmount > 0) {
+                // Initialize member stats if not exists
+                if (!isset($memberStats[$member->user_id])) {
                     $memberStats[$member->user_id] = [
                         'user_id' => $member->user_id,
                         'name' => $member->user->full_name,
-                        'paid_amount' => round($memberPaidAmount, 2),
-                        'paid_hours' => round($memberPaidSeconds / 3600, 2),
-                        'unpaid_amount' => round($memberUnpaidAmount, 2),
-                        'unpaid_hours' => round($memberUnpaidSeconds / 3600, 2),
+                        'paid_time' => 0,
+                        'paid_amount' => 0,
+                        'unpaid_time' => 0,
+                        'unpaid_amount' => 0,
                         'hourly_rate' => $member->billable_rate,
-                        'total_amount' => round($memberPaidAmount + $memberUnpaidAmount, 2),
-                        'total_hours' => round(($memberPaidSeconds + $memberUnpaidSeconds) / 3600, 2),
+                        'total_time' => 0,
+                        'total_amount' => 0
                     ];
-
-                    $containerPaidAmount += $memberPaidAmount;
-                    $containerUnpaidAmount += $memberUnpaidAmount;
                 }
+
+                if ($entry->is_paid) {
+                    $containerPaidTime += $trackedTime;
+                    $containerPaidAmount += $amount;
+                    $totalSpending += $amount;
+                    $memberStats[$member->user_id]['paid_time'] += $trackedTime;
+                    $memberStats[$member->user_id]['paid_amount'] += $amount;
+                } else {
+                    $containerUnpaidTime += $trackedTime;
+                    $containerUnpaidAmount += $amount;
+                    $pendingSpending += $amount;
+                    $memberStats[$member->user_id]['unpaid_time'] += $trackedTime;
+                    $memberStats[$member->user_id]['unpaid_amount'] += $amount;
+                }
+
+                $memberStats[$member->user_id]['total_time'] += $trackedTime;
+                $memberStats[$member->user_id]['total_amount'] += $amount;
             }
 
-            if ($containerPaidAmount > 0 || $containerUnpaidAmount > 0) {
-                $containerSpendings[] = [
-                    'id' => $container->id,
-                    'name' => $container->name,
-                    'project_name' => $container->project->name,
-                    'paid_amount' => round($containerPaidAmount, 2),
-                    'unpaid_amount' => round($containerUnpaidAmount, 2),
-                    'total_amount' => round($containerPaidAmount + $containerUnpaidAmount, 2),
-                    'members' => array_values($memberStats),
-                ];
-
-                $totalSpending += $containerPaidAmount;
-                $pendingSpending += $containerUnpaidAmount;
+            // Format member stats
+            foreach ($memberStats as &$stats) {
+                $stats['paid_time'] = $this->formatTime($stats['paid_time']);
+                $stats['unpaid_time'] = $this->formatTime($stats['unpaid_time']);
+                $stats['total_time'] = $this->formatTime($stats['total_time']);
+                $stats['paid_amount'] = round($stats['paid_amount'], 2);
+                $stats['unpaid_amount'] = round($stats['unpaid_amount'], 2);
+                $stats['total_amount'] = round($stats['total_amount'], 2);
             }
+
+            // Calculate total hours for this period
+            $totalHoursThisPeriod = 0;
+            foreach ($timeEntries as $entry) {
+                $trackedTime = Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end));
+                $totalHoursThisPeriod += $trackedTime / 3600;
+            }
+
+            // Skip containers with no activity
+            if ($containerPaidTime === 0 && $containerUnpaidTime === 0) {
+                continue;
+            }
+
+            $containerSpendings[] = [
+                'id' => $container->id,
+                'name' => $container->name,
+                'project' => $container->project,
+                'project_name' => $container->project->name,
+                'paid_time' => $this->formatTime($containerPaidTime),
+                'paid_amount' => $containerPaidAmount,
+                'unpaid_time' => $this->formatTime($containerUnpaidTime),
+                'unpaid_amount' => $containerUnpaidAmount,
+                'total_hours_this_period' => round($totalHoursThisPeriod, 2),
+                'total_amount' => $containerPaidAmount + $containerUnpaidAmount,
+                'members' => array_values($memberStats)
+            ];
         }
 
         return [
             'containers' => $containerSpendings,
-            'total_spending' => round($totalSpending, 2),
-            'pending_spending' => round($pendingSpending, 2),
-            'grand_total' => round($totalSpending + $pendingSpending, 2),
+            'total_spending' => $totalSpending,
+            'pending_spending' => $pendingSpending,
+            'grand_total' => $totalSpending + $pendingSpending
         ];
     }
 
@@ -310,7 +313,7 @@ class DashboardController extends BaseController
             if (!isset($projectActivity[$projectId])) {
                 $projectActivity[$projectId] = [
                     'id' => $projectId,
-                    'name' => $container->project->name,
+                    'name' => $container->project?->name,
                     'containers' => [],
                     'active_users' => [],
                     'last_activity' => null,
@@ -346,7 +349,6 @@ class DashboardController extends BaseController
                     $query->where('container_id', $container->id);
                 });
             })
-                ->whereNotNull('end')
                 ->where('start', '>=', Carbon::now()->startOfMonth())
                 ->where('end', '<=', Carbon::now()->endOfMonth())
                 ->get();
@@ -380,9 +382,21 @@ class DashboardController extends BaseController
                     'avatar_or_initials' => $entry->user->avatar_or_initials,
                     'started_at' => $entry->start,
                     'duration' => $duration,
+                    'task' => [
+                        'id' => $entry->task_id,
+                        'name' => $entry->task->name,
+                    ],
+                    'board' => [
+                        'id' => $entry->task->board_id,
+                        'name' => $entry->task->board->name,
+                    ],
                     'container' => [
                         'id' => $entry->task->board->container_id,
                         'name' => $entry->task->board->container->name
+                    ],
+                    'project' => [
+                        'id' => $entry->task->board->container->project_id,
+                        'name' => $entry->task->board->container->project->name,
                     ]
                 ];
             }
@@ -507,5 +521,46 @@ class DashboardController extends BaseController
         $secs = $seconds % 60;
 
         return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
+    }
+
+    private function getDateRangeForPeriod($period)
+    {
+        $now = Carbon::now();
+        
+        return match ($period) {
+            'current_week' => [
+                'start' => $now->startOfWeek(),
+                'end' => $now->copy()->endOfWeek(),
+            ],
+            'current_month' => [
+                'start' => $now->startOfMonth(),
+                'end' => $now->copy()->endOfMonth(),
+            ],
+            'current_quarter' => [
+                'start' => $now->startOfQuarter(),
+                'end' => $now->copy()->endOfQuarter(),
+            ],
+            'current_year' => [
+                'start' => $now->startOfYear(),
+                'end' => $now->copy()->endOfYear(),
+            ],
+            'last_week' => [
+                'start' => $now->subWeek()->startOfWeek(),
+                'end' => $now->copy()->endOfWeek(),
+            ],
+            'last_month' => [
+                'start' => $now->subMonth()->startOfMonth(),
+                'end' => $now->copy()->endOfMonth(),
+            ],
+            'last_quarter' => [
+                'start' => $now->subQuarter()->startOfQuarter(),
+                'end' => $now->copy()->endOfQuarter(),
+            ],
+            'last_year' => [
+                'start' => $now->subYear()->startOfYear(),
+                'end' => $now->copy()->endOfYear(),
+            ],
+            default => null,
+        };
     }
 } 

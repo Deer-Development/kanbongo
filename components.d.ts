@@ -7,6 +7,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ActiveUsersList: typeof import('./resources/js/components/dashboard/ActiveUsersList.vue')['default']
     ActivityTimeline: typeof import('./resources/js/components/dashboard/ActivityTimeline.vue')['default']
     AppAutocomplete: typeof import('./resources/js/@core/components/app-form-elements/AppAutocomplete.vue')['default']
     AppBarSearch: typeof import('./resources/js/@core/components/AppBarSearch.vue')['default']

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import DashboardHeader from '@/components/dashboard/DashboardHeader.vue'
 import DashboardTabs from '@/components/dashboard/DashboardTabs.vue'
@@ -8,6 +8,7 @@ import ActivityTimeline from '@/components/dashboard/ActivityTimeline.vue'
 import IncomeTable from '@/components/dashboard/IncomeTable.vue'
 import SpendingTable from '@/components/dashboard/SpendingTable.vue'
 import ProjectsGrid from '@/components/dashboard/ProjectsGrid.vue'
+import ActiveUsersList from '@/components/dashboard/ActiveUsersList.vue'
 
 // State
 const router = useRouter()
@@ -28,22 +29,35 @@ const dashboardData = ref({
     grand_total: 0
   },
   active_projects: [],
-  recent_activity: []
+  recent_activity: [],
+  active_users: []
 })
 
-const selectedPeriod = ref('month')
+const selectedPeriod = ref('current_month')
 const customDateRange = ref(null)
 const showDatePicker = ref(false)
 
 // Tabs
 const activeTab = ref('overview')
-const tabs = [
-  { value: 'overview', label: 'Overview', icon: 'tabler-dashboard' },
-  { value: 'income', label: 'Income', icon: 'tabler-cash' },
-  { value: 'spending', label: 'Spending', icon: 'tabler-cash-off' },
-  { value: 'projects', label: 'Projects', icon: 'tabler-briefcase' },
-  { value: 'activity', label: 'Activity', icon: 'tabler-history' }
-]
+const hasOwnedContainers = computed(() => {
+  return dashboardData.value?.spending?.containers?.length > 0
+})
+
+const tabs = computed(() => {
+  const defaultTabs = [
+    { value: 'overview', label: 'Overview', icon: 'tabler-dashboard' },
+    { value: 'income', label: 'Income', icon: 'tabler-cash' },
+    { value: 'projects', label: 'Projects', icon: 'tabler-briefcase' },
+    { value: 'activity', label: 'Activity', icon: 'tabler-history' }
+  ]
+  
+  // Add spending tab only if user has owned containers
+  if (hasOwnedContainers.value) {
+    defaultTabs.splice(2, 0, { value: 'spending', label: 'Spending', icon: 'tabler-cash-off' })
+  }
+  
+  return defaultTabs
+})
 
 // Fetch dashboard data
 const fetchDashboardData = async () => {
@@ -102,6 +116,12 @@ watch(customDateRange, async () => {
 onMounted(() => {
   fetchDashboardData()
 })
+
+const activeUsers = computed(() => {
+  return dashboardData.value.active_projects
+    ?.flatMap(project => project.active_users || [])
+    ?.sort((a, b) => new Date(b.started_at) - new Date(a.started_at))
+})
 </script>
 
 <template>
@@ -129,16 +149,29 @@ onMounted(() => {
       <div class="tab-content">
         <!-- Overview Tab -->
         <template v-if="activeTab === 'overview'">
-          <FinancialSummary
-            :income="dashboardData?.income"
-            :spending="dashboardData?.spending"
-            :is-loading="isLoading"
-          />
-          
-          <ActivityTimeline
-            :activities="dashboardData?.recent_activity"
-            :limit="5"
-          />
+          <VContainer fluid class="pa-0">
+            <VRow>
+              <VCol cols="12">
+                <FinancialSummary
+                  :income="dashboardData?.income"
+                  :spending="dashboardData?.spending"
+                  :is-loading="isLoading"
+                  :has-owned-containers="hasOwnedContainers"
+                />
+              </VCol>
+              <VCol cols="12" lg="6">
+                <ActiveUsersList
+                  :users="activeUsers"
+                />
+              </VCol>
+              <VCol cols="12" lg="6">
+                <ActivityTimeline
+                  :activities="dashboardData?.recent_activity"
+                  :limit="5"
+                />
+              </VCol>
+            </VRow>
+          </VContainer>
         </template>
         
         <!-- Income Tab -->
@@ -151,13 +184,14 @@ onMounted(() => {
         />
         
         <!-- Spending Tab -->
-        <SpendingTable
-          v-if="activeTab === 'spending'"
-          :containers="dashboardData?.spending?.containers"
-          :totals="dashboardData?.spending"
-          :is-loading="isLoading"
-          @navigate="navigateToContainer"
-        />
+        <template v-if="activeTab === 'spending' && hasOwnedContainers">
+          <SpendingTable
+            :containers="dashboardData?.spending?.containers"
+            :totals="dashboardData?.spending"
+            :is-loading="isLoading"
+            @navigate="navigateToContainer"
+          />
+        </template>
         
         <!-- Projects Tab -->
         <ProjectsGrid
@@ -180,4 +214,36 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 @import '@styles/dashboard-style.scss';
+
+.empty-state {
+  padding: 2rem;
+  
+  .empty-card {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    
+    .empty-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 3rem 2rem;
+      
+      .empty-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #24292f;
+        margin: 0 0 0.5rem;
+      }
+      
+      .empty-description {
+        font-size: 0.875rem;
+        color: #57606a;
+        margin: 0;
+        max-width: 400px;
+      }
+    }
+  }
+}
 </style>
