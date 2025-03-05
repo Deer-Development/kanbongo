@@ -41,6 +41,7 @@ const progressUpdateInterval = ref(null)
 const toast = useToast()
 const isActivityDrawerOpen = ref(false)
 const isDocumentationDialogVisible = ref(false)
+const documentationDialogKey = ref(0)
 
 const refetchKanban = async () => {
   const wasOpen = isMessengerDrawerOpen.value
@@ -563,12 +564,11 @@ const getWeeklyProgressDisplay = (entry) => {
   return `${hours}h ${minutes}m / ${limitDisplay}`
 }
 
-// Adaugă un watcher pentru isDocumentationDialogVisible
 watch(isDocumentationDialogVisible, (newValue, oldValue) => {
-  // Dacă dialogul tocmai s-a închis (era deschis și acum e închis)
+  // Dacă dialogul tocmai s-a închis
   if (oldValue === true && newValue === false) {
-    // Reîncarcă pagina complet
-    window.location.reload()
+    // Incrementăm key-ul pentru a forța remontarea componentei
+    documentationDialogKey.value++
   }
 })
 </script>
@@ -915,6 +915,7 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
     />
     <DocumentationDialog
       v-if="kanban"
+      :key="documentationDialogKey"
       v-model:is-dialog-visible="isDocumentationDialogVisible"
       :container-id="kanban.id"
     />

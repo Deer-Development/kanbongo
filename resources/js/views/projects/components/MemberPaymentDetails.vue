@@ -258,6 +258,7 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
             <div class="header-content">
               <div class="task-title-container">
                 <h4 class="task-title">
+                  <span class="task-id">{{ taskDetail.task?.sequence_id }})</span>
                   {{ taskDetail.task?.name }}
                   <span v-if="taskDetail.task?.deleted_at" class="deleted-badge">
                     Deleted
@@ -551,6 +552,15 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
         font-weight: 600;
         color: #24292f;
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .task-id {
+          color: #57606a;
+          font-family: monospace;
+          font-weight: 500;
+        }
       }
 
       .time-badge {
