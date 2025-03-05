@@ -51,10 +51,10 @@ class DashboardController extends BaseController
         $spendingData = $this->calculateSpendingData($ownedContainers, $user->id, $startDate, $endDate);
 
         // Get active projects
-        $activeProjects = $this->getActiveProjects($user->id);
+        $activeProjects = $this->getActiveProjects($user->id, $startDate, $endDate);
 
         // Get recent activity
-        $recentActivity = $this->getRecentActivity($user->id);
+        $recentActivity = $this->getRecentActivity($user->id, $startDate, $endDate);
 
         return $this->successResponse([
             'stats' => [
@@ -290,7 +290,7 @@ class DashboardController extends BaseController
         return $start->lte($end) ? $start->diffInSeconds($end) : 0;
     }
 
-    private function getActiveProjects($userId)
+    private function getActiveProjects($userId, $startDate, $endDate)
     {
         $now = Carbon::now();
         $thirtyDaysAgo = Carbon::now()->subDays(30);
@@ -309,11 +309,13 @@ class DashboardController extends BaseController
 
         foreach ($containers as $container) {
             $projectId = $container->project_id;
-            
+            $isOwner = $container->owner_id === $userId;
+
             if (!isset($projectActivity[$projectId])) {
                 $projectActivity[$projectId] = [
                     'id' => $projectId,
                     'name' => $container->project?->name,
+                    'is_owner' => $isOwner,
                     'containers' => [],
                     'active_users' => [],
                     'last_activity' => null,
@@ -344,13 +346,16 @@ class DashboardController extends BaseController
                 ->get();
 
             // Calculate total hours this month
-            $thisMonthTimeEntries = TimeEntry::whereHas('task', function ($query) use ($container) {
-                $query->whereHas('board', function ($query) use ($container) {
+            $thisMonthTimeEntries = TimeEntry::whereHas('task', function ($query) use ($container, $startDate, $endDate) {
+                $query->whereHas('board', function ($query) use ($container, $startDate, $endDate) {
                     $query->where('container_id', $container->id);
                 });
             })
-                ->where('start', '>=', Carbon::now()->startOfMonth())
-                ->where('end', '<=', Carbon::now()->endOfMonth())
+                ->when(!$isOwner, function ($query) use ($userId) {
+                    $query->where('user_id', $userId);
+                })
+                ->where('start', '>=', $startDate)
+                ->where('end', '<=', $endDate)
                 ->get();
 
             $totalHoursThisMonth = 0;
@@ -454,10 +459,8 @@ class DashboardController extends BaseController
         return array_slice($result, 0, 5);
     }
 
-    private function getRecentActivity($userId)
+    private function getRecentActivity($userId, $startDate, $endDate)
     {
-        $thirtyDaysAgo = Carbon::now()->subDays(30);
-        
         // Get recent time entries for containers where user is a member or owner
         $recentTimeEntries = TimeEntry::where(function ($query) use ($userId) {
             $query->whereHas('task.board.container.members', function ($q) use ($userId) {
@@ -468,9 +471,9 @@ class DashboardController extends BaseController
         })
             ->with(['user', 'task.board.container.project'])
             ->whereNotNull('end')
-            ->where('end', '>=', $thirtyDaysAgo)
+            ->where('end', '>=', $startDate)
+            ->where('end', '<=', $endDate)
             ->orderBy('end', 'desc')
-            ->limit(10)
             ->get();
 
         $activities = [];

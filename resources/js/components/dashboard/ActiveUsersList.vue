@@ -44,16 +44,16 @@ const props = defineProps({
             <VListItemTitle class="timeline-title">
               <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
               working on
-              <span class="task-name">{{ user.task.name }}</span>
+              <span class="task-name">{{ user.task?.name }}</span>
             </VListItemTitle>
             
             <VListItemSubtitle class="timeline-subtitle">
               <div class="activity-path">
-                <span class="path-item project">{{ user.project.name }}</span>
+                <span class="path-item project">{{ user.project?.name }}</span>
                 <VIcon size="14" icon="tabler-chevron-right" class="path-separator" />
-                <span class="path-item container">{{ user.container.name }}</span>
+                <span class="path-item container">{{ user.container?.name }}</span>
                 <VIcon size="14" icon="tabler-chevron-right" class="path-separator" />
-                <span class="path-item board">{{ user.board.name }}</span>
+                <span class="path-item board">{{ user.board?.name }}</span>
               </div>
               
               <div class="activity-meta">

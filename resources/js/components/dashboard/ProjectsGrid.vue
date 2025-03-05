@@ -129,7 +129,15 @@ const getMaxDisplayedBoards = (container) => {
           <div class="stats-grid">
             <div class="stat-item">
               <VIcon size="16" icon="tabler-clock" />
-              <span>{{ formatHours(project.total_hours_this_month || 0) }} this month</span>
+              <span class="project-hours">
+                <template v-if="project.is_owner">
+                  {{ formatHours(project.total_hours_this_month) }}
+                </template>
+                <template v-else>
+                  {{ formatHours(project.total_hours_this_month) }}
+                  <!-- <span class="hours-label">(your hours)</span> -->
+                </template>
+              </span>
             </div>
             
             <div class="stat-item">
@@ -610,5 +618,11 @@ const getMaxDisplayedBoards = (container) => {
       display: none !important;
     }
   }
+}
+
+.hours-label {
+  font-size: 0.75rem;
+  color: #57606a;
+  margin-left: 0.25rem;
 }
 </style> 
