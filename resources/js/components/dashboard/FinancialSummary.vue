@@ -59,16 +59,22 @@ const props = defineProps({
         <VCardText>
           <div class="summary-grid">
             <div class="stat-item">
-              <span class="stat-label">Paid Income</span>
-              <span class="stat-value">{{ formatCurrency(income?.total_income || 0) }}</span>
+              <span class="stat-label">Income</span>
+              <div class="stat-values">
+                <span class="stat-value">{{ formatCurrency(income?.total_income || 0) }}</span>
+                <span class="stat-total">(Total: {{ formatCurrency(income?.grand_total || 0) }})</span>
+              </div>
               <span v-if="income?.pending_income" class="pending-value">
                 +{{ formatCurrency(income?.pending_income) }} pending
               </span>
             </div>
             
             <div class="stat-item">
-              <span class="stat-label">Paid Hours</span>
-              <span class="stat-value">{{ formatHours(income?.total_hours || 0) }}</span>
+              <span class="stat-label">Hours</span>
+              <div class="stat-values">
+                <span class="stat-value">{{ formatHours(income?.total_hours || 0) }}</span>
+                <span class="stat-total">(Total: {{ formatHours((income?.total_hours || 0) + (income?.pending_hours || 0)) }})</span>
+              </div>
               <span v-if="income?.pending_hours" class="pending-value">
                 +{{ formatHours(income?.pending_hours) }} pending
               </span>
@@ -213,6 +219,18 @@ const props = defineProps({
           font-size: 0.75rem;
           color: #57606a;
           font-weight: 500;
+        }
+
+        .stat-values {
+          display: flex;
+          align-items: baseline;
+          gap: 0.5rem;
+          
+          .stat-total {
+            font-size: 0.75rem;
+            color: #57606a;
+            font-weight: 500;
+          }
         }
 
         .stat-value {
