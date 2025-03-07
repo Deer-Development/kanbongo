@@ -13,7 +13,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:isDialogVisible", "update:boardDetails", "formSubmitted"])
 
-const boardIdLocal = ref(null)
+const boardIdLocal = ref(props.boardId)
 const isConfirmDialogVisible = ref(false)
 const members = ref([])
 const memberToPay = ref(null)
@@ -24,7 +24,89 @@ const selectedEntries = ref([])
 
 const selectedDateRange = ref("")
 const paymentStatusFilter = ref('all')
-const datePreset = ref('custom')
+const datePreset = ref('current_month')
+
+const showMenu = ref(false)
+
+const periodOptions = [
+  {
+    label: 'Current Period',
+    items: [
+      { 
+        label: 'Current Week',
+        value: 'current_week',
+        icon: 'tabler-calendar-week',
+        description: 'This week\'s data'
+      },
+      { 
+        label: 'Current Month',
+        value: 'current_month',
+        icon: 'tabler-calendar-month',
+        description: 'Current month\'s data'
+      },
+      {
+        label: 'Current Quarter',
+        value: 'current_quarter',
+        icon: 'tabler-calendar-stats',
+        description: 'This quarter\'s data'
+      },
+      {
+        label: 'Current Year',
+        value: 'current_year',
+        icon: 'tabler-calendar',
+        description: 'This year\'s data'
+      }
+    ]
+  },
+  {
+    label: 'Previous Period',
+    items: [
+      {
+        label: 'Last Week',
+        value: 'last_week',
+        icon: 'tabler-calendar-week',
+        description: 'Previous week\'s data'
+      },
+      {
+        label: 'Last Month',
+        value: 'last_month',
+        icon: 'tabler-calendar-month',
+        description: 'Previous month\'s data'
+      },
+      {
+        label: 'Last Quarter',
+        value: 'last_quarter',
+        icon: 'tabler-calendar-stats',
+        description: 'Previous quarter\'s data'
+      },
+      {
+        label: 'Last Year',
+        value: 'last_year',
+        icon: 'tabler-calendar',
+        description: 'Previous year\'s data'
+      }
+    ]
+  },
+  {
+    label: 'Custom',
+    items: [
+      {
+        label: 'Custom Range',
+        value: 'custom',
+        icon: 'tabler-calendar-due',
+        description: 'Select a custom date range'
+      }
+    ]
+  }
+]
+
+const selectedPeriodLabel = computed(() => {
+  const option = periodOptions
+    .flatMap(group => group.items)
+    .find(item => item.value === datePreset.value)
+  
+  return option?.label || 'Select Period'
+})
 
 const filteredMembers = computed(() => {
   return members.value.filter(member => {
@@ -76,7 +158,7 @@ watch(paymentStatusFilter, () => {
 
 watch(selectedDateRange, () => {
   if (selectedDateRange.value === '') {
-    datePreset.value = 'custom'
+    datePreset.value = 'current_month'
   }
 })
 
@@ -158,42 +240,70 @@ const goBack = () => {
 
 const setDatePreset = (preset) => {
   datePreset.value = preset
+  showMenu.value = false
+  
+  if (preset === 'custom') {
+    selectedDateRange.value = ''
+    return
+  }
+  
   const now = new Date()
   
   switch (preset) {
-    case 'this-week': {
+    case 'current_week': {
       const start = new Date(now)
-      const day = start.getDay() || 7 // Convert Sunday (0) to 7
-      start.setDate(start.getDate() - day + 1) // Monday
+      start.setDate(start.getDate() - start.getDay() + 1)
       const end = new Date(start)
-      end.setDate(end.getDate() + 6) // Sunday
+      end.setDate(end.getDate() + 6)
       selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
       break
     }
-    case 'last-week': {
-      const start = new Date(now)
-      const day = start.getDay() || 7
-      start.setDate(start.getDate() - day - 6) // Previous Monday
-      const end = new Date(start)
-      end.setDate(end.getDate() + 6) // Previous Sunday
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'this-month': {
+    case 'current_month': {
       const start = new Date(now.getFullYear(), now.getMonth(), 1)
       const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
       selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
       break
     }
-    case 'this-year': {
+    case 'current_quarter': {
+      const quarter = Math.floor(now.getMonth() / 3)
+      const start = new Date(now.getFullYear(), quarter * 3, 1)
+      const end = new Date(now.getFullYear(), (quarter + 1) * 3, 0)
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
+    case 'current_year': {
       const start = new Date(now.getFullYear(), 0, 1)
       const end = new Date(now.getFullYear(), 11, 31)
       selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
       break
     }
-    case 'custom':
-      selectedDateRange.value = ''
+    case 'last_week': {
+      const start = new Date(now)
+      start.setDate(start.getDate() - start.getDay() - 6)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 6)
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
       break
+    }
+    case 'last_month': {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const end = new Date(now.getFullYear(), now.getMonth(), 0)
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
+    case 'last_quarter': {
+      const quarter = Math.floor(now.getMonth() / 3)
+      const start = new Date(now.getFullYear(), (quarter - 1) * 3, 1)
+      const end = new Date(now.getFullYear(), quarter * 3, 0)
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
+    case 'last_year': {
+      const start = new Date(now.getFullYear() - 1, 0, 1)
+      const end = new Date(now.getFullYear() - 1, 11, 31)
+      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
   }
 }
 
@@ -225,6 +335,10 @@ const getCustomDateLabel = computed(() => {
   const [start, end] = selectedDateRange.value.split(' to ')
   if (!end) return 'Custom'
   return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
+})
+
+onMounted(() => {
+  setDatePreset('current_month')
 })
 </script>
 
@@ -286,95 +400,135 @@ const getCustomDateLabel = computed(() => {
         <div class="filters-section" v-if="!showPaychecks">
           <div class="date-filters">
             <div class="filters-group">
-              <div class="date-presets">
-                <VBtn
-                  v-for="preset in datePresets"
-                  :key="preset.value"
-                  :color="datePreset === preset.value ? 'primary' : undefined"
-                  :variant="datePreset === preset.value ? 'tonal' : 'text'"
-                  size="x-small"
-                  class="preset-btn"
-                  @click="setDatePreset(preset.value)"
-                >
-                  <VIcon 
-                    size="14" 
-                    class="mr-1"
-                    :color="datePreset === preset.value ? undefined : '#57606a'"
+              <div class="period-selector">
+                <div class="period-controls">
+                  <VMenu
+                    v-model="showMenu"
+                    :close-on-content-click="false"
+                    location="bottom start"
+                    offset="4"
                   >
-                    {{ preset.icon }}
-                  </VIcon>
-                  {{ preset.label }}
-                </VBtn>
+                    <template #activator="{ props: menuProps }">
+                      <VBtn
+                        variant="outlined"
+                        v-bind="menuProps"
+                      >
+                        <VIcon
+                          :icon="periodOptions
+                            .flatMap(group => group.items)
+                            .find(item => item.value === datePreset)?.icon || 'tabler-calendar'"
+                          size="20"
+                          class="mr-2"
+                        />
+                        {{ selectedPeriodLabel }}
+                        <VIcon
+                          size="20"
+                          icon="tabler-chevron-down"
+                          class="ml-1"
+                        />
+                      </VBtn>
+                    </template>
+
+                    <VCard class="period-menu" elevation="3" min-width="280">
+                      <VList lines="two" density="compact">
+                        <template v-for="(group, index) in periodOptions" :key="index">
+                          <VListSubheader class="period-group-header">
+                            {{ group.label }}
+                          </VListSubheader>
+
+                          <VListItem
+                            v-for="item in group.items"
+                            :key="item.value"
+                            :value="item.value"
+                            class="period-option"
+                            :active="datePreset === item.value"
+                            @click="setDatePreset(item.value)"
+                          >
+                            <template #prepend>
+                              <VIcon :icon="item.icon" size="20" />
+                            </template>
+
+                            <VListItemTitle>{{ item.label }}</VListItemTitle>
+                            <VListItemSubtitle>{{ item.description }}</VListItemSubtitle>
+                          </VListItem>
+
+                          <VDivider v-if="index < periodOptions.length - 1" />
+                        </template>
+                      </VList>
+                    </VCard>
+                  </VMenu>
+
+                  <div 
+                    v-if="datePreset === 'custom'" 
+                    class="custom-date-wrapper"
+                  >
+                    <AppDateTimePicker
+                      v-model="selectedDateRange"
+                      :config="{ mode: 'range' }"
+                      placeholder="Select custom date range"
+                      clearable
+                      class="date-picker"
+                    />
+                  </div>
+                </div>
               </div>
 
               <VDivider vertical class="mx-2" />
 
-              <div class="custom-date-wrapper">
-                <AppDateTimePicker
-                  v-model="selectedDateRange"
-                  :config="{ mode: 'range' }"
-                  placeholder="Select custom date range"
-                  clearable
-                  class="github-input date-picker"
-                  @update:model-value="datePreset = 'custom'"
-                />
-              </div>
+              <VBtnGroup 
+                class="btn-group-status-filter"
+                density="compact"
+              >
+                <VBtn
+                  :color="paymentStatusFilter === 'all' ? 'primary' : undefined"
+                  :variant="paymentStatusFilter === 'all' ? 'tonal' : 'outlined'"
+                  size="x-small"
+                  class="filter-btn"
+                  @click="paymentStatusFilter = 'all'"
+                >
+                  <VIcon 
+                    size="14" 
+                    class="mr-1"
+                    :color="paymentStatusFilter === 'all' ? undefined : '#57606a'"
+                  >
+                    tabler-filter
+                  </VIcon>
+                  All
+                </VBtn>
+                <VBtn
+                  :color="paymentStatusFilter === 'paid' ? 'success' : undefined"
+                  :variant="paymentStatusFilter === 'paid' ? 'tonal' : 'outlined'"
+                  size="x-small"
+                  class="filter-btn"
+                  @click="paymentStatusFilter = 'paid'"
+                >
+                  <VIcon 
+                    size="14" 
+                    class="mr-1"
+                    :color="paymentStatusFilter === 'paid' ? undefined : '#57606a'"
+                  >
+                    tabler-cash
+                  </VIcon>
+                  Paid
+                </VBtn>
+                <VBtn
+                  :color="paymentStatusFilter === 'pending' ? 'warning' : undefined"
+                  :variant="paymentStatusFilter === 'pending' ? 'tonal' : 'outlined'"
+                  size="x-small"
+                  class="filter-btn"
+                  @click="paymentStatusFilter = 'pending'"
+                >
+                  <VIcon 
+                    size="14" 
+                    class="mr-1"
+                    :color="paymentStatusFilter === 'pending' ? undefined : '#57606a'"
+                  >
+                    tabler-clock-dollar
+                  </VIcon>
+                  Pending
+                </VBtn>
+              </VBtnGroup>
             </div>
-
-
-            <VBtnGroup 
-              class="btn-group-status-filter"
-              density="compact"
-            >
-              <VBtn
-                :color="paymentStatusFilter === 'all' ? 'primary' : undefined"
-                :variant="paymentStatusFilter === 'all' ? 'tonal' : 'outlined'"
-                size="x-small"
-                class="filter-btn"
-                @click="paymentStatusFilter = 'all'"
-              >
-                <VIcon 
-                  size="14" 
-                  class="mr-1"
-                  :color="paymentStatusFilter === 'all' ? undefined : '#57606a'"
-                >
-                  tabler-filter
-                </VIcon>
-                All
-              </VBtn>
-              <VBtn
-                :color="paymentStatusFilter === 'paid' ? 'success' : undefined"
-                :variant="paymentStatusFilter === 'paid' ? 'tonal' : 'outlined'"
-                size="x-small"
-                class="filter-btn"
-                @click="paymentStatusFilter = 'paid'"
-              >
-                <VIcon 
-                  size="14" 
-                  class="mr-1"
-                  :color="paymentStatusFilter === 'paid' ? undefined : '#57606a'"
-                >
-                  tabler-cash
-                </VIcon>
-                Paid
-              </VBtn>
-              <VBtn
-                :color="paymentStatusFilter === 'pending' ? 'warning' : undefined"
-                :variant="paymentStatusFilter === 'pending' ? 'tonal' : 'outlined'"
-                size="x-small"
-                class="filter-btn"
-                @click="paymentStatusFilter = 'pending'"
-              >
-                <VIcon 
-                  size="14" 
-                  class="mr-1"
-                  :color="paymentStatusFilter === 'pending' ? undefined : '#57606a'"
-                >
-                  tabler-clock-dollar
-                </VIcon>
-                Pending
-              </VBtn>
-            </VBtnGroup>
           </div>
         </div>
 
@@ -1049,21 +1203,26 @@ const getCustomDateLabel = computed(() => {
         flex: 1;
         min-width: 0;
         
-        .date-presets {
-          display: flex;
-          gap: 0.5rem;
-          align-items: center;
-          flex-wrap: wrap;
+        .period-selector {
+          flex: 1;
+          min-width: 0;
           
-          .preset-btn {
-            height: 24px;
-            font-size: 0.75rem;
-            text-transform: none;
-            letter-spacing: normal;
-            white-space: nowrap;
+          .period-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
             
-            &:hover {
-              background: #f3f4f6;
+            .period-btn {
+              height: 24px;
+              font-size: 0.75rem;
+              text-transform: none;
+              letter-spacing: normal;
+              white-space: nowrap;
+              
+              &:hover {
+                background: #f3f4f6;
+              }
             }
           }
         }
@@ -1245,12 +1404,16 @@ const getCustomDateLabel = computed(() => {
           display: none;
         }
         
-        .date-presets {
+        .period-selector {
           justify-content: flex-start;
           width: 100%;
           
-          .preset-btn {
-            flex: 1;
+          .period-controls {
+            flex-direction: column;
+            
+            .period-btn {
+              flex: 1;
+            }
           }
         }
         
@@ -1266,6 +1429,70 @@ const getCustomDateLabel = computed(() => {
         .v-btn {
           flex: 1;
         }
+      }
+    }
+  }
+}
+
+.period-menu {
+  .period-group-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #57606a;
+    background: #f6f8fa;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  
+  .period-option {
+    min-height: 56px;
+    padding: 8px 16px;
+    
+    &:hover {
+      background: #f6f8fa;
+    }
+    
+    &.v-list-item--active {
+      background: #f0f9ff;
+      color: #0969da;
+      
+      .v-list-item-subtitle {
+        color: #57606a;
+      }
+    }
+    
+    .v-list-item-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .v-list-item-subtitle {
+      font-size: 0.75rem;
+      color: #57606a;
+      margin-top: 2px;
+    }
+  }
+}
+
+.period-selector {
+  .period-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    
+    .period-btn {
+      height: 24px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #24292f;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      letter-spacing: normal;
+      text-transform: none;
+      
+      &:hover {
+        background: #f3f4f6;
+        border-color: #0969da;
       }
     }
   }

@@ -26,6 +26,10 @@ class PaymentDetails extends BaseController
             [$start, $end] = array_pad(explode(' to ', $dateRange), 2, null);
             $startDate = Carbon::parse($start)->startOfDay();
             $endDate = $end ? Carbon::parse($end)->endOfDay() : now()->endOfDay();
+        } else {
+            // Default to current month if no date range provided
+            $startDate = now()->startOfMonth();
+            $endDate = now()->endOfMonth();
         }
 
         $model = Container::with([
@@ -116,5 +120,46 @@ class PaymentDetails extends BaseController
         $end = Carbon::parse($timeEntry->end) ?? now();
 
         return $start->lte($end) ? $start->diffInSeconds($end) : 0;
+    }
+
+    private function getDateRangeForPeriod($period)
+    {
+        $now = Carbon::now();
+        
+        return match ($period) {
+            'current_week' => [
+                'start' => $now->startOfWeek(),
+                'end' => $now->copy()->endOfWeek(),
+            ],
+            'current_month' => [
+                'start' => $now->startOfMonth(),
+                'end' => $now->copy()->endOfMonth(),
+            ],
+            'current_quarter' => [
+                'start' => $now->startOfQuarter(),
+                'end' => $now->copy()->endOfQuarter(),
+            ],
+            'current_year' => [
+                'start' => $now->startOfYear(),
+                'end' => $now->copy()->endOfYear(),
+            ],
+            'last_week' => [
+                'start' => $now->subWeek()->startOfWeek(),
+                'end' => $now->copy()->endOfWeek(),
+            ],
+            'last_month' => [
+                'start' => $now->subMonth()->startOfMonth(),
+                'end' => $now->copy()->endOfMonth(),
+            ],
+            'last_quarter' => [
+                'start' => $now->subQuarter()->startOfQuarter(),
+                'end' => $now->copy()->endOfQuarter(),
+            ],
+            'last_year' => [
+                'start' => $now->subYear()->startOfYear(),
+                'end' => $now->copy()->endOfYear(),
+            ],
+            default => null,
+        };
     }
 }
