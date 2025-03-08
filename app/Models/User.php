@@ -14,6 +14,8 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\Permission\Traits\HasRoles;
 use App\Models\Notification;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable implements HasMedia
 {
@@ -39,17 +41,42 @@ class User extends Authenticatable implements HasMedia
         ];
     }
 
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('avatar')
+            ->singleFile()
+            ->registerMediaConversions(function (Media $media) {
+                $this->addMediaConversion('thumb')
+                    ->width(100)
+                    ->height(100)
+                    ->sharpen(10)
+                    ->nonQueued();
+
+                $this->addMediaConversion('small')
+                    ->width(150)
+                    ->height(150)
+                    ->sharpen(10)
+                    ->nonQueued();
+            });
+    }
+
+
     public function getFullNameAttribute(): string
     {
         return "{$this->first_name} {$this->last_name}";
     }
 
-    public function getAvatarOrInitialsAttribute(): string
+    public function getAvatarAttribute(): ?string
     {
-        if ($this->avatar) {
-            return $this->avatar;
+        if ($media = $this->getFirstMedia('avatar')) {
+            return $media->getUrl();
         }
 
+        return null;
+    }
+
+    public function getAvatarOrInitialsAttribute(): string
+    {
         return strtoupper(mb_substr($this->first_name, 0, 1) . mb_substr($this->last_name, 0, 1));
     }
 
@@ -115,5 +142,15 @@ class User extends Authenticatable implements HasMedia
         if ($notification->user_id === $this->id) {
             $notification->update(['is_seen' => false]);
         }
+    }
+
+    public function notificationPreferences(): HasOne
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
+    public function paymentDetails(): HasOne
+    {
+        return $this->hasOne(PaymentDetail::class);
     }
 }

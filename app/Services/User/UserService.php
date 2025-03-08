@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\BaseService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 
 class UserService extends BaseService
 {
@@ -56,5 +57,21 @@ class UserService extends BaseService
         }
 
         return $query->paginate($itemsPerPage, ['*'], 'page', $page);
+    }
+
+    public function updateProfile(User $user, array $data, ?UploadedFile $avatar = null): User
+    {
+        if ($avatar) {
+            // Clear existing avatar collection
+            $user->clearMediaCollection('avatar');
+            
+            // Add new avatar with conversions
+            $user->addMedia($avatar)
+                ->toMediaCollection('avatar');
+        }
+
+        $user->update($data);
+
+        return $user->fresh();
     }
 }
