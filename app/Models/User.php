@@ -14,6 +14,8 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\Permission\Traits\HasRoles;
 use App\Models\Notification;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable implements HasMedia
 {
@@ -27,6 +29,7 @@ class User extends Authenticatable implements HasMedia
 
     protected $appends = [
         'full_name',
+        'avatar',
         'avatar_or_initials',
     ];
 
@@ -39,18 +42,63 @@ class User extends Authenticatable implements HasMedia
         ];
     }
 
-    public function getFullNameAttribute(): string
+    /**
+     * Register media collections
+     */
+    public function registerMediaCollections(): void
     {
-        return "{$this->first_name} {$this->last_name}";
+        $this->addMediaCollection('avatar')
+            ->singleFile()
+            ->registerMediaConversions(function (Media $media) {
+                $this->addMediaConversion('thumb')
+                    ->width(100)
+                    ->height(100)
+                    ->sharpen(10)
+                    ->nonQueued();
+
+                $this->addMediaConversion('small')
+                    ->width(150)
+                    ->height(150)
+                    ->sharpen(10)
+                    ->nonQueued();
+            });
     }
 
-    public function getAvatarOrInitialsAttribute(): string
+    /**
+     * Get avatar URL attribute
+     */
+    public function getAvatarAttribute(): ?string
     {
-        if ($this->avatar) {
-            return $this->avatar;
+        if ($media = $this->getFirstMedia('avatar')) {
+            return $media->getUrl();
         }
 
-        return strtoupper(mb_substr($this->first_name, 0, 1) . mb_substr($this->last_name, 0, 1));
+        return null;
+    }
+
+    /**
+     * Get avatar or initials
+     */
+    public function getAvatarOrInitialsAttribute(): string
+    {
+        $names = explode(' ', $this->full_name);
+        $initials = '';
+
+        if (count($names) >= 2) {
+            $initials = mb_substr($names[0], 0, 1) . mb_substr($names[1], 0, 1);
+        } else {
+            $initials = mb_substr($this->full_name, 0, 2);
+        }
+
+        return strtoupper($initials);
+    }
+
+    /**
+     * Get full name attribute
+     */
+    public function getFullNameAttribute(): string
+    {
+        return trim("{$this->first_name} {$this->last_name}");
     }
 
     public function ownedContainers(): HasMany
@@ -115,5 +163,15 @@ class User extends Authenticatable implements HasMedia
         if ($notification->user_id === $this->id) {
             $notification->update(['is_seen' => false]);
         }
+    }
+
+    public function notificationPreferences(): HasOne
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
+    public function paymentDetails(): HasOne
+    {
+        return $this->hasOne(PaymentDetail::class);
     }
 }
