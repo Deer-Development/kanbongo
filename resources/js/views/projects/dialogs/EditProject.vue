@@ -7,7 +7,7 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
-  container: {
+  projectDetails: {
     type: Object,
     required: false,
   },
@@ -16,6 +16,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:isDialogVisible',
   'updated',
+  'form-submitted',
 ])
 
 const isFormValid = ref(false)
@@ -27,7 +28,7 @@ const toast = useToast()
 
 const sendData = async () => {
   try {
-    const res = await $api(`/project/${props.container.id}`, {
+    const res = await $api(`/project/${props.projectDetails.id}`, {
       method: 'PUT',
       body: {
         name: name.value,
@@ -44,7 +45,7 @@ const sendData = async () => {
 
     await nextTick(() => {
       emit("update:isDialogVisible", false)
-      emit("updated", true)
+      emit("form-submitted", true)
 
       refForm.value?.reset()
       refForm.value?.resetValidation()
@@ -67,9 +68,9 @@ const closeDialog = () => {
 }
 
 watch(() => props.isDialogVisible, async newVal => {
-  if (newVal) {
-    name.value = props.container.name
-    isActive.value = !!props.container.is_active
+  if (newVal === true) {
+    name.value = props.projectDetails.name
+    isActive.value = !!props.projectDetails.is_active
   }
 })
 </script>
