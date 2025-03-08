@@ -8,7 +8,7 @@ import PaymentDetailsTab from './tabs/PaymentDetailsTab.vue'
 
 const toast = useToast()
 const authStore = useAuthStore()
-const userData = computed(() => authStore.getCurrentUser)
+const userData = useCookie('userData')
 const avatarFile = ref(null)
 const avatarPreview = ref(null)
 const loading = ref(false)
@@ -191,7 +191,7 @@ watch(
           <VCard class="profile-card mb-6">
             <VCardText>
               <VForm @submit.prevent="onSubmit">
-                <div class="d-flex align-center mb-6">
+                <!-- <div class="d-flex align-center mb-6">
                   <div class="position-relative">
                     <VAvatar
                       size="100"
@@ -233,7 +233,7 @@ watch(
                       @change="handleAvatarUpload"
                     >
                   </div>
-                </div>
+                </div> -->
 
                 <VRow>
                   <VCol cols="12" md="6">

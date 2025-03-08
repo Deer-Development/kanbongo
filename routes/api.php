@@ -45,6 +45,7 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
     Route::post('/user/email/send-token', [UpdateEmail::class, 'sendToken'])->name('user.email.sendToken');
     Route::post('/user/email/verify-token', [UpdateEmail::class, 'verifyToken'])->name('user.email.verifyToken');
     Route::post('/user/notification-preferences', UpdateNotificationPreferences::class)->name('user.notification-preferences.update');
+    Route::get('/user/notification-preferences', [NotificationPreferencesController::class, 'index'])->name('user.notification-preferences.index');
     Route::get('/user/payment-details', [PaymentDetailsController::class, 'show'])->name('user.payment-details');
     Route::post('/user/payment-details', [PaymentDetailsController::class, 'store'])->name('user.payment-details.store');
 

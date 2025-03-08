@@ -69,9 +69,9 @@ class User extends Authenticatable implements HasMedia
      */
     public function getAvatarAttribute(): ?string
     {
-        if ($media = $this->getFirstMedia('avatar')) {
-            return $media->getUrl();
-        }
+        // if ($media = $this->getFirstMedia('avatar')) {
+        //     return $media->getUrl();
+        // }
 
         return null;
     }
