@@ -13,6 +13,12 @@ use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\DocumentationCommentController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
+use App\Http\Controllers\User\UpdateProfile;
+use App\Http\Controllers\User\UpdateEmail;
+use App\Http\Controllers\User\NotificationPreferencesController;
+use App\Http\Controllers\User\UpdateNotificationPreferences;
+use App\Http\Controllers\User\PaymentDetailsController;
+use App\Http\Resources\User\UserResource;
 
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
@@ -34,6 +40,15 @@ Route::group(['prefix' => 'auth'], function () {
 Route::group(['middleware' => 'auth:sanctum'], function() {
     Route::post('/upload-temp-spatie', [FileUploadController::class, 'uploadTempSpatie']);
     Route::delete('/delete-temp-spatie/{media}', [FileUploadController::class, 'deleteTempSpatie']);
+
+    Route::post('/user/profile', UpdateProfile::class)->name('user.profile');
+    Route::post('/user/email/send-token', [UpdateEmail::class, 'sendToken'])->name('user.email.sendToken');
+    Route::post('/user/email/verify-token', [UpdateEmail::class, 'verifyToken'])->name('user.email.verifyToken');
+    Route::post('/user/notification-preferences', UpdateNotificationPreferences::class)->name('user.notification-preferences.update');
+    Route::get('/user/notification-preferences', [NotificationPreferencesController::class, 'index'])->name('user.notification-preferences.index');
+    Route::get('/user/payment-details', [PaymentDetailsController::class, 'show'])->name('user.payment-details');
+    Route::post('/user/payment-details', [PaymentDetailsController::class, 'store'])->name('user.payment-details.store');
+
     require base_path('routes/resources/user.php');
     require base_path('routes/resources/project.php');
     require base_path('routes/resources/container.php');
@@ -78,3 +93,9 @@ Route::group(['middleware' => 'auth:sanctum'], function() {
 });
 
 Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->middleware('auth:sanctum');
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/auth/me', function () {
+        return new UserResource(auth()->user());
+    });
+});

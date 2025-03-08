@@ -112,4 +112,13 @@ export const routes = [
       title: 'Notifications'
     }
   },
+  {
+    path: '/profile',
+    name: 'user-profile',
+    component: () => import('@/views/profile/index.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Profile Settings'
+    }
+  },
 ]

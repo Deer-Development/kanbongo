@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\BaseController;
@@ -25,4 +26,5 @@ class PaymentDetailsController extends BaseController
 
         return $this->successResponse($paymentDetails, 'Payment details updated successfully');
     }
-} 
+}
+

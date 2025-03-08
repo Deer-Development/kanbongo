@@ -7,6 +7,7 @@ use App\Services\BaseService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class UserService extends BaseService
 {

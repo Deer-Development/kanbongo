@@ -36,4 +36,9 @@ class Activity extends Model
     {
         return $this->morphTo();
     }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 } 

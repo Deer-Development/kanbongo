@@ -18,7 +18,7 @@ class UpdateNotificationPreferencesRequest extends FormRequest
             'activities_frequency' => 'in:4_hours,8_hours,daily',
             'member_report_enabled' => 'boolean',
             'owner_report_enabled' => 'boolean',
-            'daily_report_time' => 'date_format:H:i:s',
+            'daily_report_time' => 'nullable|string',
         ];
     }
 } 

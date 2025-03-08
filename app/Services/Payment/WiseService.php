@@ -77,5 +77,4 @@ class WiseService
         }
     }
 
-    // Add more methods for other Wise API operations
-} 
+}

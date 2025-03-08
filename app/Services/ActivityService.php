@@ -35,12 +35,6 @@ class ActivityService
             })
             ->whereNotNull('event')
             ->latest();
-        
-        // Adăugăm logging pentru debug
-        Log::info('Activities Query:', [
-            'sql' => $query->toSql(),
-            'bindings' => $query->getBindings()
-        ]);
 
         $activities = $query->paginate($perPage);
         
@@ -49,12 +43,6 @@ class ActivityService
             $query->withTrashed();
         }]);
         
-        // Verificăm activitățile returnate
-        Log::info('Activities Results:', [
-            'total' => $activities->total(),
-            'items' => $activities->items()
-        ]);
-
         return $activities;
     }
 } 

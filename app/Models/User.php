@@ -29,6 +29,7 @@ class User extends Authenticatable implements HasMedia
 
     protected $appends = [
         'full_name',
+        'avatar',
         'avatar_or_initials',
     ];
 
@@ -60,24 +61,28 @@ class User extends Authenticatable implements HasMedia
             });
     }
 
-
-    public function getFullNameAttribute(): string
+    public function getAvatarOrInitialsAttribute(): string
     {
-        return "{$this->first_name} {$this->last_name}";
+        return strtoupper(mb_substr($this->first_name, 0, 1) . mb_substr($this->last_name, 0, 1));
     }
-
+    /**
+     * Get avatar URL attribute
+     */
     public function getAvatarAttribute(): ?string
     {
-        if ($media = $this->getFirstMedia('avatar')) {
-            return $media->getUrl();
-        }
+        // if ($media = $this->getFirstMedia('avatar')) {
+        //     return $media->getUrl();
+        // }
 
         return null;
     }
 
-    public function getAvatarOrInitialsAttribute(): string
+    /**
+     * Get full name attribute
+     */
+    public function getFullNameAttribute(): string
     {
-        return strtoupper(mb_substr($this->first_name, 0, 1) . mb_substr($this->last_name, 0, 1));
+        return trim("{$this->first_name} {$this->last_name}");
     }
 
     public function ownedContainers(): HasMany

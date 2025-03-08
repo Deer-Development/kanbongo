@@ -6,7 +6,6 @@ const router = useRouter()
 const userData = useCookie('userData')
 const errors = ref(null)
 
-
 const logout = async () => {
   try {
     const res = await $api('/auth/logout', {
@@ -26,54 +25,6 @@ const logout = async () => {
     console.error(err)
   }
 }
-
-const userProfileList = [
-  { type: 'divider' },
-  {
-    type: 'navItem',
-    icon: 'tabler-user',
-    title: 'Profile',
-    to: {
-      name: 'apps-user-view-id',
-      params: { id: 21 },
-    },
-  },
-  {
-    type: 'navItem',
-    icon: 'tabler-settings',
-    title: 'Settings',
-    to: {
-      name: 'pages-account-settings-tab',
-      params: { tab: 'account' },
-    },
-  },
-  {
-    type: 'navItem',
-    icon: 'tabler-file-dollar',
-    title: 'Billing Plan',
-    to: {
-      name: 'pages-account-settings-tab',
-      params: { tab: 'billing-plans' },
-    },
-    badgeProps: {
-      color: 'error',
-      content: '4',
-    },
-  },
-  { type: 'divider' },
-  {
-    type: 'navItem',
-    icon: 'tabler-currency-dollar',
-    title: 'Pricing',
-    to: { name: 'pages-pricing' },
-  },
-  {
-    type: 'navItem',
-    icon: 'tabler-question-mark',
-    title: 'FAQ',
-    to: { name: 'pages-faq' },
-  },
-]
 </script>
 
 <template>
@@ -146,6 +97,18 @@ const userProfileList = [
                 </VListItemSubtitle>
               </div>
             </div>
+          </VListItem>
+
+          <VDivider class="my-2" />
+
+          <VListItem
+            :to="{ name: 'user-profile' }"
+            link
+          >
+            <template #prepend>
+              <VIcon icon="tabler-user-circle" size="22" class="me-2" />
+            </template>
+            <VListItemTitle>Profile Settings</VListItemTitle>
           </VListItem>
 
           <PerfectScrollbar :options="{ wheelPropagation: false }">

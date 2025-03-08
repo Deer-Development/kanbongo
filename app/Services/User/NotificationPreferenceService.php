@@ -4,13 +4,14 @@ namespace App\Services\User;
 
 use App\Models\User;
 use App\Models\NotificationPreference;
+use Illuminate\Support\Carbon;
 
 class NotificationPreferenceService
 {
     public function updatePreferences(User $user, array $data): NotificationPreference
     {
         $preferences = $user->notificationPreferences()->updateOrCreate(
-            ['user_id' => $user->id],
+            ['user_id' => $user->id, 'daily_report_time' => Carbon::parse($data['daily_report_time'])->format('H:i:s')],
             $data
         );
 

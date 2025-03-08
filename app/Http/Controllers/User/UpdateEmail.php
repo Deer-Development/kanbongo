@@ -54,4 +54,5 @@ class UpdateEmail extends BaseController
 
         return $this->successResponse(null, 'Email updated successfully.');
     }
-} 
+}
+

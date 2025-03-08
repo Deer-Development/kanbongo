@@ -29,14 +29,6 @@ class ContainerActivities extends BaseController
         $formattedActivities = $activities->map(function ($activity) {
             $description = $this->getActivityDescription($activity);
             
-            // Adăugăm logging pentru debug
-            Log::info('Formatting Activity:', [
-                'activity_id' => $activity->id,
-                'description' => $description,
-                'event' => $activity->event,
-                'properties' => $activity->properties
-            ]);
-            
             return [
                 'id' => $activity->id,
                 'description' => $description,
@@ -73,15 +65,6 @@ class ContainerActivities extends BaseController
     {
         $userName = $activity->causer->full_name;
         
-        // Adăugăm logging pentru debug
-        Log::info('Processing Activity:', [
-            'event' => $activity->event,
-            'properties' => $activity->properties,
-            'subject_type' => $activity->subject_type,
-            'subject' => $activity->subject
-        ]);
-        
-        // Obținem sequence_id din properties pentru task-uri
         $taskBadge = '';
         if ($activity->subject_type === 'App\\Models\\Task') {
             // Verificăm și în subject dacă nu găsim în properties
@@ -92,6 +75,8 @@ class ContainerActivities extends BaseController
         }
 
         switch ($activity->event) {
+
+
             case 'created':
                 return "{$userName} created" . ($taskBadge ? " {$taskBadge}" : '');
             
