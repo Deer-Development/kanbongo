@@ -95,6 +95,12 @@ const periodOptions = [
         value: 'custom',
         icon: 'tabler-calendar-due',
         description: 'Select a custom date range'
+      },
+      {
+        label: 'All Time',
+        value: 'all_time',
+        icon: 'tabler-calendar-time',
+        description: 'All time data'
       }
     ]
   }
@@ -302,6 +308,10 @@ const setDatePreset = (preset) => {
       const start = new Date(now.getFullYear() - 1, 0, 1)
       const end = new Date(now.getFullYear() - 1, 11, 31)
       selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+      break
+    }
+    case 'all_time': {
+      selectedDateRange.value = ''
       break
     }
   }

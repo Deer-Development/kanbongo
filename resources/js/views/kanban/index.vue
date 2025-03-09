@@ -90,6 +90,7 @@ const refetchKanban = async () => {
 
 const kanbanData = computed(() => kanban.value)
 const isOwner = computed(() => kanbanData.value?.owner_id === userData.value.id)
+const isAdmin = computed(() => kanbanData.value?.auth.is_admin)
 const boardId = computed(() => kanban.value?.id)
 const isSuperAdmin = computed(() => kanbanData.value?.auth.is_super_admin)
 
@@ -786,10 +787,10 @@ const handleDeleteBoardConfirm = async (boardId) => {
           </VMenu>
 
           <button
-            :disabled="!kanban.auth.is_super_admin && kanban.owner_id !== userData.id && !kanban.members.find(member => member.user.id !== userData.id && member.is_admin)"
+            :disabled="!isAdmin && !isSuperAdmin && !isOwner"
             variant="elevated"
             class="cursor-pointer github-style-badge"
-            :class="{ 'cursor-not-allowed': !kanban.auth.is_super_admin && kanban.owner_id !== userData.id && !kanban.members.find(member => member.user.id !== userData.id && member.is_admin) }"
+            :class="{ 'cursor-not-allowed': !isAdmin && !isSuperAdmin && !isOwner }"
             @click="isEditContainerDialogVisible = true"
           >
             <VIcon
@@ -801,10 +802,10 @@ const handleDeleteBoardConfirm = async (boardId) => {
           </button>
 
           <button
-            :disabled="!kanban.auth.is_super_admin && kanban.owner_id !== userData.id && !kanban.members.find(member => member.user.id !== userData.id && member.is_admin)"
+            :disabled="!isAdmin && !isSuperAdmin && !isOwner"
             variant="elevated"
             class="cursor-pointer github-style-badge"
-            :class="{ 'cursor-not-allowed': !kanban.auth.is_super_admin && kanban.owner_id !== userData.id && !kanban.members.find(member => member.user.id !== userData.id && member.is_admin) }"
+            :class="{ 'cursor-not-allowed': !isAdmin && !isSuperAdmin && !isOwner }"
             @click="isBoardSettingsVisible = true"
           >
             <VIcon
@@ -909,6 +910,7 @@ const handleDeleteBoardConfirm = async (boardId) => {
         v-model:board-id="boardId"
         v-model:is-super-admin="isSuperAdmin"
         v-model:is-owner="isOwner"
+        v-model:is-admin="isAdmin"
         v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
       />
       <AddEditBoard
@@ -960,6 +962,9 @@ const handleDeleteBoardConfirm = async (boardId) => {
       v-model:board-details="kanban"
       v-model:is-dialog-visible="isBoardSettingsVisible"
       :project-id="kanban.project_id"
+      :is-admin="isAdmin"
+      :is-super-admin="isSuperAdmin"
+      :is-owner="isOwner"
       @form-submitted="refetchKanban"
       @move-board="handleMoveBoardConfirm"
       @delete-board="handleDeleteBoardConfirm"

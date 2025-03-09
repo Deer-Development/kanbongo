@@ -49,6 +49,10 @@ class DashboardController extends BaseController
 
         // Get containers owned by user
         $ownedContainers = Container::where('owner_id', $user->id)
+            ->orWhereHas('members', function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                    ->where('is_admin', true);
+            })
             ->with(['members.user', 'project'])
             ->get();
 
@@ -214,12 +218,14 @@ class DashboardController extends BaseController
         foreach ($containers as $container) {
             $projectId = $container->project_id;
             $isOwner = $container->owner_id === $userId;
-
+            $isAdmin = $container->members->contains('user_id', $userId) && $container->members->where('user_id', $userId)->first()->is_admin;
+            
             if (!isset($projectActivity[$projectId])) {
                 $projectActivity[$projectId] = [
                     'id' => $projectId,
                     'name' => $container->project?->name,
                     'is_owner' => $isOwner,
+                    'is_admin' => $isAdmin,
                     'containers' => [],
                     'active_users' => [],
                     'last_activity' => null,
@@ -255,7 +261,7 @@ class DashboardController extends BaseController
                     $query->where('container_id', $container->id);
                 });
             })
-                ->when(!$isOwner, function ($query) use ($userId) {
+                ->when(!$isOwner && !$isAdmin, function ($query) use ($userId) {
                     $query->where('user_id', $userId);
                 })
                 ->where('start', '>=', $startDate)
@@ -466,6 +472,10 @@ class DashboardController extends BaseController
             'last_year' => [
                 'start' => $now->subYear()->startOfYear(),
                 'end' => $now->copy()->endOfYear(),
+            ],
+            'all_time' => [
+                'start' => null,
+                'end' => null,
             ],
             default => null,
         };

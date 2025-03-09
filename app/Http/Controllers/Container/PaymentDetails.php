@@ -27,9 +27,9 @@ class PaymentDetails extends BaseController
             $startDate = Carbon::parse($start)->startOfDay();
             $endDate = $end ? Carbon::parse($end)->endOfDay() : now()->endOfDay();
         } else {
-            // Default to current month if no date range provided
-            $startDate = now()->startOfMonth();
-            $endDate = now()->endOfMonth();
+            // Default to all time if no date range provided
+            $startDate = null;
+            $endDate = null;
         }
 
         $model = Container::with([
@@ -158,6 +158,10 @@ class PaymentDetails extends BaseController
             'last_year' => [
                 'start' => $now->subYear()->startOfYear(),
                 'end' => $now->copy()->endOfYear(),
+            ],
+            'all_time' => [
+                'start' => null,
+                'end' => null,
             ],
             default => null,
         };

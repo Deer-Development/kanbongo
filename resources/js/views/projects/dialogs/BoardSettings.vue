@@ -22,6 +22,9 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
+  isOwner: { type: Boolean, required: false, default: false },
+  isAdmin: { type: Boolean, required: false, default: false },
+  isSuperAdmin: { type: Boolean, required: false, default: false },
 })
 
 const emit = defineEmits([
@@ -232,7 +235,7 @@ const handleDeleteBoard = (confirmed) => {
           <div class="settings-section mt-6">
             <div class="section-header mb-4">
               <VIcon icon="tabler-tool" size="18" class="me-2" />
-              <span class="text-h6">Advanced Actions</span>
+              <span class="text-h6">Advanced Actions (Require Owner Access)</span>
             </div>
 
             <div class="actions-grid">
@@ -243,7 +246,7 @@ const handleDeleteBoard = (confirmed) => {
                 block
                 prepend-icon="tabler-exchange"
                 @click="isTransferOwnershipDialogVisible = true"
-                :disabled="!boardDataLocal?.members.length || boardDataLocal?.members.length === 1"
+                :disabled="!boardDataLocal?.members.length || boardDataLocal?.members.length === 1 || !isOwner"
               >
                 Transfer Ownership
               </VBtn>
@@ -255,6 +258,7 @@ const handleDeleteBoard = (confirmed) => {
                 block
                 prepend-icon="tabler-arrows-transfer-up"
                 @click="isMoveDialogVisible = true"
+                :disabled="!isOwner"
               >
                 Move Board
               </VBtn>
@@ -266,6 +270,7 @@ const handleDeleteBoard = (confirmed) => {
                 block
                 prepend-icon="tabler-trash"
                 @click="isDeleteDialogVisible = true"
+                :disabled="!isOwner"
               >
                 Delete Board
               </VBtn>

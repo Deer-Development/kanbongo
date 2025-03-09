@@ -89,6 +89,12 @@ const periodOptions = [
         value: 'custom',
         icon: 'tabler-calendar-due',
         description: 'Select a custom date range'
+      },
+      {
+        label: 'All Time',
+        value: 'all_time',
+        icon: 'tabler-calendar-due',
+        description: 'All time data'
       }
     ]
   }
