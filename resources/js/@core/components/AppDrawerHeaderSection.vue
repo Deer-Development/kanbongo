@@ -16,22 +16,22 @@ const emit = defineEmits(['cancel', 'back'])
 <template>
   <div class="drawer-header github-style-header">
     <div class="d-flex justify-space-between align-center px-4 py-3">
-      <div class="d-flex align-center gap-2">
+      <div class="d-flex align-center gap-2 header-left">
         <VBtn
           v-if="showBackButton"
           icon
           variant="text"
           size="small"
-          class="back-button"
+          class="back-button flex-shrink-0"
           @click="$emit('back')"
         >
           <VIcon size="18">tabler-arrow-left</VIcon>
         </VBtn>
         
-        <h2 class="text-h6 font-weight-medium mb-0 header-title">{{ title }}</h2>
+        <h2 class="text-h6 font-weight-medium mb-0 header-title text-truncate">{{ title }}</h2>
       </div>
       
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 header-actions flex-shrink-0">
         <slot name="beforeClose" />
         
         <VBtn
@@ -67,16 +67,23 @@ $github-colors: (
   top: 0;
   z-index: 10;
   
+  .header-left {
+    flex: 1;
+    min-width: 0;
+  }
+  
   .header-title {
     font-size: 16px;
     line-height: 24px;
     font-weight: 600;
     color: map-get($github-colors, text-primary);
     margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 500px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  
+  .header-actions {
+    margin-left: 8px;
   }
   
   .back-button, .close-button {

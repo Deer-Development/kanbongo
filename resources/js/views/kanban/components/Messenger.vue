@@ -297,36 +297,6 @@ const closePreview = () => {
   previewDialog.value = false
 }
 
-const getAttachmentStyle = attachment => {
-  let backgroundColor = "#F4F4F4"
-  let hoverColor = "#E0E0E0"
-
-  if (isImage(attachment)) {
-    backgroundColor = "#DFF4FF"
-    hoverColor = "#C2E5FA"
-  } else if (isPDF(attachment)) {
-    backgroundColor = "#FDECEC"
-    hoverColor = "#F8D7DA"
-  } else if (isWord(attachment)) {
-    backgroundColor = "#E8EDFB"
-    hoverColor = "#D0D9F5"
-  } else if (isExcel(attachment)) {
-    backgroundColor = "#E6F4E9"
-    hoverColor = "#C8E6C9"
-  }
-
-  return `
-    background-color: ${backgroundColor};
-    border-radius: 8px;
-    padding: 2px 10px;
-    transition: background-color 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-  `
-}
-
 const getAttachmentIcon = (attachment) => {
   if (isImage(attachment)) return 'tabler-photo'
   if (isPDF(attachment)) return 'tabler-file-type-pdf'
