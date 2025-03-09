@@ -435,14 +435,15 @@ const isTimerDisabled = computed(() => {
 
 const getTimerIcon = computed(() => { 
   if (isTiming.value) return 'tabler-player-pause-filled'
-  if (!localMember.value) return 'tabler-hourglass'
+  if (!localMember.value) return 'tabler-hourglass-empty'
   return 'tabler-player-play'
 })
 
 const getTimerColor = computed(() => {
   if (isTimerDisabled.value) return '#9CA3AF'
+  if (!localMember.value) return '#9CA3AF'
   if (isTiming.value) return '#059669'
-  return '#2563EB'
+  return '#38a169'
 })
 
 onUnmounted(() => {

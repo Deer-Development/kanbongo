@@ -127,26 +127,8 @@ $focus-color: #6366f1;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.timer-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  //width: 28px;
-  //height: 24px;
-  background: #38a169;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
-  color: white;
-  font-size: 14px;
-  margin-right: 4px;
-  padding: 2px;
-}
-
 .timer-btn:hover {
-  background: #2f855a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: scale(1.01);
 }
 
 .timer-btn:active {
@@ -174,27 +156,6 @@ $focus-color: #6366f1;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 
-  .timer-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    //width: 28px;
-    //height: 24px;
-    background: #38a169;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
-    color: white;
-    font-size: 14px;
-    margin-right: 4px;
-    //padding: 2px;
-  }
-
-  .timer-btn:hover {
-    background: #2f855a;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
 
   .timer-btn:active {
     transform: scale(0.95);
@@ -216,11 +177,6 @@ $focus-color: #6366f1;
       background-color: #f3f4f6;
       border-color: #d1d5db;
     }
-  }
-
-  &:hover {
-    background-color: #f3f4f6;
-    border-color: #d1d5db;
   }
 
   .v-input__prepend {
