@@ -13,6 +13,7 @@ import { useTimerStore } from '@/stores/useTimerStore'
 import DeleteBoardDialog from './dialogs/DeleteBoardDialog.vue'
 import ActivityDrawer from './components/ActivityDrawer.vue'
 import DocumentationDialog from './dialogs/DocumentationDialog.vue'
+import BoardSettings from "@/views/projects/dialogs/BoardSettings.vue"
 
 const route = useRoute()
 const isDeleteModalVisible = ref(false)
@@ -42,6 +43,7 @@ const toast = useToast()
 const isActivityDrawerOpen = ref(false)
 const isDocumentationDialogVisible = ref(false)
 const documentationDialogKey = ref(0)
+const isBoardSettingsVisible = ref(false)
 
 const refetchKanban = async () => {
   const wasOpen = isMessengerDrawerOpen.value
@@ -571,6 +573,24 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
     documentationDialogKey.value++
   }
 })
+
+const handleMoveBoardConfirm = (result) => {
+  if (result) {
+    router.push(`/projects/${result.targetProjectId}/boards/${result.boardId}`)
+  }
+}
+
+const handleDeleteBoardConfirm = async (boardId) => {
+  try {
+    await $api(`/container/${boardId}`, { 
+      method: 'DELETE'
+    })
+    
+    router.push(`/projects/${kanban.value.project_id}`)
+  } catch (error) {
+    toast.error('Failed to delete board')
+  }
+}
 </script>
 
 <template>
@@ -766,9 +786,10 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
           </VMenu>
 
           <button
-            v-if="kanban.auth.is_super_admin || kanban.owner_id === userData.id || kanban.members.find(member => member.user.id === userData.id && member.is_admin)"
+            :disabled="!kanban.auth.is_super_admin && kanban.owner_id !== userData.id && !kanban.members.find(member => member.user.id !== userData.id && member.is_admin)"
             variant="elevated"
             class="cursor-pointer github-style-badge"
+            :class="{ 'cursor-not-allowed': !kanban.auth.is_super_admin && kanban.owner_id !== userData.id && !kanban.members.find(member => member.user.id !== userData.id && member.is_admin) }"
             @click="isEditContainerDialogVisible = true"
           >
             <VIcon
@@ -776,6 +797,21 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
               size="16"
             >
               tabler-user-edit
+            </VIcon>
+          </button>
+
+          <button
+            :disabled="!kanban.auth.is_super_admin && kanban.owner_id !== userData.id && !kanban.members.find(member => member.user.id !== userData.id && member.is_admin)"
+            variant="elevated"
+            class="cursor-pointer github-style-badge"
+            :class="{ 'cursor-not-allowed': !kanban.auth.is_super_admin && kanban.owner_id !== userData.id && !kanban.members.find(member => member.user.id !== userData.id && member.is_admin) }"
+            @click="isBoardSettingsVisible = true"
+          >
+            <VIcon
+              left
+              size="16"
+            >
+              tabler-settings
             </VIcon>
           </button>
 
@@ -918,6 +954,15 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
       :key="documentationDialogKey"
       v-model:is-dialog-visible="isDocumentationDialogVisible"
       :container-id="kanban.id"
+    />
+    <BoardSettings
+      v-if="kanban"
+      v-model:board-details="kanban"
+      v-model:is-dialog-visible="isBoardSettingsVisible"
+      :project-id="kanban.project_id"
+      @form-submitted="refetchKanban"
+      @move-board="handleMoveBoardConfirm"
+      @delete-board="handleDeleteBoardConfirm"
     />
   </div>
 </template>

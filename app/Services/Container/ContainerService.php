@@ -9,6 +9,8 @@ use App\Services\BaseService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use App\Notifications\BoardOwnershipTransferred;
 
 class ContainerService extends BaseService
 {
@@ -45,19 +47,21 @@ class ContainerService extends BaseService
             $container = $this->getModelInstance()->findOrFail($id);
             $container->update($containerData);
 
-            $container->members()->get()->map(function ($member) use ($members) {
-                if (!in_array($member->user_id, array_column($members, 'user_id'))) {
-                    $member->delete();
-                }
-            });
+            if (count($members)) {
+                $container->members()->get()->map(function ($member) use ($members) {
+                    if (!in_array($member->user_id, array_column($members, 'user_id'))) {
+                        $member->delete();
+                    }
+                });
 
-            foreach ($members as $memberData) {
-                $container->members()->updateOrCreate(
-                    [
-                        'user_id' => $memberData['user_id'],
-                    ],
-                    $memberData
-                );
+                foreach ($members as $memberData) {
+                    $container->members()->updateOrCreate(
+                        [
+                            'user_id' => $memberData['user_id'],
+                        ],
+                        $memberData
+                    );
+                }
             }
 
             return $container;
@@ -190,5 +194,25 @@ class ContainerService extends BaseService
         });
 
         return $model;
+    }
+
+    public function transferOwnership(Container $container, int $newOwnerId): void
+    {
+        DB::transaction(function () use ($container, $newOwnerId) {
+            $oldOwnerId = $container->owner_id;
+            
+            // Update container owner
+            $container->update(['owner_id' => $newOwnerId]);
+            
+            // Notify relevant users
+            $oldOwner = User::find($oldOwnerId); // Important: Get old owner ID before update
+            $newOwner = User::find($newOwnerId);
+            
+            // Notify old owner that ownership was removed
+            $oldOwner->notify(new BoardOwnershipTransferred($container, $newOwner, 'removed'));
+            
+            // Notify new owner that ownership was granted
+            $newOwner->notify(new BoardOwnershipTransferred($container, $oldOwner, 'granted'));
+        });
     }
 }

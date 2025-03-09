@@ -1,6 +1,6 @@
 <script setup>
 import { VForm } from 'vuetify/components/VForm'
-import { defineProps, nextTick, ref, watch, onMounted } from 'vue'
+import { defineProps, nextTick, ref, watch, onMounted, computed } from 'vue'
 import { useToast } from "vue-toastification"
 
 const props = defineProps({
@@ -51,6 +51,11 @@ const temporaryUsersAdded = ref([])
 const userData = computed(() => useCookie('userData', { default: null }).value)
 const isHeaderHovered = ref(false)
 const isSubmitting = ref(false)
+const isTransferOwnershipDialogVisible = ref(false)
+const selectedNewOwner = ref(null)
+const isTransferringOwnership = ref(false)
+const confirmationEmail = ref('')
+const showBasicInfo = computed(() => !boardDataLocal.value?.id)
 
 const isValidEmail = email => {
   const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
@@ -270,6 +275,57 @@ const onReset = () => {
   }
 
   temporaryUsersAdded.value = []
+  selectedNewOwner.value = null
+  confirmationEmail.value = ''
+  isTransferOwnershipDialogVisible.value = false
+}
+
+const confirmationError = computed(() => {
+  if (!confirmationEmail.value) return ''
+  if (confirmationEmail.value !== members.value.find(m => m.user_id === selectedNewOwner.value)?.email) {
+    return 'Email does not match'
+  }
+  return ''
+})
+
+const canTransfer = computed(() => {
+  return selectedNewOwner.value && 
+         confirmationEmail.value === members.value.find(m => m.user_id === selectedNewOwner.value)?.email
+})
+
+const openTransferOwnershipDialog = () => {
+  selectedNewOwner.value = null
+  confirmationEmail.value = ''
+  isTransferOwnershipDialogVisible.value = true
+}
+
+const transferOwnership = async () => {
+  if (!canTransfer.value) return
+  
+  isTransferringOwnership.value = true
+  
+  try {
+    await $api(`/container/${boardDataLocal.value.id}/transfer-ownership`, {
+      method: 'POST',
+      body: {
+        new_owner_id: selectedNewOwner.value
+      }
+    })
+    
+    toast.success('Board ownership transferred successfully!')
+    boardDataLocal.value.owner_id = selectedNewOwner.value
+    isTransferOwnershipDialogVisible.value = false
+    
+    await nextTick(() => {
+      emit('formSubmitted')
+    })
+  } catch (error) {
+    toast.error('Failed to transfer ownership. Please try again.')
+  } finally {
+    isTransferringOwnership.value = false
+    selectedNewOwner.value = null
+    confirmationEmail.value = ''
+  }
 }
 </script>
 
@@ -291,7 +347,7 @@ const onReset = () => {
                 {{ isHeaderHovered ? '🎯' : '📋' }}
               </span>
             </div>
-            <span class="title-text">{{ boardDataLocal?.id ? 'Edit' : 'Create' }} Board</span>
+            <span class="title-text">{{ showBasicInfo ? 'Create Board' : 'Manage Members' }}</span>
           </div>
           <VBtn
             icon
@@ -311,7 +367,8 @@ const onReset = () => {
             validate-on="submit"
             @submit.prevent="onSubmit"
           >
-            <div class="form-section">
+            <!-- Basic Information - Only show when creating new board -->
+            <div v-if="showBasicInfo" class="form-section">
               <div class="section-header">
                 <VIcon icon="tabler-info-circle" size="18" class="me-2" />
                 <span class="text-h6">Basic Information</span>
@@ -328,10 +385,9 @@ const onReset = () => {
                 variant="outlined"
                 density="comfortable"
                 class="mb-4"
-                persistent-hint
               >
                 <template #prepend-inner>
-                  <VIcon icon="tabler-layout-board" size="18" class="text-medium-emphasis" />
+                  <VIcon icon="tabler-layout-board" size="18" />
                 </template>
               </VTextField>
 
@@ -341,7 +397,6 @@ const onReset = () => {
                 color="success"
                 :true-value="true"
                 :false-value="false"
-                class="mb-4"
                 hide-details
               >
                 <template #label>
@@ -359,10 +414,21 @@ const onReset = () => {
               </VSwitch>
             </div>
 
-            <div class="form-section">
-              <div class="section-header">
-                <VIcon icon="tabler-users" size="18" class="me-2" />
-                <span class="text-h6">Team Members</span>
+            <!-- Team Members Section -->
+            <div class="form-section" :class="{ 'mt-6': showBasicInfo }">
+              <div class="section-header d-flex justify-space-between align-center">
+                <div class="d-flex align-center">
+                  <VIcon icon="tabler-users" size="18" class="me-2" />
+                  <span class="text-h6">Team Members</span>
+                </div>
+                
+                <VChip
+                  v-if="members.length"
+                  color="primary"
+                  size="small"
+                >
+                  {{ members.length }} {{ members.length === 1 ? 'Member' : 'Members' }}
+                </VChip>
               </div>
 
               <template v-if="boardDataLocal?.id">
@@ -620,7 +686,7 @@ const onReset = () => {
                 :loading="isSubmitting"
                 @click="onSubmit"
               >
-                {{ boardDataLocal?.id ? 'Update' : 'Create' }} Board
+                {{ showBasicInfo ? 'Create' : 'Update' }}
               </VBtn>
             </div>
           </VForm>
@@ -628,6 +694,7 @@ const onReset = () => {
       </VCard>
     </VDialog>
 
+    <!-- Remove Member Dialog -->
     <ConfirmDialog
       v-model:isDialogVisible="isRemoveModalVisible"
       cancel-title="Cancel"

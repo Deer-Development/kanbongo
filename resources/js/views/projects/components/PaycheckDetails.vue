@@ -7,6 +7,7 @@ const props = defineProps({
   dateRange: { type: String, required: false, default: null },
   boardId: { type: Number, required: true, default: 0 },
   isOwner: { type: Boolean, required: false, default: false },
+  isAdmin: { type: Boolean, required: false, default: false },
   isSuperAdmin: { type: Boolean, required: false, default: false },
 })
 

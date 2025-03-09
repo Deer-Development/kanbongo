@@ -1,8 +1,7 @@
 <script setup>
 import AddEditBoard from "@/views/projects/dialogs/AddEditBoard.vue"
+import BoardSettings from "@/views/projects/dialogs/BoardSettings.vue"
 import PaymentDetails from "@/views/projects/dialogs/PaymentDetails.vue"
-import MoveBoardDialog from "@/views/projects/dialogs/MoveBoardDialog.vue"
-import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue"
 import { router } from "@/plugins/1.router/index"
 
 const props = defineProps({
@@ -38,18 +37,22 @@ const handleFormSubmitted = () => {
 }
 
 const isBoardDialogVisible = ref(false)
+const isBoardSettingsVisible = ref(false)
 const isPaymentDetailsDialogVisible = ref(false)
-const isDeleteConfirmDialogVisible = ref(false)
-const isMoveDialogVisible = ref(false)
 const boardDetails = ref()
 const boardId = ref(0)
-const isOwner = computed(() => projectDataLocal.value.owner.id === props.userData.id)
+const isOwner = ref(false)
 const isAdmin = ref(false)
 const userData = useCookie('userData')
 
 const editBoard = board => {
   boardDetails.value = board
   isBoardDialogVisible.value = true
+}
+
+const openBoardSettings = board => {
+  boardDetails.value = board
+  isBoardSettingsVisible.value = true
 }
 
 const deleteBoard = board => {
@@ -69,7 +72,7 @@ const moveBoard = board => {
 }
 
 const handleMoveConfirm = (result) => {
-  if (result.confirmed) {
+  if (result) {
     emit('moveContainer', {
       boardId: result.boardId,
       targetProjectId: result.targetProjectId
@@ -79,6 +82,7 @@ const handleMoveConfirm = (result) => {
 
 const paymentBoard = board => {
   boardId.value = board.id
+  isOwner.value = board.owner.id === props.userData.id
   isAdmin.value = board.members.some(member => member.user.id === props.userData.id && member.is_admin)
   isPaymentDetailsDialogVisible.value = true
 }
@@ -99,11 +103,13 @@ const goToBoard = board => {
 watch(() => isPaymentDetailsDialogVisible.value, value => {
   if (!value) {
     boardId.value = 0
+    isOwner.value = false
+    isAdmin.value = false
   }
 })
 
 const canEditBoard = board => {
-  return props.isSuperAdmin || projectDataLocal.value.owner.id === props.userData.id || board.members.find(member => member.user.id === props.userData.id && member.is_admin)
+  return props.isSuperAdmin || board.owner.id === props.userData.id || board.members.find(member => member.user.id === props.userData.id && member.is_admin)
 }
 </script>
 
@@ -174,7 +180,6 @@ const canEditBoard = board => {
         <VMenu
           v-if="canEditBoard(board)"
           location="bottom end"
-          :close-on-content-click="true"
           transition="scale-transition"
           :offset="[0, 8]"
         >
@@ -194,24 +199,17 @@ const canEditBoard = board => {
           
           <VList density="compact" class="action-menu">
             <VListItem
-              prepend-icon="tabler-edit"
-              title="Edit"
-              class="action-item edit-action"
+              prepend-icon="tabler-users"
+              title="Manage Members"
+               class="action-item move-action"
               @click.stop="editBoard(board)"
             />
             <VDivider class="my-1" />
             <VListItem
-              prepend-icon="tabler-trash"
-              title="Delete"
+              prepend-icon="tabler-settings"
+              title="Board Settings"
               class="action-item delete-action"
-              @click.stop="deleteBoard(board)"
-            />
-            <VDivider class="my-1" />
-            <VListItem
-              prepend-icon="tabler-arrows-transfer-up"
-              title="Move to another project"
-              class="action-item move-action"
-              @click.stop="moveBoard(board)"
+              @click.stop="openBoardSettings(board)"
             />
           </VList>
         </VMenu>
@@ -227,6 +225,15 @@ const canEditBoard = board => {
     @form-submitted="handleFormSubmitted"
   />
 
+  <BoardSettings
+    v-model:board-details="boardDetails"
+    v-model:is-dialog-visible="isBoardSettingsVisible"
+    :project-id="projectDataLocal.id"
+    @form-submitted="handleFormSubmitted"
+    @move-board="handleMoveConfirm"
+    @delete-board="handleDeleteConfirm"
+  />
+
   <PaymentDetails
     v-model:board-id="boardId"
     v-model:is-super-admin="props.isSuperAdmin"
@@ -234,22 +241,6 @@ const canEditBoard = board => {
     v-model:is-admin="isAdmin"
     v-model:is-dialog-visible="isPaymentDetailsDialogVisible"
     @form-submitted="handleFormSubmitted"
-  />
-
-  <DeleteConfirmDialog
-    v-model:isDialogVisible="isDeleteConfirmDialogVisible"
-    title="Delete board"
-    :item-name="boardDetails?.name"
-    item-type="board"
-    message="This action cannot be undone. This will permanently delete this board and remove all associated data, including tasks, comments, and files."
-    :confirmation-text="boardDetails?.name"
-    @confirm="handleDeleteConfirm"
-  />
-  
-  <MoveBoardDialog
-    v-model:isDialogVisible="isMoveDialogVisible"
-    :board-details="boardDetails"
-    @confirm="handleMoveConfirm"
   />
 </template>
 

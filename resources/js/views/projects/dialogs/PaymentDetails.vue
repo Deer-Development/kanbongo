@@ -654,7 +654,7 @@ onMounted(() => {
             <div class="member-actions">
               <div class="actions-wrapper">
                 <VBtn
-                  v-if="(isSuperAdmin || isOwner) && member.pending_payment > 0"
+                  v-if="(isSuperAdmin || isOwner || isAdmin) && member.pending_payment > 0"
                   color="warning"
                   variant="tonal"
                   size="small"
@@ -694,6 +694,7 @@ onMounted(() => {
             :payment-status="paymentStatusFilter"
             :board-id="boardIdLocal"
             :is-owner="isOwner"
+            :is-admin="isAdmin"
             :is-super-admin="isSuperAdmin"
             @update:selected-payment="totalSelectedPayment = $event"
             @update:selected-entries="selectedEntries = $event"
@@ -707,6 +708,7 @@ onMounted(() => {
             :date-range="selectedDateRange"
             :board-id="boardIdLocal"
             :is-owner="isOwner"
+            :is-admin="isAdmin"
             :is-super-admin="isSuperAdmin"
           />
         </div>

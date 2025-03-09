@@ -35,6 +35,7 @@ const deleteContainer = async (boardId) => {
 }
 
 const handleMoveContainer = async (data) => {
+  console.log(data)
   try {
     const response = await $api(`/container/${data.boardId}/move`, {
       method: 'POST',

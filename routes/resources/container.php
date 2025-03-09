@@ -16,6 +16,7 @@ use App\Http\Controllers\Container\Destroy;
 use App\Http\Controllers\Container\ShowForComments;
 use App\Http\Controllers\Container\Move;
 use App\Http\Controllers\Container\ContainerActivities;
+use App\Http\Controllers\Container\TransferOwnership;
 
 Route::group(['prefix' => 'container'], function () {
     Route::get('/', Index::class)->name("container.index");
@@ -33,4 +34,5 @@ Route::group(['prefix' => 'container'], function () {
     Route::get('/{id}/member-paychecks-details/{userId}', MemberPaychecksDetails::class)->name("container.member-paychecks-details");
     Route::post('/{id}/process-payment/{userId}', ProcessPayment::class)->name("container.process-payment");
     Route::delete('/{id}', Destroy::class)->name("container.destroy");
+    Route::post('/{id}/transfer-ownership', TransferOwnership::class)->name("container.transfer-ownership");
 });
