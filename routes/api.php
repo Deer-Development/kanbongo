@@ -19,6 +19,7 @@ use App\Http\Controllers\User\NotificationPreferencesController;
 use App\Http\Controllers\User\UpdateNotificationPreferences;
 use App\Http\Controllers\User\PaymentDetailsController;
 use App\Http\Resources\User\UserResource;
+use App\Http\Controllers\Container\PaymentController;
 
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
@@ -98,4 +99,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/auth/me', function () {
         return new UserResource(auth()->user());
     });
+    Route::post('/container/{boardId}/process-payment/{userId}', [PaymentController::class, 'processPayment']);
+    Route::get('/payments/{transferId}/status', [PaymentController::class, 'getPaymentStatus']);
 });
