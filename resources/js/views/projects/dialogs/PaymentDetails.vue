@@ -2,6 +2,8 @@
 import { defineProps, ref, watch, computed, onMounted } from "vue"
 import MemberPaymentDetails from "@/views/projects/components/MemberPaymentDetails.vue"
 import PaycheckDetails from "@/views/projects/components/PaycheckDetails.vue"
+import { useToast } from 'vue-toastification'
+
 
 const props = defineProps({
   boardId: { type: Number, required: true, default: 0 },
@@ -21,6 +23,7 @@ const selectedMember = ref(null)
 const showPaychecks = ref(false)
 const totalSelectedPayment = ref(0)
 const selectedEntries = ref([])
+const toast = useToast()
 
 const selectedDateRange = ref("")
 const paymentStatusFilter = ref('all')
@@ -195,36 +198,104 @@ const getStatusText = (member) => {
   return 'No Payment'
 }
 
-const recipients = ref([])
+// Payment flow states
+const paymentStep = ref(1)
+const paymentFlowError = ref(null)
+const isProcessing = ref(false)
 const selectedRecipient = ref(null)
+const recipients = ref([])
+const showNewRecipientForm = ref(false)
 
+// Payment steps
+const STEPS = {
+  REVIEW: 1,
+  RECIPIENT: 2,
+  CONFIRM: 3,
+  PROCESSING: 4,
+  COMPLETE: 5
+}
+
+// Computed properties for payment flow
+const canProceedToRecipient = computed(() => {
+  return totalSelectedPayment.value > 0 && selectedEntries.value.length > 0
+})
+
+const canProceedToConfirm = computed(() => {
+  return selectedRecipient.value || 
+    (showNewRecipientForm.value && memberToPay.value?.user?.paymentDetails)
+})
+
+const recipientDetails = computed(() => {
+  if (selectedRecipient.value) {
+    return selectedRecipient.value
+  }
+  
+  if (memberToPay.value?.user?.paymentDetails) {
+    const details = memberToPay.value.user.paymentDetails
+    return {
+      accountHolderName: details.account_holder_name,
+      email: memberToPay.value.user.email,
+      currency: details.currency,
+      type: details.account_type
+    }
+  }
+  
+  return null
+})
+
+// Methods for payment flow
 const fetchRecipients = async () => {
   try {
+    isProcessing.value = true
     const response = await $api('/wise/recipients')
     recipients.value = response.data.recipients
   } catch (error) {
     toast.error('Failed to fetch recipients')
+    paymentFlowError.value = error.response?.data?.message || 'Failed to fetch recipients'
+  } finally {
+    isProcessing.value = false
   }
 }
 
-const confirmPayment = member => {
-  memberToPay.value = member
-  fetchRecipients() // Fetch recipients when opening payment dialog
-  isConfirmDialogVisible.value = true
+const confirmPayment = async (member) => {
+  try {
+    memberToPay.value = member
+    paymentStep.value = STEPS.REVIEW
+    isConfirmDialogVisible.value = true
+    await fetchRecipients()
+  } catch (error) {
+    toast.error('Failed to initialize payment')
+    paymentFlowError.value = error.message
+  }
 }
 
-const closeConfirmDialog = () => {
-  isConfirmDialogVisible.value = false
-  memberToPay.value = null
+const proceedToRecipientSelection = () => {
+  if (!canProceedToRecipient.value) {
+    toast.error('Please select entries to pay')
+    return
+  }
+  paymentStep.value = STEPS.RECIPIENT
+}
+
+const proceedToConfirmation = () => {
+  if (!canProceedToConfirm.value) {
+    toast.error('Please select or create a recipient')
+    return
+  }
+  paymentStep.value = STEPS.CONFIRM
 }
 
 const handlePayment = async () => {
   try {
+    paymentStep.value = STEPS.PROCESSING
+    isProcessing.value = true
+    paymentFlowError.value = null
+
     const res = await $api(`/container/${boardIdLocal.value}/process-payment/${memberToPay.value}`, {
       method: "POST",
       body: {
         amount: totalSelectedPayment.value,
-        currency: 'USD',
+        currency: recipientDetails.value?.currency || 'USD',
         date_range: selectedDateRange.value,
         selected_entries: selectedEntries.value,
         recipient_id: selectedRecipient.value?.id
@@ -232,13 +303,36 @@ const handlePayment = async () => {
     })
 
     if (res.data) {
+      paymentStep.value = STEPS.COMPLETE
       toast.success('Payment processed successfully')
-      selectedMember.value = null
-      await fetchMemberDetails()
+      
+      // Update UI after short delay
+      setTimeout(() => {
+        selectedMember.value = null
+        isConfirmDialogVisible.value = false
+        fetchMemberDetails()
+      }, 2000)
     }
   } catch (error) {
-    toast.error(error.response?.data?.message || 'Payment processing failed')
+    paymentFlowError.value = error.response?.data?.message || 'Payment processing failed'
+    toast.error(paymentFlowError.value)
+    paymentStep.value = STEPS.CONFIRM
+  } finally {
+    isProcessing.value = false
   }
+}
+
+const resetPaymentFlow = () => {
+  paymentStep.value = STEPS.REVIEW
+  paymentFlowError.value = null
+  selectedRecipient.value = null
+  showNewRecipientForm.value = false
+  isProcessing.value = false
+}
+
+const closeConfirmDialog = () => {
+  isConfirmDialogVisible.value = false
+  resetPaymentFlow()
 }
 
 const handleDetails = async member => {
@@ -767,74 +861,260 @@ onMounted(() => {
     </VCard>
     <ConfirmDialog
       v-model:isDialogVisible="isConfirmDialogVisible"
-      cancel-title="Cancel"
-      confirm-title="Pay Now"
-      confirm-msg="Payment will be processed."
-      confirmation-question="Are you sure you want to proceed with this payment?"
-      cancel-msg="Payment will not be processed."
-      @confirm="confirmed => confirmed && handlePayment()"
+      :cancel-title="paymentStep === STEPS.COMPLETE ? 'Close' : 'Cancel'"
+      :confirm-title="
+        paymentStep === STEPS.REVIEW ? 'Continue' :
+        paymentStep === STEPS.RECIPIENT ? 'Continue' :
+        paymentStep === STEPS.CONFIRM ? 'Process Payment' :
+        paymentStep === STEPS.PROCESSING ? 'Processing...' :
+        'Done'
+      "
+      :confirmation-question="
+        paymentStep === STEPS.REVIEW ? 'Review Payment Details' :
+        paymentStep === STEPS.RECIPIENT ? 'Select Payment Recipient' :
+        paymentStep === STEPS.CONFIRM ? 'Confirm Payment Details' :
+        paymentStep === STEPS.PROCESSING ? 'Processing Payment...' :
+        'Payment Complete'
+      "
+      @confirm="
+        paymentStep === STEPS.REVIEW ? proceedToRecipientSelection() :
+        paymentStep === STEPS.RECIPIENT ? proceedToConfirmation() :
+        paymentStep === STEPS.CONFIRM ? handlePayment() :
+        paymentStep === STEPS.COMPLETE ? closeConfirmDialog() : null
+      "
       @close="closeConfirmDialog"
     >
       <template #default>
-        <!-- Add recipient selection -->
-        <div class="recipient-selection mb-4">
-          <h3 class="text-h6 mb-2">Select Payment Recipient</h3>
-          
-          <VSelect
-            v-model="selectedRecipient"
-            :items="recipients"
-            item-title="accountHolderName"
-            item-value="id"
-            label="Select recipient"
-            class="mb-2"
-            :loading="!recipients.length"
-            :rules="[v => !!v || 'Recipient is required']"
-          >
-            <template #item="{ props, item }">
-              <VListItem v-bind="props">
-                <template #prepend>
-                  <VIcon 
-                    size="20"
-                    color="primary"
-                    class="me-2"
-                  >
-                    tabler-user-circle
-                  </VIcon>
-                </template>
-                
-                <VListItemTitle>
-                  {{ item.raw.accountHolderName }}
-                </VListItemTitle>
-                
-                <VListItemSubtitle>
-                  {{ item.raw.currency }} • {{ item.raw.type }}
-                </VListItemSubtitle>
-              </VListItem>
-            </template>
-          </VSelect>
+        <!-- Error Alert -->
+        <VAlert
+          v-if="paymentFlowError"
+          type="error"
+          variant="tonal"
+          class="mb-4"
+          closable
+          @click:close="paymentFlowError = null"
+        >
+          {{ paymentFlowError }}
+        </VAlert>
 
-          <VBtn
-            variant="tonal"
-            color="primary"
-            size="small"
-            prepend-icon="tabler-plus"
-            class="mt-2"
-            @click="createNewRecipient"
-          >
-            Add New Recipient
-          </VBtn>
+        <!-- Step 1: Review -->
+        <div v-if="paymentStep === STEPS.REVIEW">
+          <div class="payment-review mb-4">
+            <h3 class="text-h6 mb-2">Payment Review</h3>
+            
+            <div class="payment-details">
+              <div class="detail-row">
+                <span class="label">Recipient Name:</span>
+                <span class="value">{{ memberToPay?.user?.full_name }}</span>
+              </div>
+              
+              <div class="detail-row">
+                <span class="label">Amount:</span>
+                <span class="value">${{ totalSelectedPayment.toFixed(2) }}</span>
+              </div>
+              
+              <div class="detail-row">
+                <span class="label">Selected Entries:</span>
+                <span class="value">{{ selectedEntries.length }} entries</span>
+              </div>
+              
+              <div class="detail-row">
+                <span class="label">Date Range:</span>
+                <span class="value">{{ selectedDateRange }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Payment Summary -->
-        <div class="payment-summary">
-          <div class="d-flex justify-space-between align-center mb-2">
-            <span class="text-subtitle-2">Amount:</span>
-            <span class="text-h6">${{ totalSelectedPayment.toFixed(2) }}</span>
+        <!-- Step 2: Recipient Selection -->
+        <div v-else-if="paymentStep === STEPS.RECIPIENT">
+          <div class="recipient-selection mb-4">
+            <h3 class="text-h6 mb-2">Select Payment Recipient</h3>
+            
+            <div v-if="isProcessing" class="d-flex justify-center py-4">
+              <VProgressCircular indeterminate />
+            </div>
+            
+            <template v-else>
+              <VSelect
+                v-model="selectedRecipient"
+                :items="recipients"
+                item-title="accountHolderName"
+                item-value="id"
+                label="Select existing recipient"
+                class="mb-2"
+                :loading="!recipients.length"
+                :disabled="showNewRecipientForm"
+              >
+                <template #item="{ props, item }">
+                  <VListItem v-bind="props">
+                    <template #prepend>
+                      <VIcon 
+                        size="20"
+                        color="primary"
+                        class="me-2"
+                      >
+                        tabler-user-circle
+                      </VIcon>
+                    </template>
+                    
+                    <VListItemTitle>
+                      {{ item.raw.accountHolderName }}
+                    </VListItemTitle>
+                    
+                    <VListItemSubtitle>
+                      {{ item.raw.currency }} • {{ item.raw.type }}
+                    </VListItemSubtitle>
+                  </VListItem>
+                </template>
+              </VSelect>
+
+              <div class="d-flex align-center gap-2 mt-4">
+                <VDivider />
+                <span class="text-medium-emphasis text-sm">or</span>
+                <VDivider />
+              </div>
+
+              <VBtn
+                variant="tonal"
+                color="primary"
+                size="small"
+                prepend-icon="tabler-plus"
+                class="mt-4"
+                :disabled="!memberToPay?.user?.paymentDetails"
+                @click="showNewRecipientForm = !showNewRecipientForm"
+              >
+                {{ showNewRecipientForm ? 'Cancel' : 'Create New Recipient' }}
+              </VBtn>
+
+              <div 
+                v-if="showNewRecipientForm" 
+                class="new-recipient-form mt-4"
+              >
+                <div class="payment-details-preview">
+                  <h4 class="text-subtitle-1 font-weight-medium mb-2">
+                    Payment Details Preview
+                  </h4>
+                  
+                  <template v-if="memberToPay?.user?.paymentDetails">
+                    <div class="detail-row">
+                      <span class="label">Account Holder:</span>
+                      <span class="value">{{ memberToPay.user.paymentDetails.account_holder_name }}</span>
+                    </div>
+                    
+                    <div class="detail-row">
+                      <span class="label">Account Type:</span>
+                      <span class="value">{{ memberToPay.user.paymentDetails.account_type }}</span>
+                    </div>
+                    
+                    <div class="detail-row">
+                      <span class="label">Currency:</span>
+                      <span class="value">{{ memberToPay.user.paymentDetails.currency }}</span>
+                    </div>
+                  </template>
+                  
+                  <VAlert
+                    v-else
+                    type="warning"
+                    variant="tonal"
+                    class="mt-2"
+                  >
+                    User has not provided payment details yet.
+                  </VAlert>
+                </div>
+              </div>
+            </template>
           </div>
-          
-          <div class="d-flex justify-space-between align-center">
-            <span class="text-subtitle-2">Currency:</span>
-            <span>USD</span>
+        </div>
+
+        <!-- Step 3: Confirmation -->
+        <div v-else-if="paymentStep === STEPS.CONFIRM">
+          <div class="payment-confirmation">
+            <h3 class="text-h6 mb-4">Confirm Payment Details</h3>
+            
+            <div class="confirmation-details">
+              <div class="detail-section">
+                <h4 class="text-subtitle-1 font-weight-medium mb-2">
+                  Recipient Information
+                </h4>
+                
+                <div class="detail-row">
+                  <span class="label">Name:</span>
+                  <span class="value">{{ recipientDetails?.accountHolderName }}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="label">Email:</span>
+                  <span class="value">{{ recipientDetails?.email }}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="label">Currency:</span>
+                  <span class="value">{{ recipientDetails?.currency }}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="label">Account Type:</span>
+                  <span class="value">{{ recipientDetails?.type }}</span>
+                </div>
+              </div>
+
+              <VDivider class="my-4" />
+
+              <div class="detail-section">
+                <h4 class="text-subtitle-1 font-weight-medium mb-2">
+                  Payment Information
+                </h4>
+                
+                <div class="detail-row">
+                  <span class="label">Amount:</span>
+                  <span class="value">${{ totalSelectedPayment.toFixed(2) }}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="label">Entries:</span>
+                  <span class="value">{{ selectedEntries.length }} selected</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="label">Period:</span>
+                  <span class="value">{{ selectedDateRange }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Processing -->
+        <div v-else-if="paymentStep === STEPS.PROCESSING">
+          <div class="processing-state text-center py-4">
+            <VProgressCircular
+              indeterminate
+              size="64"
+              color="primary"
+              class="mb-4"
+            />
+            <h3 class="text-h6">Processing Payment</h3>
+            <p class="text-medium-emphasis">
+              Please wait while we process your payment...
+            </p>
+          </div>
+        </div>
+
+        <!-- Step 5: Complete -->
+        <div v-else-if="paymentStep === STEPS.COMPLETE">
+          <div class="completion-state text-center py-4">
+            <VIcon
+              size="64"
+              color="success"
+              class="mb-4"
+            >
+              tabler-circle-check
+            </VIcon>
+            <h3 class="text-h6 text-success">Payment Successful</h3>
+            <p class="text-medium-emphasis">
+              The payment has been processed successfully.
+            </p>
           </div>
         </div>
       </template>
@@ -843,7 +1123,748 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-.recipient-selection {
+.payment-details-dialog {
+  .github-card {
+    background: #f6f8fa;
+    border: none;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header-section {
+    background: #ffffff;
+    padding: 1.5rem;
+    border-bottom: 1px solid #d0d7de;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #d0d7de;
+      margin-bottom: 1rem;
+
+      .close-btn {
+        color: #57606a;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: #24292f;
+          background: #f3f4f6;
+        }
+      }
+    }
+
+    .title-section {
+      .header-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #24292f;
+        margin: 0;
+        line-height: 1.4;
+      }
+
+      .subtitle {
+        display: flex;
+        align-items: center;
+        font-size: 0.875rem;
+        color: #0969da;
+        margin-top: 0.25rem;
+        
+        .v-icon {
+          opacity: 0.8;
+        }
+      }
+    }
+
+    .github-btn {
+      border-color: #d0d7de;
+      color: #24292f;
+      font-size: 0.875rem;
+      height: 32px;
+      
+      &:hover {
+        border-color: #0969da;
+        background: #f3f4f6;
+      }
+    }
+  }
+
+  .content-section {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem !important;
+  }
+
+  .members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1rem;
+    min-height: 200px;
+
+    .no-results {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 3rem 1rem;
+
+      .empty-state {
+        text-align: center;
+        background: #ffffff;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        padding: 2rem;
+        max-width: 400px;
+        width: 100%;
+
+        h3 {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #24292f;
+          margin-bottom: 0.5rem;
+        }
+
+        p {
+          font-size: 0.875rem;
+          color: #57606a;
+          margin: 0;
+        }
+      }
+    }
+  }
+
+  .member-card {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 1.25rem;
+    position: relative;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #0969da;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .status-badge {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 2rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+
+      &.paid {
+        background: #dafbe1;
+        color: #1a7f37;
+      }
+
+      &.pending {
+        background: #fff8c5;
+        color: #9a6700;
+      }
+
+      &.not-worked {
+        background: #f6f8fa;
+        color: #57606a;
+      }
+    }
+
+    .member-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+
+      .actions-wrapper {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        
+        .v-btn {
+          flex: 0 1 auto;
+          min-width: auto;
+        }
+      }
+    }
+  }
+
+  .member-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+
+    .member-details {
+      h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #24292f;
+        margin-bottom: 0.25rem;
+      }
+
+      span {
+        font-size: 0.875rem;
+        color: #57606a;
+      }
+    }
+  }
+
+  .payment-stats {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #d8dee4;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      span:first-child {
+        color: #57606a;
+      }
+    }
+  }
+
+  .payment-summary {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    width: 100%;
+
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #24292f;
+      margin-bottom: 1rem;
+    }
+
+    .summary-stats {
+      display: grid;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      
+      @media (max-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      @media (max-width: 480px) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .summary-stat {
+      background: #f6f8fa;
+      padding: 1rem;
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+
+      span:first-child {
+        font-size: 0.875rem;
+        color: #57606a;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+
+      span:last-child {
+        font-size: 1.125rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .selected-payment-info {
+    margin-top: 0.5rem;
+    
+    @media (max-width: 768px) {
+      margin: 0.5rem -1rem 0;
+      padding: 0.5rem;
+      background: #f6f8fa;
+      border-top: 1px solid #d0d7de;
+      border-bottom: 1px solid #d0d7de;
+    }
+    
+    .payment-stats {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 0.5rem;
+      
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        background: #ffffff;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        flex: 1;
+        min-width: 200px;
+        max-width: 250px;
+        height: 40px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          border-color: #0969da;
+          background: #f8fafc;
+        }
+
+        .stat-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          background: #f6f8fa;
+          border-radius: 6px;
+          
+          .v-icon {
+            font-size: 16px;
+          }
+        }
+
+        .stat-content {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          flex: 1;
+
+          .stat-label {
+            font-size: 0.75rem;
+            color: #57606a;
+            margin: 0;
+          }
+
+          .stat-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #0969da;
+          }
+        }
+      }
+
+      .pay-btn {
+        margin-left: auto;
+        padding: 0 1rem;
+        height: 40px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        letter-spacing: 0.3px;
+        min-width: 120px;
+        transition: all 0.2s ease;
+        
+        .v-btn__content {
+          gap: 0.375rem;
+        }
+        
+        .v-icon {
+          font-size: 18px;
+        }
+        
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+      }
+      
+      @media (max-width: 768px) {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        
+        .stat-item {
+          flex: 1;
+          min-width: calc(50% - 0.25rem);
+          padding: 0.375rem 0.5rem;
+          background: #ffffff;
+          
+          .stat-icon {
+            width: 24px;
+            height: 24px;
+            
+            .v-icon {
+              font-size: 14px;
+            }
+          }
+
+          .stat-content {
+            flex: 1;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.125rem;
+
+            .stat-label {
+              margin: 0;
+              font-size: 0.675rem;
+              line-height: 1;
+            }
+
+            .stat-value {
+              font-size: 0.75rem;
+              line-height: 1;
+            }
+          }
+        }
+
+        .pay-btn {
+          width: 100%;
+          margin: 0;
+          height: 32px;
+          padding: 0 1rem;
+          font-size: 0.75rem;
+          
+          .v-icon {
+            font-size: 16px;
+          }
+          
+          .v-btn__content {
+            font-size: 0.75rem;
+            gap: 0.25rem;
+          }
+        }
+      }
+    }
+  }
+
+  .filters-section {
+    .date-filters {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      
+      .filters-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 0;
+        
+        .period-selector {
+          flex: 1;
+          min-width: 0;
+          
+          .period-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            
+            .period-btn {
+              height: 24px;
+              font-size: 0.75rem;
+              text-transform: none;
+              letter-spacing: normal;
+              white-space: nowrap;
+              
+              &:hover {
+                background: #f3f4f6;
+              }
+            }
+          }
+        }
+        
+        .custom-date-wrapper {
+          flex: 1;
+          min-width: 200px;
+          max-width: 300px;
+          
+          .date-picker {
+            :deep(.v-field) {
+              border-radius: 6px;
+              border: 1px solid #d0d7de;
+              background: #ffffff;
+              height: 24px;
+              min-height: 24px;
+              font-size: 0.75rem;
+              
+              &:hover {
+                border-color: #0969da;
+              }
+              
+              &.v-field--focused {
+                border-color: #0969da;
+                box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+              }
+
+              .v-field__input {
+                min-height: 24px;
+                padding-top: 0;
+                padding-bottom: 0;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.text-success { color: #1a7f37; }
+.text-danger { color: #cf222e; }
+.text-primary { color: #0969da; }
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.date-menu-card {
+  border: 1px solid #d0d7de;
+  box-shadow: 0 8px 24px rgba(140,149,159,0.2);
+  
+  .dropdown-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-bottom: 1px solid #d0d7de;
+    background: #f6f8fa;
+    
+    .header-icon {
+      color: inherit;
+      opacity: 0.8;
+    }
+  }
+
+  .date-presets-list {
+    padding: 4px 0;
+
+    :deep(.v-list-item) {
+      min-height: 32px;
+      padding: 4px 12px;
+      cursor: pointer;
+      
+      &:hover {
+        background: #f6f8fa;
+      }
+      
+      &.v-list-item--active {
+        background: #f0f3f9;
+        color: #0969da;
+      }
+
+      .v-list-item__prepend {
+        margin-right: 8px;
+      }
+    }
+  }
+
+  .date-picker {
+    :deep(.v-field) {
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      background: #ffffff;
+      height: 32px;
+      
+      &:hover {
+        border-color: #0969da;
+      }
+      
+      &.v-field--focused {
+        border-color: #0969da;
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+      }
+    }
+  }
+}
+
+.btn-group-status-filter {
+  max-width: 240px;
+}
+
+.date-filter-btn {
+  height: 24px;
+  min-width: 160px;
+  font-size: 0.75rem;
+  border-color: #d0d7de;
+  text-transform: none;
+  letter-spacing: normal;
+  
+  &:hover {
+    border-color: #0969da;
+    background: #f3f4f6;
+  }
+  
+  .v-icon {
+    color: #57606a;
+  }
+  
+  &.v-btn--active {
+    .v-icon {
+      color: inherit;
+    }
+  }
+}
+
+.custom-date-card {
+  padding: 0.75rem;
+  border: 1px solid #d0d7de;
+  box-shadow: 0 8px 24px rgba(140,149,159,0.2);
+  
+  .date-picker {
+    :deep(.v-field) {
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      background: #ffffff;
+      height: 32px;
+      
+      &:hover {
+        border-color: #0969da;
+      }
+      
+      &.v-field--focused {
+        border-color: #0969da;
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .filters-section {
+    .date-filters {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+      
+      .filters-group {
+        flex-direction: column;
+        
+        .v-divider {
+          display: none;
+        }
+        
+        .period-selector {
+          justify-content: flex-start;
+          width: 100%;
+          
+          .period-controls {
+            flex-direction: column;
+            
+            .period-btn {
+              flex: 1;
+            }
+          }
+        }
+        
+        .custom-date-wrapper {
+          width: 100%;
+          max-width: none;
+        }
+      }
+      
+      .btn-group-status-filter {
+        width: 100%;
+        
+        .v-btn {
+          flex: 1;
+        }
+      }
+    }
+  }
+}
+
+.period-menu {
+  .period-group-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #57606a;
+    background: #f6f8fa;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  
+  .period-option {
+    min-height: 56px;
+    padding: 8px 16px;
+    
+    &:hover {
+      background: #f6f8fa;
+    }
+    
+    &.v-list-item--active {
+      background: #f0f9ff;
+      color: #0969da;
+      
+      .v-list-item-subtitle {
+        color: #57606a;
+      }
+    }
+    
+    .v-list-item-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .v-list-item-subtitle {
+      font-size: 0.75rem;
+      color: #57606a;
+      margin-top: 2px;
+    }
+  }
+}
+
+.period-selector {
+  .period-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    
+    .period-btn {
+      height: 24px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #24292f;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      letter-spacing: normal;
+      text-transform: none;
+      
+      &:hover {
+        background: #f3f4f6;
+        border-color: #0969da;
+      }
+    }
+  }
+}
+
+.payment-review,
+.recipient-selection,
+.payment-confirmation {
   background: #f6f8fa;
   border: 1px solid #d0d7de;
   border-radius: 6px;
@@ -851,26 +1872,70 @@ onMounted(() => {
 
   h3 {
     color: #24292f;
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 600;
+    margin-bottom: 1rem;
+  }
+}
+
+.payment-details,
+.confirmation-details {
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #d0d7de;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: #57606a;
+      font-size: 0.875rem;
+    }
+
+    .value {
+      color: #24292f;
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+  }
+}
+
+.new-recipient-form {
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 1rem;
+
+  .payment-details-preview {
+    h4 {
+      color: #24292f;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+  }
+}
+
+.detail-section {
+  h4 {
+    color: #24292f;
+    font-size: 0.875rem;
     margin-bottom: 0.75rem;
   }
 }
 
-.payment-summary {
-  background: #f6f8fa;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-top: 1rem;
-
-  .text-subtitle-2 {
-    color: #57606a;
+.processing-state,
+.completion-state {
+  h3 {
+    margin-bottom: 0.5rem;
   }
 
-  .text-h6 {
-    color: #24292f;
-    font-weight: 600;
+  p {
+    font-size: 0.875rem;
+    color: #57606a;
   }
 }
 </style>
+

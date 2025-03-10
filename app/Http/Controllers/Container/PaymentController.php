@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ProcessPaymentRequest;
 use App\Models\Payment;
 use App\Models\User;
-use App\Services\Wise\WisePaymentException;
 use App\Services\Wise\WisePaymentService;
-use Illuminate\Http\Request;
+use App\Services\Wise\WisePaymentException;
+use App\Events\PaymentProcessed;
 use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
@@ -65,7 +65,74 @@ class PaymentController extends Controller
                 $recipientId = $recipient['id'];
             }
 
-            // Rest of the code...
+            // 3. Create transfer
+            $transfer = $this->wiseService->createTransfer(
+                $quote['id'],
+                $recipientId,
+                [
+                    'reference' => $payment->reference,
+                    'sourceOfFunds' => 'business',
+                    'transferPurpose' => 'service_payment',
+                ]
+            );
+
+            // 4. Fund transfer
+            $fundedTransfer = $this->wiseService->fundTransfer($transfer['id']);
+
+            // 5. Update payment record
+            $payment->update([
+                'status' => 'completed',
+                'wise_transfer_id' => $transfer['id'],
+                'wise_recipient_id' => $recipientId,
+                'processed_at' => now(),
+            ]);
+
+            // 6. Update time entries
+            if (!empty($request->selected_entries)) {
+                \DB::table('time_entries')
+                    ->whereIn('id', $request->selected_entries)
+                    ->update([
+                        'payment_id' => $payment->id,
+                        'paid_at' => now()
+                    ]);
+            }
+
+            DB::commit();
+
+            // 7. Dispatch event
+            PaymentProcessed::dispatch($payment);
+
+            return response()->json([
+                'message' => 'Payment processed successfully',
+                'payment' => $payment->fresh(),
+                'transfer' => $fundedTransfer,
+            ]);
+
+        } catch (WisePaymentException $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Payment processing failed',
+                'error' => $e->getMessage()
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'An unexpected error occurred',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getPaymentStatus(string $transferId)
+    {
+        try {
+            $status = $this->wiseService->getTransferStatus($transferId);
+            return response()->json($status);
+        } catch (WisePaymentException $e) {
+            return response()->json([
+                'message' => 'Failed to get payment status',
+                'error' => $e->getMessage()
+            ], 422);
         }
     }
 }

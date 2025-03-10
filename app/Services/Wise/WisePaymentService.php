@@ -7,11 +7,28 @@ use App\Exceptions\WisePaymentException;
 
 class WisePaymentService
 {
-    // ... existing code ...
+    protected $apiKey;
+    protected $apiUrl;
+    protected $profileId;
+
+    public function __construct()
+    {
+        $this->apiKey = config('services.wise.api_key');
+        $this->apiUrl = config('services.wise.api_url');
+        $this->profileId = config('services.wise.profile_id');
+    }
+
+    protected function makeRequest()
+    {
+        return Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Content-Type' => 'application/json'
+        ]);
+    }
 
     public function getRecipients(): array
     {
-        $response = Http::withToken($this->apiKey)
+        $response = $this->makeRequest()
             ->get("{$this->apiUrl}/v1/accounts", [
                 'profile' => $this->profileId
             ]);
@@ -25,7 +42,7 @@ class WisePaymentService
 
     public function getRecipientDetails(string $recipientId): array
     {
-        $response = Http::withToken($this->apiKey)
+        $response = $this->makeRequest()
             ->get("{$this->apiUrl}/v1/accounts/{$recipientId}");
 
         if (!$response->successful()) {

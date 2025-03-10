@@ -20,6 +20,7 @@ use App\Http\Controllers\User\UpdateNotificationPreferences;
 use App\Http\Controllers\User\PaymentDetailsController;
 use App\Http\Resources\User\UserResource;
 use App\Http\Controllers\Container\PaymentController;
+use App\Http\Controllers\Webhooks\WiseWebhookController;
 
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
@@ -101,4 +102,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     Route::post('/container/{boardId}/process-payment/{userId}', [PaymentController::class, 'processPayment']);
     Route::get('/payments/{transferId}/status', [PaymentController::class, 'getPaymentStatus']);
+    Route::get('/wise/recipients', [PaymentController::class, 'getRecipients']);
 });
+
+Route::post('/webhooks/wise', [WiseWebhookController::class, 'handle']);
