@@ -10,29 +10,29 @@ use App\Services\Wise\WisePaymentService;
 use App\Services\Wise\WisePaymentException;
 use App\Events\PaymentProcessed;
 use Illuminate\Support\Facades\DB;
+use App\Http\Clients\WiseClient;
 
 class PaymentController extends Controller
 {
     protected $wiseService;
+    protected $wiseClient;
 
     public function __construct(WisePaymentService $wiseService)
     {
         $this->wiseService = $wiseService;
+        $this->wiseClient = new WiseClient([
+            "token" => config("services.wise.api_key"),
+            "profile_id" => config("services.wise.profile_id"),
+            "env" => config("services.wise.sandbox") ? "sandbox" : "live"
+        ]);
     }
 
     public function getRecipients()
     {
-        try {
-            $recipients = $this->wiseService->getRecipients();
-            return response()->json([
-                'recipients' => $recipients
-            ]);
-        } catch (WisePaymentException $e) {
-            return response()->json([
-                'message' => 'Failed to fetch recipients',
-                'error' => $e->getMessage()
-            ], 422);
-        }
+        $recipients = $this->wiseClient->recipient_accounts->all();
+        return response()->json([
+            'recipients' => $recipients
+        ]);
     }
 
     public function processPayment(ProcessPaymentRequest $request, int $boardId, int $userId)

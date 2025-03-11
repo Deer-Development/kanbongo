@@ -92,7 +92,7 @@ class ContainerService extends BaseService
         ];
     }
 
-    public function processPayment(int $id, int $userId, $dateRange, $selectedEntries = []): Container
+    public function processPayment(int $id, int $userId, $dateRange, $selectedEntries = [], $recipientId = null): Container
     {
         if (count($selectedEntries)) {
             $model = $this->getModelInstance()::with([

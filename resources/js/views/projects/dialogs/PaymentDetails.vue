@@ -3,6 +3,7 @@ import { defineProps, ref, watch, computed, onMounted } from "vue"
 import MemberPaymentDetails from "@/views/projects/components/MemberPaymentDetails.vue"
 import PaycheckDetails from "@/views/projects/components/PaycheckDetails.vue"
 import { useToast } from 'vue-toastification'
+import WisePaymentDialog from './WisePaymentDialog.vue'
 
 
 const props = defineProps({
@@ -30,6 +31,9 @@ const paymentStatusFilter = ref('all')
 const datePreset = ref('current_month')
 
 const showMenu = ref(false)
+
+const showPaymentDialog = ref(false)
+
 
 const periodOptions = [
   {
@@ -171,6 +175,8 @@ const onReset = () => {
   boardIdLocal.value = null
   selectedDateRange.value = ""
   selectedMember.value = null
+  memberToPay.value = null
+  selectedRecipient.value = null
   showPaychecks.value = false
   totalSelectedPayment.value = 0
   selectedEntries.value = []
@@ -203,8 +209,6 @@ const paymentStep = ref(1)
 const paymentFlowError = ref(null)
 const isProcessing = ref(false)
 const selectedRecipient = ref(null)
-const recipients = ref([])
-const showNewRecipientForm = ref(false)
 
 // Payment steps
 const STEPS = {
@@ -215,125 +219,57 @@ const STEPS = {
   COMPLETE: 5
 }
 
-// Computed properties for payment flow
-const canProceedToRecipient = computed(() => {
-  return totalSelectedPayment.value > 0 && selectedEntries.value.length > 0
-})
-
-const canProceedToConfirm = computed(() => {
-  return selectedRecipient.value || 
-    (showNewRecipientForm.value && memberToPay.value?.user?.paymentDetails)
-})
-
-const recipientDetails = computed(() => {
-  if (selectedRecipient.value) {
-    return selectedRecipient.value
-  }
-  
-  if (memberToPay.value?.user?.paymentDetails) {
-    const details = memberToPay.value.user.paymentDetails
-    return {
-      accountHolderName: details.account_holder_name,
-      email: memberToPay.value.user.email,
-      currency: details.currency,
-      type: details.account_type
-    }
-  }
-  
-  return null
-})
-
-// Methods for payment flow
-const fetchRecipients = async () => {
-  try {
-    isProcessing.value = true
-    const response = await $api('/wise/recipients')
-    recipients.value = response.data.recipients
-  } catch (error) {
-    toast.error('Failed to fetch recipients')
-    paymentFlowError.value = error.response?.data?.message || 'Failed to fetch recipients'
-  } finally {
-    isProcessing.value = false
-  }
+const handlePaymentComplete = () => {
+  showPaymentDialog.value = false
+  selectedMember.value = null
+  memberToPay.value = null
+  fetchMemberDetails()
 }
 
-const confirmPayment = async (member) => {
-  try {
-    memberToPay.value = member
-    paymentStep.value = STEPS.REVIEW
-    isConfirmDialogVisible.value = true
-    await fetchRecipients()
-  } catch (error) {
-    toast.error('Failed to initialize payment')
-    paymentFlowError.value = error.message
-  }
-}
-
-const proceedToRecipientSelection = () => {
-  if (!canProceedToRecipient.value) {
-    toast.error('Please select entries to pay')
-    return
-  }
-  paymentStep.value = STEPS.RECIPIENT
-}
-
-const proceedToConfirmation = () => {
-  if (!canProceedToConfirm.value) {
-    toast.error('Please select or create a recipient')
-    return
-  }
-  paymentStep.value = STEPS.CONFIRM
+const confirmPayment = (member, amount) => {
+  memberToPay.value = member
+  totalSelectedPayment.value = amount
+  showPaymentDialog.value = true
 }
 
 const handlePayment = async () => {
+  if (!validatePaymentDetails()) return;
+  
   try {
-    paymentStep.value = STEPS.PROCESSING
-    isProcessing.value = true
-    paymentFlowError.value = null
+    paymentStep.value = STEPS.PROCESSING;
+    isProcessing.value = true;
+    paymentFlowError.value = null;
 
     const res = await $api(`/container/${boardIdLocal.value}/process-payment/${memberToPay.value}`, {
       method: "POST",
       body: {
         amount: totalSelectedPayment.value,
-        currency: recipientDetails.value?.currency || 'USD',
+        currency: selectedRecipient.value.currency,
         date_range: selectedDateRange.value,
         selected_entries: selectedEntries.value,
-        recipient_id: selectedRecipient.value?.id
+        recipient_id: selectedRecipient.value.id,
+        reference: paymentReference.value
       },
-    })
+    });
 
     if (res.data) {
-      paymentStep.value = STEPS.COMPLETE
-      toast.success('Payment processed successfully')
+      paymentStep.value = STEPS.COMPLETE;
+      toast.success('Payment processed successfully');
       
-      // Update UI after short delay
       setTimeout(() => {
-        selectedMember.value = null
-        isConfirmDialogVisible.value = false
-        fetchMemberDetails()
-      }, 2000)
+        selectedMember.value = null;
+        isConfirmDialogVisible.value = false;
+        fetchMemberDetails();
+      }, 2000);
     }
   } catch (error) {
-    paymentFlowError.value = error.response?.data?.message || 'Payment processing failed'
-    toast.error(paymentFlowError.value)
-    paymentStep.value = STEPS.CONFIRM
+    paymentFlowError.value = error.response?.data?.message || 'Payment processing failed';
+    toast.error(paymentFlowError.value);
+    paymentStep.value = STEPS.CONFIRM;
   } finally {
-    isProcessing.value = false
+    isProcessing.value = false;
   }
-}
-
-const resetPaymentFlow = () => {
-  paymentStep.value = STEPS.REVIEW
-  paymentFlowError.value = null
-  selectedRecipient.value = null
-  showNewRecipientForm.value = false
-  isProcessing.value = false
-}
-
-const closeConfirmDialog = () => {
-  isConfirmDialogVisible.value = false
-  resetPaymentFlow()
-}
+};
 
 const handleDetails = async member => {
   selectedMember.value = member
@@ -419,39 +355,26 @@ const setDatePreset = (preset) => {
   }
 }
 
-const showDateMenu = ref(false)
-
-const datePresets = [
-  { label: 'This Week', value: 'this-week', icon: 'tabler-calendar-event' },
-  { label: 'Last Week', value: 'last-week', icon: 'tabler-calendar-minus' },
-  { label: 'This Month', value: 'this-month', icon: 'tabler-calendar-month' },
-  { label: 'This Year', value: 'this-year', icon: 'tabler-calendar-stats' },
-]
-
-const getDateRangeLabel = computed(() => {
-  if (!selectedDateRange.value) return 'Select date range'
-  
-  const preset = datePresets.find(p => p.value === datePreset.value)
-  if (preset) return preset.label
-  
-  const [start, end] = selectedDateRange.value.split(' to ')
-  if (!end) return 'Custom range'
-  
-  return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
-})
-
-const showCustomDateMenu = ref(false)
-
-const getCustomDateLabel = computed(() => {
-  if (!selectedDateRange.value) return 'Custom'
-  const [start, end] = selectedDateRange.value.split(' to ')
-  if (!end) return 'Custom'
-  return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
-})
-
 onMounted(() => {
   setDatePreset('current_month')
 })
+
+const paymentReference = ref(`PAY-${Date.now()}`);
+
+
+const validatePaymentDetails = () => {
+  if (!selectedRecipient.value) {
+    toast.error('Please select a recipient');
+    return false;
+  }
+  
+  if (!totalSelectedPayment.value || totalSelectedPayment.value <= 0) {
+    toast.error('Invalid payment amount');
+    return false;
+  }
+  
+  return true;
+};
 </script>
 
 <template>
@@ -674,7 +597,7 @@ onMounted(() => {
               size="small"
               class="pay-btn"
               prepend-icon="tabler-cash-register"
-              @click="confirmPayment(selectedMember.user.id)"
+              @click="confirmPayment(selectedMember, totalSelectedPayment)"
             >
               Pay
             </VBtn>
@@ -771,7 +694,7 @@ onMounted(() => {
                   variant="tonal"
                   size="small"
                   prepend-icon="tabler-cash-register"
-                  @click="confirmPayment(member.user.id)"
+                  @click="confirmPayment(member, member.pending_payment)"
                 >
                   Pay Now
                 </VBtn>
@@ -859,266 +782,18 @@ onMounted(() => {
         </div>
       </VCardText>
     </VCard>
-    <ConfirmDialog
-      v-model:isDialogVisible="isConfirmDialogVisible"
-      :cancel-title="paymentStep === STEPS.COMPLETE ? 'Close' : 'Cancel'"
-      :confirm-title="
-        paymentStep === STEPS.REVIEW ? 'Continue' :
-        paymentStep === STEPS.RECIPIENT ? 'Continue' :
-        paymentStep === STEPS.CONFIRM ? 'Process Payment' :
-        paymentStep === STEPS.PROCESSING ? 'Processing...' :
-        'Done'
-      "
-      :confirmation-question="
-        paymentStep === STEPS.REVIEW ? 'Review Payment Details' :
-        paymentStep === STEPS.RECIPIENT ? 'Select Payment Recipient' :
-        paymentStep === STEPS.CONFIRM ? 'Confirm Payment Details' :
-        paymentStep === STEPS.PROCESSING ? 'Processing Payment...' :
-        'Payment Complete'
-      "
-      @confirm="
-        paymentStep === STEPS.REVIEW ? proceedToRecipientSelection() :
-        paymentStep === STEPS.RECIPIENT ? proceedToConfirmation() :
-        paymentStep === STEPS.CONFIRM ? handlePayment() :
-        paymentStep === STEPS.COMPLETE ? closeConfirmDialog() : null
-      "
-      @close="closeConfirmDialog"
-    >
-      <template #default>
-        <!-- Error Alert -->
-        <VAlert
-          v-if="paymentFlowError"
-          type="error"
-          variant="tonal"
-          class="mb-4"
-          closable
-          @click:close="paymentFlowError = null"
-        >
-          {{ paymentFlowError }}
-        </VAlert>
 
-        <!-- Step 1: Review -->
-        <div v-if="paymentStep === STEPS.REVIEW">
-          <div class="payment-review mb-4">
-            <h3 class="text-h6 mb-2">Payment Review</h3>
-            
-            <div class="payment-details">
-              <div class="detail-row">
-                <span class="label">Recipient Name:</span>
-                <span class="value">{{ memberToPay?.user?.full_name }}</span>
-              </div>
-              
-              <div class="detail-row">
-                <span class="label">Amount:</span>
-                <span class="value">${{ totalSelectedPayment.toFixed(2) }}</span>
-              </div>
-              
-              <div class="detail-row">
-                <span class="label">Selected Entries:</span>
-                <span class="value">{{ selectedEntries.length }} entries</span>
-              </div>
-              
-              <div class="detail-row">
-                <span class="label">Date Range:</span>
-                <span class="value">{{ selectedDateRange }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Step 2: Recipient Selection -->
-        <div v-else-if="paymentStep === STEPS.RECIPIENT">
-          <div class="recipient-selection mb-4">
-            <h3 class="text-h6 mb-2">Select Payment Recipient</h3>
-            
-            <div v-if="isProcessing" class="d-flex justify-center py-4">
-              <VProgressCircular indeterminate />
-            </div>
-            
-            <template v-else>
-              <VSelect
-                v-model="selectedRecipient"
-                :items="recipients"
-                item-title="accountHolderName"
-                item-value="id"
-                label="Select existing recipient"
-                class="mb-2"
-                :loading="!recipients.length"
-                :disabled="showNewRecipientForm"
-              >
-                <template #item="{ props, item }">
-                  <VListItem v-bind="props">
-                    <template #prepend>
-                      <VIcon 
-                        size="20"
-                        color="primary"
-                        class="me-2"
-                      >
-                        tabler-user-circle
-                      </VIcon>
-                    </template>
-                    
-                    <VListItemTitle>
-                      {{ item.raw.accountHolderName }}
-                    </VListItemTitle>
-                    
-                    <VListItemSubtitle>
-                      {{ item.raw.currency }} • {{ item.raw.type }}
-                    </VListItemSubtitle>
-                  </VListItem>
-                </template>
-              </VSelect>
-
-              <div class="d-flex align-center gap-2 mt-4">
-                <VDivider />
-                <span class="text-medium-emphasis text-sm">or</span>
-                <VDivider />
-              </div>
-
-              <VBtn
-                variant="tonal"
-                color="primary"
-                size="small"
-                prepend-icon="tabler-plus"
-                class="mt-4"
-                :disabled="!memberToPay?.user?.paymentDetails"
-                @click="showNewRecipientForm = !showNewRecipientForm"
-              >
-                {{ showNewRecipientForm ? 'Cancel' : 'Create New Recipient' }}
-              </VBtn>
-
-              <div 
-                v-if="showNewRecipientForm" 
-                class="new-recipient-form mt-4"
-              >
-                <div class="payment-details-preview">
-                  <h4 class="text-subtitle-1 font-weight-medium mb-2">
-                    Payment Details Preview
-                  </h4>
-                  
-                  <template v-if="memberToPay?.user?.paymentDetails">
-                    <div class="detail-row">
-                      <span class="label">Account Holder:</span>
-                      <span class="value">{{ memberToPay.user.paymentDetails.account_holder_name }}</span>
-                    </div>
-                    
-                    <div class="detail-row">
-                      <span class="label">Account Type:</span>
-                      <span class="value">{{ memberToPay.user.paymentDetails.account_type }}</span>
-                    </div>
-                    
-                    <div class="detail-row">
-                      <span class="label">Currency:</span>
-                      <span class="value">{{ memberToPay.user.paymentDetails.currency }}</span>
-                    </div>
-                  </template>
-                  
-                  <VAlert
-                    v-else
-                    type="warning"
-                    variant="tonal"
-                    class="mt-2"
-                  >
-                    User has not provided payment details yet.
-                  </VAlert>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- Step 3: Confirmation -->
-        <div v-else-if="paymentStep === STEPS.CONFIRM">
-          <div class="payment-confirmation">
-            <h3 class="text-h6 mb-4">Confirm Payment Details</h3>
-            
-            <div class="confirmation-details">
-              <div class="detail-section">
-                <h4 class="text-subtitle-1 font-weight-medium mb-2">
-                  Recipient Information
-                </h4>
-                
-                <div class="detail-row">
-                  <span class="label">Name:</span>
-                  <span class="value">{{ recipientDetails?.accountHolderName }}</span>
-                </div>
-                
-                <div class="detail-row">
-                  <span class="label">Email:</span>
-                  <span class="value">{{ recipientDetails?.email }}</span>
-                </div>
-                
-                <div class="detail-row">
-                  <span class="label">Currency:</span>
-                  <span class="value">{{ recipientDetails?.currency }}</span>
-                </div>
-                
-                <div class="detail-row">
-                  <span class="label">Account Type:</span>
-                  <span class="value">{{ recipientDetails?.type }}</span>
-                </div>
-              </div>
-
-              <VDivider class="my-4" />
-
-              <div class="detail-section">
-                <h4 class="text-subtitle-1 font-weight-medium mb-2">
-                  Payment Information
-                </h4>
-                
-                <div class="detail-row">
-                  <span class="label">Amount:</span>
-                  <span class="value">${{ totalSelectedPayment.toFixed(2) }}</span>
-                </div>
-                
-                <div class="detail-row">
-                  <span class="label">Entries:</span>
-                  <span class="value">{{ selectedEntries.length }} selected</span>
-                </div>
-                
-                <div class="detail-row">
-                  <span class="label">Period:</span>
-                  <span class="value">{{ selectedDateRange }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Step 4: Processing -->
-        <div v-else-if="paymentStep === STEPS.PROCESSING">
-          <div class="processing-state text-center py-4">
-            <VProgressCircular
-              indeterminate
-              size="64"
-              color="primary"
-              class="mb-4"
-            />
-            <h3 class="text-h6">Processing Payment</h3>
-            <p class="text-medium-emphasis">
-              Please wait while we process your payment...
-            </p>
-          </div>
-        </div>
-
-        <!-- Step 5: Complete -->
-        <div v-else-if="paymentStep === STEPS.COMPLETE">
-          <div class="completion-state text-center py-4">
-            <VIcon
-              size="64"
-              color="success"
-              class="mb-4"
-            >
-              tabler-circle-check
-            </VIcon>
-            <h3 class="text-h6 text-success">Payment Successful</h3>
-            <p class="text-medium-emphasis">
-              The payment has been processed successfully.
-            </p>
-          </div>
-        </div>
-      </template>
-    </ConfirmDialog>
+    <WisePaymentDialog
+      v-model="showPaymentDialog"
+      :payment-details="{
+        boardId: boardIdLocal,
+        userId: memberToPay?.user.id,
+        amount: totalSelectedPayment,
+        dateRange: selectedDateRange,
+        selectedEntries: selectedEntries
+      }"
+      @payment-complete="handlePaymentComplete"
+    />
   </VDialog>
 </template>
 
@@ -1935,6 +1610,68 @@ onMounted(() => {
   p {
     font-size: 0.875rem;
     color: #57606a;
+  }
+}
+
+.recipient-list {
+  max-height: 400px;
+  overflow-y: auto;
+  
+  .recipient-card {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    &:hover {
+      border-color: #0969da;
+      background: #f6f8fa;
+    }
+    
+    &.selected {
+      border-color: #2da44e;
+      background: #f6fef9;
+    }
+    
+    .recipient-info {
+      flex: 1;
+      min-width: 0;
+      
+      .recipient-name {
+        font-weight: 600;
+        color: #24292f;
+        margin-bottom: 0.5rem;
+      }
+      
+      .recipient-details {
+        font-size: 0.875rem;
+        color: #57606a;
+        
+        .account-summary {
+          margin-bottom: 0.25rem;
+        }
+        
+        .bank-details {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 0.25rem 0.75rem;
+          
+          .detail-label {
+            color: #57606a;
+          }
+          
+          .detail-value {
+            color: #24292f;
+          }
+        }
+      }
+    }
   }
 }
 </style>
