@@ -14,6 +14,7 @@ class PaymentDetails extends BaseController
     public function __invoke(Request $request, int $id): JsonResponse
     {
         $dateRange = $request->input('date_range');
+        $periodPreset = $request->input('period_preset', 'current_month');
         $paymentStatus = $request->input('payment_status', 'all');
         $startDate = null;
         $endDate = null;
@@ -23,13 +24,21 @@ class PaymentDetails extends BaseController
         $authUserId = Auth::id();
 
         if ($dateRange) {
+            // Handle custom date range
             [$start, $end] = array_pad(explode(' to ', $dateRange), 2, null);
             $startDate = Carbon::parse($start)->startOfDay();
             $endDate = $end ? Carbon::parse($end)->endOfDay() : now()->endOfDay();
         } else {
-            // Default to current month if no date range provided
-            $startDate = now()->startOfMonth();
-            $endDate = now()->endOfMonth();
+            // Use period preset
+            $dateRange = $this->getDateRangeForPeriod($periodPreset);
+            if ($dateRange) {
+                $startDate = $dateRange['start'];
+                $endDate = $dateRange['end'];
+            } else {
+                // Fallback to current month
+                $startDate = now()->startOfMonth();
+                $endDate = now()->endOfMonth();
+            }
         }
 
         $model = Container::with([

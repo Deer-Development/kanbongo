@@ -1,68 +1,91 @@
 <template>
   <div class="confirm-step">
-    <h3>Confirm Payment Details</h3>
-    
-    <div class="confirmation-details">
-      <div class="detail-section">
-        <h4>Recipient Information</h4>
-        
-        <div class="detail-row">
-          <span class="label">Account Holder:</span>
-          <span class="value">{{ selectedRecipient.name.fullName }}</span>
-        </div>
-        
-        <div class="detail-row">
-          <span class="label">Account Type:</span>
-          <span class="value">{{ selectedRecipient.details.accountType }}</span>
-        </div>
-        
-        <div class="detail-row">
-          <span class="label">Account Number:</span>
-          <span class="value">•••• {{ selectedRecipient.details.accountNumber.slice(-4) }}</span>
-        </div>
-      </div>
+    <div class="step-header">
+      <h3 class="d-flex align-center gap-2">
+        <VIcon color="primary" size="20">tabler-file-check</VIcon>
+        Confirm Payment Details
+      </h3>
+      <p class="text-subtitle-2 text-medium-emphasis">
+        Please review the payment information before proceeding
+      </p>
+    </div>
 
-      <VDivider class="my-4" />
+    <VCard class="confirmation-card" variant="flat" elevation="0">
+      <VCardItem>
+        <template #prepend>
+          <VAvatar color="primary" variant="tonal" size="40">
+            {{ getInitials(selectedRecipient.name.fullName) }}
+          </VAvatar>
+        </template>
+        <VCardTitle>{{ selectedRecipient.name.fullName }}</VCardTitle>
+      </VCardItem>
 
-      <div class="detail-section">
-        <h4>Payment Information</h4>
-        
-        <div class="detail-row">
-          <span class="label">Amount:</span>
-          <span class="value">${{ paymentDetails.amount.toFixed(2) }}</span>
-        </div>
-        
-        <div class="detail-row">
-          <span class="label">Currency:</span>
-          <span class="value">{{ selectedRecipient.currency }}</span>
-        </div>
-      </div>
+      <VDivider />
 
-      <VAlert
-        type="info"
+      <VCardText>
+        <div class="details-grid">
+          <div class="section-title" colspan="2">Recipient Details</div>
+          
+          <div class="detail-label">
+            <VIcon size="16" class="mr-2">tabler-building-bank</VIcon>
+            Account Type
+          </div>
+          <div class="detail-value">{{ selectedRecipient.details.accountType }}</div>
+          
+          <div class="detail-label">
+            <VIcon size="16" class="mr-2">tabler-credit-card</VIcon>
+            Account Number
+          </div>
+          <div class="detail-value">•••• {{ selectedRecipient.details.accountNumber.slice(-4) }}</div>
+
+          <div class="section-title" colspan="2">Payment Details</div>
+          
+          <div class="detail-label">
+            <VIcon size="16" class="mr-2">tabler-cash</VIcon>
+            Amount
+          </div>
+          <div class="detail-value">${{ paymentDetails.amount.toFixed(2) }}</div>
+          
+          <div class="detail-label">
+            <VIcon size="16" class="mr-2">tabler-currency-dollar</VIcon>
+            Currency
+          </div>
+          <div class="detail-value">{{ selectedRecipient.currency }}</div>
+        </div>
+      </VCardText>
+    </VCard>
+
+    <VAlert
+      type="warning"
+      variant="tonal"
+      class="mt-6"
+      border="start"
+    >
+      <template #prepend>
+        <VIcon>tabler-alert-circle</VIcon>
+      </template>
+      Please verify all details before confirming. This action cannot be undone.
+    </VAlert>
+
+    <VDivider class="my-6" />
+
+    <div class="d-flex justify-end gap-3">
+      <VBtn
         variant="tonal"
-        class="mt-4"
+        @click="$emit('back')"
+        prepend-icon="tabler-arrow-left"
       >
-        Please verify all details before confirming the payment. This action cannot be undone.
-      </VAlert>
-
-      <div class="action-buttons mt-4">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="$emit('back')"
-        >
-          Back
-        </VBtn>
-        
-        <VBtn
-          color="primary"
-          :loading="isProcessing"
-          @click="$emit('process-payment')"
-        >
-          Confirm and Process Payment
-        </VBtn>
-      </div>
+        Back
+      </VBtn>
+      
+      <VBtn
+        color="primary"
+        :loading="isProcessing"
+        @click="$emit('process-payment')"
+        prepend-icon="tabler-check"
+      >
+        Confirm Payment
+      </VBtn>
     </div>
   </div>
 </template>
@@ -84,55 +107,70 @@ defineProps({
 })
 
 defineEmits(['back', 'process-payment'])
+
+const getInitials = (name) => {
+  if (!name) return '??'
+  return name.split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
 </script>
 
 <style lang="scss" scoped>
 .confirm-step {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
-  padding: 2rem;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  padding: 1rem;
 
-  h3, h4 {
-    color: #24292f;
-    font-weight: 600;
-  }
+  .step-header {
+    margin-bottom: 2rem;
 
-  h3 {
-    margin-bottom: 1.5rem;
-  }
-
-  h4 {
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
-  }
-
-  .detail-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #d0d7de;
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    .label {
-      color: #57606a;
-    }
-
-    .value {
-      font-weight: 500;
+    h3 {
       color: #24292f;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
     }
   }
 
-  .action-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
+  .confirmation-card {
+    border: 1px solid #d0d7de;
+    
+    .details-grid {
+      display: grid;
+      grid-template-columns: minmax(140px, auto) 1fr;
+      gap: 1rem;
+      padding: 0.5rem 0;
+
+      .section-title {
+        grid-column: 1 / -1;
+        color: #24292f;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 1rem 0 0.5rem;
+        
+        &:first-child {
+          padding-top: 0;
+        }
+      }
+
+      .detail-label {
+        color: #57606a;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+      }
+
+      .detail-value {
+        color: #24292f;
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+    }
   }
 }
+
+// ... existing responsive styles ...
 </style> 

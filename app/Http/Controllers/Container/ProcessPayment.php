@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Models\TimeEntry;
+use App\Models\User;
+use App\Models\Container;
+use App\Models\WiseTransfer;
 
 class ProcessPayment extends BaseController
 {
@@ -140,7 +144,9 @@ class ProcessPayment extends BaseController
                         'created_by' => Auth::user()->id,
                         'total_hours' => $totalHours,
                         'total_amount' => $totalAmount,
-                        'status' => 'paid',
+                        'status' => 'processing',
+                        'payment_method' => 'wise',
+                        'payment_date' => now(),
                     ]);
 
                     Log::info('Paycheck created successfully', [
@@ -216,16 +222,26 @@ class ProcessPayment extends BaseController
                             'transfer_details' => (array) $transfer
                         ]);
 
-                        // Fund the transfer
-                        Log::info('Funding Wise transfer', [
-                            'transfer_id' => $transfer['id']
+                        // Save Wise transfer details
+                        WiseTransfer::create([
+                            'paycheck_id' => $paycheck->id,
+                            'wise_transfer_id' => $transfer['id'],
+                            'wise_recipient_id' => $recipientId,
+                            'target_account_id' => $recipientAccount['id'],
+                            'quote_id' => $quote['id'],
+                            'status' => $transfer['status'],
+                            'source_amount' => $quote['sourceAmount'],
+                            'source_currency' => $quote['sourceCurrency'],
+                            'target_amount' => $quote['targetAmount'],
+                            'target_currency' => $quote['targetCurrency'],
+                            'rate' => $quote['rate'],
+                            'reference' => "P-{$paycheck->id}",
+                            'raw_response' => [
+                                'quote' => $quote,
+                                'transfer' => $transfer,
+                                'recipient_account' => $recipientAccount
+                            ]
                         ]);
-
-                        // $fundResult = $this->wiseClient->transfers->fund($transfer['id']);
-                        
-                        // Log::info('Wise transfer funded successfully', [
-                        //     'fund_result' => (array) $fundResult
-                        // ]);
 
                     } catch (\Exception $e) {
                         Log::error('Error in Wise payment process', [
@@ -240,5 +256,91 @@ class ProcessPayment extends BaseController
         });
 
         return $model;
+    }
+
+    public function markAsPaid(Container $container, User $user, Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $dateRange = $request->input('date_range');
+            $selectedEntries = $request->input('selected_entries', []);
+
+            foreach ($container->members as $member) {
+                if ($member->user_id === $user->id) {
+                    $totalHours = 0;
+                    $totalAmount = 0;
+                    $timeEntryIds = [];
+
+                    foreach ($container->boards as $board) {
+                        foreach ($board->tasks as $task) {
+                            foreach ($task->timeEntries as $timeEntry) {
+                                if ($timeEntry->user_id === $member->user_id && !$timeEntry->is_paid) {
+                                    if ((count($selectedEntries) && in_array($timeEntry->id, $selectedEntries)) ||
+                                        (!count($selectedEntries) && $this->isInDateRange($timeEntry, $dateRange))) {
+                                        
+                                        $durationInHours = Carbon::parse($timeEntry->start)
+                                            ->diffInMinutes(Carbon::parse($timeEntry->end)) / 60;
+
+                                        $amountPaid = $durationInHours * $member->billable_rate;
+
+                                        $timeEntry->update([
+                                            'is_paid' => true,
+                                            'paid_rate' => $member->billable_rate,
+                                            'amount_paid' => $amountPaid
+                                        ]);
+
+                                        $totalHours += $durationInHours;
+                                        $totalAmount += $amountPaid;
+                                        $timeEntryIds[] = $timeEntry->id;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if ($totalHours > 0 && $totalAmount > 0) {
+                        $paycheck = Paycheck::create([
+                            'user_id' => $member->user_id,
+                            'container_id' => $container->id,
+                            'project_id' => $container->project_id,
+                            'created_by' => auth()->id(),
+                            'total_hours' => $totalHours,
+                            'total_amount' => $totalAmount,
+                            'status' => 'completed',
+                            'payment_method' => 'manual',
+                            'payment_date' => now(),
+                            'notes' => $request->input('notes', 'Marked as paid manually'),
+                        ]);
+
+                        DB::table('time_entries')
+                            ->whereIn('id', $timeEntryIds)
+                            ->update(['paycheck_id' => $paycheck->id]);
+                    }
+                }
+            }
+
+            DB::commit();
+            return $this->successResponse(['payment' => $paycheck]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Manual payment marking failed:', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Failed to mark as paid');
+        }
+    }
+
+    private function isInDateRange($timeEntry, $dateRange)
+    {
+        if (!$dateRange) {
+            return true;
+        }
+
+        [$start, $end] = array_pad(explode(' to ', $dateRange), 2, null);
+        $startDate = Carbon::parse($start)->startOfDay();
+        $endDate = $end ? Carbon::parse($end)->endOfDay() : now()->endOfDay();
+
+        $entryDate = Carbon::parse($timeEntry->start);
+        return $entryDate->between($startDate, $endDate);
     }
 }

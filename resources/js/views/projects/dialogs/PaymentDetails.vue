@@ -793,6 +793,7 @@ const validatePaymentDetails = () => {
         selectedEntries: selectedEntries
       }"
       @payment-complete="handlePaymentComplete"
+      @close="handlePaymentComplete"
     />
   </VDialog>
 </template>

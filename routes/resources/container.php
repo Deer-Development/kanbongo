@@ -33,6 +33,7 @@ Route::group(['prefix' => 'container'], function () {
     Route::get('/{id}/member-payment-details/{userId}', MemberPaymentDetails::class)->name("container.member-payment-details");
     Route::get('/{id}/member-paychecks-details/{userId}', MemberPaychecksDetails::class)->name("container.member-paychecks-details");
     Route::post('/{id}/process-payment/{userId}', ProcessPayment::class)->name("container.process-payment");
+    Route::post('/{id}/mark-as-paid/{userId}', [ProcessPayment::class, 'markAsPaid'])->name("container.mark-as-paid");
     Route::delete('/{id}', Destroy::class)->name("container.destroy");
     Route::post('/{id}/transfer-ownership', TransferOwnership::class)->name("container.transfer-ownership");
 });
