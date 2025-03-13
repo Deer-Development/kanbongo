@@ -134,6 +134,7 @@ const transferOwnership = async () => {
 }
 
 const handleMoveBoard = (result) => {
+  console.log(result)
   if (result.confirmed) {
     emit('moveBoard', {
       boardId: boardDataLocal.value.id,

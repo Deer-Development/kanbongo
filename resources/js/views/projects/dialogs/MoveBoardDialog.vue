@@ -66,7 +66,7 @@ const resetDialog = () => {
 
 const confirmMove = async () => {
   isLoading.value = true
-  
+
   try {
     let targetProjectId = selectedProjectId.value
     
@@ -85,6 +85,9 @@ const confirmMove = async () => {
         throw new Error('Failed to create new project')
       }
     }
+    console.log('dsadasasdsa')
+  console.log(targetProjectId)
+    console.log(props.boardDetails.id)
     
     emit('confirm', {
       confirmed: true,

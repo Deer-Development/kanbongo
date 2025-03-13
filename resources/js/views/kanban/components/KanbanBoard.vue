@@ -7,7 +7,7 @@ import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
 import KanbanItems from './KanbanItems.vue'
 import { useMediaQuery } from "@vueuse/core"
-import { ref, defineExpose, defineProps, defineEmits, watch } from 'vue'
+import { ref, defineExpose, defineProps, defineEmits, watch, computed } from 'vue'
 import EditTimerDialog from "@/views/kanban/components/dialogs/EditTimer.vue"
 
 const props = defineProps({
@@ -90,6 +90,15 @@ const formRules = {
     v => !!v || 'Please select a color for the column'
   ]
 }
+
+// Add a computed property to check if form is valid
+const isFormValid = computed(() => {
+  return newBoardName.value.length >= 3 && 
+         newBoardColor.value && 
+         !props.kanbanData.boards.some(board => 
+           board.name.toLowerCase() === newBoardName.value?.toLowerCase()
+         )
+})
 
 const addNewBoard = async () => {
   try {
@@ -384,6 +393,7 @@ defineExpose({
             size="small"
             color="primary"
             type="submit"
+            :disabled="!newBoardName || !newBoardColor"
             prepend-icon="tabler-plus"
             :loading="isSubmitting"
           >
@@ -782,5 +792,11 @@ defineExpose({
   40%, 60% {
     transform: translate3d(2px, 0, 0);
   }
+}
+
+// Add styles for disabled button
+.v-btn.v-btn--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

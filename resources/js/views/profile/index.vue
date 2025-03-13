@@ -41,10 +41,10 @@ const tabs = [
     title: 'Account Details',
     icon: 'tabler-user',
   },
-  {
-    title: 'Payment Details',
-    icon: 'tabler-credit-card',
-  },
+  // {
+  //   title: 'Payment Details',
+  //   icon: 'tabler-credit-card',
+  // },
   {
     title: 'Notifications',
     icon: 'tabler-bell',
@@ -335,9 +335,9 @@ watch(
     </VWindowItem>
 
     <!-- Payment Details Tab -->
-    <VWindowItem :value="1">
+    <!-- <VWindowItem :value="1">
       <PaymentDetailsTab />
-    </VWindowItem>
+    </VWindowItem> -->
 
     <!-- Notifications Tab -->
     <VWindowItem :value="2">

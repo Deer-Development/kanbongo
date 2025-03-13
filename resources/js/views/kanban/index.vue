@@ -575,9 +575,39 @@ watch(isDocumentationDialogVisible, (newValue, oldValue) => {
   }
 })
 
-const handleMoveBoardConfirm = (result) => {
-  if (result) {
-    router.push(`/projects/${result.targetProjectId}/boards/${result.boardId}`)
+const handleMoveBoardConfirm = async (data) => {
+  console.log(data)
+  if (data) {
+    try {
+      const response = await $api(`/container/${data.boardId}/move`, {
+        method: 'POST',
+        body: {
+          target_project_id: data.targetProjectId
+        }
+      })
+      
+      if (response) {
+        // First clear any existing data
+        kanban.value = null
+        
+        // Use replace to update the URL and force a reload
+        router.replace({ 
+          name: 'container-view', 
+          params: { 
+            id: data.targetProjectId, 
+            containerId: data.boardId 
+          }
+        }).then(() => {
+          // After route change, force a refetch
+          nextTick(() => {
+            refetchKanban()
+          })
+        })
+      }
+    } catch (error) {
+      console.error('Error moving container:', error)
+      toast.error('Failed to move board')
+    }
   }
 }
 
@@ -592,6 +622,23 @@ const handleDeleteBoardConfirm = async (boardId) => {
     toast.error('Failed to delete board')
   }
 }
+
+// Add a watch for route changes to handle navigation
+watch(
+  () => route.params,
+  (newParams, oldParams) => {
+    if (newParams.containerId !== oldParams.containerId || 
+        newParams.id !== oldParams.id) {
+      // Clear existing data first
+      kanban.value = null
+      // Fetch new data
+      nextTick(() => {
+        refetchKanban()
+      })
+    }
+  },
+  { deep: true }
+)
 </script>
 
 <template>

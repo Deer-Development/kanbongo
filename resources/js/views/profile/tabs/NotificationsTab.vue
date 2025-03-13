@@ -34,7 +34,7 @@ const savePreferences = async () => {
       method: 'POST',
       body: preferences.value
     })
-    toast.success('Notification preferences updated successfully')
+    toast.success('Notification preferences updated')
   } catch (error) {
     toast.error('Failed to update preferences')
     console.error(error)
@@ -70,7 +70,7 @@ const savePreferences = async () => {
           class="mb-4"
         />
 
-        <VSelect
+        <!-- <VSelect
           v-if="preferences.activities_enabled"
           v-model="preferences.activities_frequency"
           :items="frequencyOptions"
@@ -80,7 +80,7 @@ const savePreferences = async () => {
           variant="outlined"
           density="comfortable"
           class="max-w-xs"
-        />
+        /> -->
       </div>
 
       <VDivider class="mb-4" />
@@ -107,7 +107,7 @@ const savePreferences = async () => {
           class="mb-4"
         />
 
-        <div class="max-w-xs">
+        <!-- <div class="max-w-xs">
           <AppDateTimePicker
             v-if="preferences.member_report_enabled || preferences.owner_report_enabled"
             v-model="preferences.daily_report_time"
@@ -125,7 +125,7 @@ const savePreferences = async () => {
             time_24hr: false
           }"
           />
-        </div>
+        </div> -->
       </div>
 
       <div class="d-flex justify-end">

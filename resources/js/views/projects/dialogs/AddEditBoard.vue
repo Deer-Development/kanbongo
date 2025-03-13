@@ -641,7 +641,7 @@ const transferOwnership = async () => {
                         </div>
 
                         <VBtn
-                          v-if="!member.is_owner && member.role !== 'Super-Admin' && (!boardDataLocal || boardDataLocal.owner_id !== member.user_id)"
+                          v-if="!member.is_owner && (!boardDataLocal || boardDataLocal.owner_id !== member.user_id)"
                           icon
                           color="error"
                           size="small"

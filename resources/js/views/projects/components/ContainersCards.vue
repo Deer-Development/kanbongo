@@ -165,7 +165,7 @@ const canEditBoard = board => {
       </div>
 
       <!-- Card Actions -->
-      <div class="card-actions">
+      <!-- <div class="card-actions">
         <VBtn
           variant="text"
           size="small"
@@ -213,7 +213,7 @@ const canEditBoard = board => {
             />
           </VList>
         </VMenu>
-      </div>
+      </div> -->
     </div>
   </div>
 
