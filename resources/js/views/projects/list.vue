@@ -49,7 +49,7 @@ const itemToDelete = item => {
   isDeleteModalVisible.value = true
 }
 
-const handleDeleteConfirm = async (confirmed) => {
+const handleDeleteConfirm = async confirmed => {
   if (confirmed) {
     isDeleteLoading.value = true
     try {
@@ -73,7 +73,7 @@ const goToProject = item => {
       router.replace({ 
         name: 'project-view', 
         params: { id: item.id },
-        query: { _: Date.now() }
+        query: { _: Date.now() },
       })
     })
   }
@@ -92,7 +92,13 @@ watch(statusFilter, (newValue, oldValue) => {
     <div class="header-section">
       <div class="header-content">
         <div class="search-section">
-          <VIcon size="20" color="text-medium-emphasis" class="search-icon">tabler-search</VIcon>
+          <VIcon
+            size="20"
+            color="text-medium-emphasis"
+            class="search-icon"
+          >
+            tabler-search
+          </VIcon>
           <AppTextField
             v-model="searchQuery"
             placeholder="Search projects..."
@@ -103,9 +109,9 @@ watch(statusFilter, (newValue, oldValue) => {
         </div>
         <div class="actions-section">
           <VBtnGroup 
-              class="btn-group-status-filter"
-              density="compact"
-            >
+            class="btn-group-status-filter"
+            density="compact"
+          >
             <VBtn
               :color="statusFilter === 'all' ? 'primary' : undefined"
               :variant="statusFilter === 'all' ? 'tonal' : 'outlined'"
@@ -179,10 +185,18 @@ watch(statusFilter, (newValue, oldValue) => {
       >
         <div class="card-header">
           <div class="header-content">
-            <div class="status-dot" :class="{ 'active': item.is_active }"></div>
-            <h3 class="project-name text-truncate">{{ item.name }}</h3>
+            <div
+              class="status-dot"
+              :class="{ 'active': item.is_active }"
+            />
+            <h3 class="project-name text-truncate">
+              {{ item.name }}
+            </h3>
           </div>
-          <div class="status-badge" :class="item.is_active ? 'active' : 'inactive'">
+          <div
+            class="status-badge"
+            :class="item.is_active ? 'active' : 'inactive'"
+          >
             {{ item.is_active ? 'Active' : 'Inactive' }}
           </div>
         </div>
@@ -190,19 +204,32 @@ watch(statusFilter, (newValue, oldValue) => {
         <div class="card-content">
           <div class="stats-grid">
             <div class="stat-item">
-              <VIcon size="16" color="primary">tabler-layout-board</VIcon>
+              <VIcon
+                size="16"
+                color="primary"
+              >
+                tabler-layout-board
+              </VIcon>
               <span>{{ item.stats.boards_count }} boards</span>
             </div>
             <div class="stat-item">
-              <VIcon size="16" color="success">tabler-checklist</VIcon>
+              <VIcon
+                size="16"
+                color="success"
+              >
+                tabler-checklist
+              </VIcon>
               <span>{{ item.stats.total_tasks }} tasks</span>
             </div>
           </div>
         </div>
 
-        <div class="card-spacer"></div>
+        <div class="card-spacer" />
 
-        <div v-if="isSuperAdmin || item.owner.id === userData.id" class="card-actions">
+        <div
+          v-if="isSuperAdmin || item.owner.id === userData.id"
+          class="card-actions"
+        >
           <VBtn
             variant="text"
             size="small"
@@ -227,8 +254,15 @@ watch(statusFilter, (newValue, oldValue) => {
       </div>
     </div>
 
-    <CreateProject v-model:is-dialog-visible="isAddModalVisible" @form-submitted="fetch" />
-    <EditProject v-model:is-dialog-visible="isEditModalVisible" v-model:project-details="selectedItem" @form-submitted="fetch" />
+    <CreateProject
+      v-model:is-dialog-visible="isAddModalVisible"
+      @form-submitted="fetch"
+    />
+    <EditProject
+      v-model:is-dialog-visible="isEditModalVisible"
+      v-model:project-details="selectedItem"
+      @form-submitted="fetch"
+    />
     <DeleteConfirmDialog
       v-model:isDialogVisible="isDeleteModalVisible"
       title="Delete project"

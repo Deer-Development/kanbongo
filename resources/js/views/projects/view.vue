@@ -17,14 +17,14 @@ const fetchContainer = async () => {
       query: {
         status: statusFilter.value,
       },
-    }
+    },
   )
 
   projectData.value = data.project
   isSuperAdmin.value = data.isSuperAdmin
 }
 
-const deleteContainer = async (boardId) => {
+const deleteContainer = async boardId => {
   const { data } = await $api(`/container/${boardId}`, {
     method: 'DELETE',
   })
@@ -34,14 +34,14 @@ const deleteContainer = async (boardId) => {
   })
 }
 
-const handleMoveContainer = async (data) => {
+const handleMoveContainer = async data => {
   console.log(data)
   try {
     const response = await $api(`/container/${data.boardId}/move`, {
       method: 'POST',
       body: {
-        target_project_id: data.targetProjectId
-      }
+        target_project_id: data.targetProjectId,
+      },
     })
     
     if (response) {
@@ -85,9 +85,17 @@ onMounted(() => {
     <div class="header-section">
       <div class="header-content">
         <div class="breadcrumbs-section">
-          <VBreadcrumbs :items="breadcumItems" class="github-breadcrumbs">
+          <VBreadcrumbs
+            :items="breadcumItems"
+            class="github-breadcrumbs"
+          >
             <template #divider>
-              <VIcon size="16" color="text-disabled">tabler-chevron-right</VIcon>
+              <VIcon
+                size="16"
+                color="text-disabled"
+              >
+                tabler-chevron-right
+              </VIcon>
             </template>
           </VBreadcrumbs>
         </div>
@@ -160,7 +168,10 @@ onMounted(() => {
     </div>
 
     <!-- Content Section -->
-    <div v-if="projectData" class="content-section">
+    <div
+      v-if="projectData"
+      class="content-section"
+    >
       <AddEditBoard
         v-model:is-dialog-visible="isAddBoardDialogVisible"
         v-model:board-details="boardDetails"

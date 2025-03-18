@@ -80,7 +80,7 @@ const refetchKanban = async () => {
         selectedKanbanItem.value = {
           item: updatedTask,
           boardId: updatedTask.board_id,
-          boardName: kanban.value.boards.find(b => b.id === updatedTask.board_id)?.name
+          boardName: kanban.value.boards.find(b => b.id === updatedTask.board_id)?.name,
         }
         isMessengerDrawerOpen.value = true
       }
@@ -93,6 +93,7 @@ const isOwner = computed(() => kanbanData.value?.owner_id === userData.value.id)
 const isAdmin = computed(() => kanbanData.value?.auth.is_admin)
 const boardId = computed(() => kanban.value?.id)
 const isSuperAdmin = computed(() => kanbanData.value?.auth.is_super_admin)
+const hasActiveMessages = computed(() => kanbanData.value?.auth.unread_comments_count > 0)
 
 const breadcumItems = computed(() => {
   return [
@@ -133,20 +134,20 @@ const openDeleteBoardDialog = (boardId, availableBoards) => {
       id: b.id,
       name: b.name,
       color: b.color,
-      icon: 'tabler-layout-board'
-    }))
+      icon: 'tabler-layout-board',
+    })),
   }
   isDeleteBoardDialogVisible.value = true
 }
 
-const deleteBoard = async (result) => {
+const deleteBoard = async result => {
   if (!result.confirmed || !deleteBoardDetails.value) return
   
   await $api(`/board/${deleteBoardDetails.value.boardId}`, { 
     method: 'DELETE',
     body: { 
-      targetBoardId: result.targetBoardId
-    }
+      targetBoardId: result.targetBoardId,
+    },
   })
   
   refetchKanban()
@@ -160,21 +161,18 @@ const cancelDeleteBoard = () => {
 }
 
 const toggleTimerFn = async (memberData, taskId) => {
-  // Verificăm dacă există deja un request în curs pentru acest utilizator și task
-  // Dar permitem requesturile pentru oprirea automată a timer-ului
   const isAutoStop = memberData.stopped_by_system === true
   
   if (!isAutoStop && timerStore.isRequestPending(memberData.user_id, taskId)) {
     console.log('Request already pending for this user and task')
+    
     return
   }
   
-  // Resetăm starea utilizatorului în store înainte de a face cererea
   if (memberData.user_id) {
     timerStore.resetUserState(memberData.user_id)
   }
   
-  // Marcăm requestul ca fiind în curs
   timerStore.markRequestPending(memberData.user_id, taskId)
   
   try {
@@ -184,13 +182,10 @@ const toggleTimerFn = async (memberData, taskId) => {
     })
 
     if(res) {
-      // Afișăm notificarea corespunzătoare în funcție de acțiune
       if (res.data.action === 'started') {
         toast.success(`Timer started for task #${res.data.task_sequence_id}`)
       } else if (res.data.action === 'stopped') {
-        // Verificăm dacă a fost oprit de sistem sau manual
         if (memberData.stopped_by_system) {
-          // Notificarea pentru oprirea de către sistem este deja afișată în checkWeeklyLimit
         } else {
           toast.info(`Timer stopped for task #${res.data.task_sequence_id}`)
         }
@@ -201,7 +196,6 @@ const toggleTimerFn = async (memberData, taskId) => {
   } catch (error) {
     console.error('Error toggling timer:', error)
   } finally {
-    // Marcăm requestul ca fiind finalizat, indiferent de rezultat
     timerStore.markRequestCompleted(memberData.user_id, taskId)
   }
 }
@@ -318,7 +312,6 @@ const updateUserTimers = () => {
         return
       }
 
-      // Inițializează progress bar-ul pentru utilizatorul activ
       if (entry.has_weekly_limit) {
         timerStore.initWeeklyProgress(entry.user.id, entry)
       }
@@ -369,23 +362,20 @@ const setSearchFilter = search => {
 }
 
 const startProgressUpdates = () => {
-  // Oprim orice interval existent
   if (progressUpdateInterval.value) {
     clearInterval(progressUpdateInterval.value)
   }
   
-  // Creăm un nou interval care actualizează progress bar-urile la fiecare secundă
   progressUpdateInterval.value = setInterval(() => {
     if (activeUsersMenu.value && kanbanData.value?.active_users) {
       kanbanData.value.active_users.forEach(entry => {
         if (entry.has_weekly_limit && entry.time_entry?.start) {
-          // Forțăm o actualizare a progress bar-ului
           const progress = timerStore.getWeeklyProgress(entry.user.id)
           if (progress) {
-            // Actualizăm direct valorile reactive
             const startDate = parseISO(entry.time_entry.start)
             const now = new Date()
             const elapsedSeconds = differenceInSeconds(now, startDate)
+
             timerStore.updateWeeklyProgress(entry.user.id, elapsedSeconds)
           }
         }
@@ -399,10 +389,10 @@ watch(
   isOpen => {
     if (isOpen) {
       updateUserTimers()
-      startProgressUpdates() // Pornim actualizarea progress bar-urilor
+      startProgressUpdates()
     } else {
       clearUserTimers()
-      // Oprim actualizarea progress bar-urilor
+
       if (progressUpdateInterval.value) {
         clearInterval(progressUpdateInterval.value)
         progressUpdateInterval.value = null
@@ -423,7 +413,7 @@ onMounted(() => {
     
     router.replace({
       path: route.path,
-      query: {}
+      query: {},
     })
   }
   
@@ -438,7 +428,7 @@ onBeforeUnmount(() => {
   }
 })
 
-const openMessenger = (item) => {
+const openMessenger = item => {
   selectedKanbanItem.value = item
 
   isMessengerDrawerOpen.value = true
@@ -449,7 +439,7 @@ const openBoardMessenger = (itemOpen, type) => {
     selectedKanbanItem.value = null
   } else if(type === 'task') {
     selectedKanbanItem.value = {
-      item: itemOpen
+      item: itemOpen,
     }
   }
   isFromGeneralMessenger.value = true
@@ -463,7 +453,7 @@ const handleBackToGeneral = () => {
   isMessagesDialogVisible.value = true
 }
 
-const handleMessengerUpdate = (updatedItem) => {
+const handleMessengerUpdate = updatedItem => {
   if (updatedItem) {
     refetchKanban()
   }
@@ -476,7 +466,7 @@ const editTimer = (member, id, name) => {
   isEditTimerDialogVisible.value = true
 }
 
-const deleteKanbanItemFn = async (item) => {
+const deleteKanbanItemFn = async item => {
   if (item?.item?.id) {
     await $api(`/task/${item.item.id}`, {
       method: 'DELETE',
@@ -486,7 +476,7 @@ const deleteKanbanItemFn = async (item) => {
   }
 }
 
-watch(() => kanban.value, (newVal) => {
+watch(() => kanban.value, newVal => {
   if (newVal && initialQueryParams.value) {
     const task = newVal.boards?.flatMap(board => board.tasks)
       .find(item => item.id === parseInt(initialQueryParams.value.taskId))
@@ -495,7 +485,7 @@ watch(() => kanban.value, (newVal) => {
       selectedKanbanItem.value = {
         item: task,
         boardId: task.board_id,
-        boardName: newVal.boards.find(b => b.id === task.board_id)?.name
+        boardName: newVal.boards.find(b => b.id === task.board_id)?.name,
       }
       
       nextTick(() => {
@@ -506,7 +496,7 @@ watch(() => kanban.value, (newVal) => {
   }
 }, { immediate: true })
 
-watch(() => route.query, (newQuery) => {
+watch(() => route.query, newQuery => {
   if (newQuery.openMessenger === 'true' && newQuery.taskId) {
     initialQueryParams.value = { ...newQuery }
     
@@ -520,7 +510,7 @@ watch(() => route.query, (newQuery) => {
         selectedKanbanItem.value = {
           item: task,
           boardId: task.board_id,
-          boardName: kanban.value.boards.find(b => b.id === task.board_id)?.name
+          boardName: kanban.value.boards.find(b => b.id === task.board_id)?.name,
         }
       }
 
@@ -530,9 +520,9 @@ watch(() => route.query, (newQuery) => {
       })
     }
   }
-},{ deep: true })
+}, { deep: true })
 
-const getWeeklyProgressPercent = (entry) => {
+const getWeeklyProgressPercent = entry => {
   if (!entry.has_weekly_limit) return 0
   
   if (entry.time_entry?.start) {
@@ -545,7 +535,7 @@ const getWeeklyProgressPercent = (entry) => {
   return (entry.weekly_tracked.total_seconds / (entry.weekly_limit_hours * 3600)) * 100
 }
 
-const getWeeklyProgressDisplay = (entry) => {
+const getWeeklyProgressDisplay = entry => {
   if (!entry.has_weekly_limit) return entry.weekly_tracked.total_display
   
   if (entry.time_entry?.start) {
@@ -555,11 +545,9 @@ const getWeeklyProgressDisplay = (entry) => {
     }
   }
   
-  // Formatăm manual pentru utilizatorii inactivi sau când nu avem progress în store
   const hours = Math.floor(entry.weekly_tracked.total_seconds / 3600)
   const minutes = Math.floor((entry.weekly_tracked.total_seconds % 3600) / 60)
   
-  // Formatăm limita cu o precizie de 1 zecimală pentru limitele mici
   const limitDisplay = entry.weekly_limit_hours < 1 ? 
     `${(entry.weekly_limit_hours * 60).toFixed(0)}m` : 
     `${entry.weekly_limit_hours}h`
@@ -568,37 +556,31 @@ const getWeeklyProgressDisplay = (entry) => {
 }
 
 watch(isDocumentationDialogVisible, (newValue, oldValue) => {
-  // Dacă dialogul tocmai s-a închis
   if (oldValue === true && newValue === false) {
-    // Incrementăm key-ul pentru a forța remontarea componentei
     documentationDialogKey.value++
   }
 })
 
-const handleMoveBoardConfirm = async (data) => {
-  console.log(data)
+const handleMoveBoardConfirm = async data => {
   if (data) {
     try {
       const response = await $api(`/container/${data.boardId}/move`, {
         method: 'POST',
         body: {
-          target_project_id: data.targetProjectId
-        }
+          target_project_id: data.targetProjectId,
+        },
       })
       
       if (response) {
-        // First clear any existing data
         kanban.value = null
         
-        // Use replace to update the URL and force a reload
         router.replace({ 
           name: 'container-view', 
           params: { 
             id: data.targetProjectId, 
-            containerId: data.boardId 
-          }
+            containerId: data.boardId, 
+          },
         }).then(() => {
-          // After route change, force a refetch
           nextTick(() => {
             refetchKanban()
           })
@@ -611,10 +593,10 @@ const handleMoveBoardConfirm = async (data) => {
   }
 }
 
-const handleDeleteBoardConfirm = async (boardId) => {
+const handleDeleteBoardConfirm = async boardId => {
   try {
     await $api(`/container/${boardId}`, { 
-      method: 'DELETE'
+      method: 'DELETE',
     })
     
     router.push(`/projects/${kanban.value.project_id}`)
@@ -623,21 +605,19 @@ const handleDeleteBoardConfirm = async (boardId) => {
   }
 }
 
-// Add a watch for route changes to handle navigation
 watch(
   () => route.params,
   (newParams, oldParams) => {
     if (newParams.containerId !== oldParams.containerId || 
         newParams.id !== oldParams.id) {
-      // Clear existing data first
       kanban.value = null
-      // Fetch new data
+
       nextTick(() => {
         refetchKanban()
       })
     }
   },
-  { deep: true }
+  { deep: true },
 )
 </script>
 
@@ -657,12 +637,10 @@ watch(
           </template>
         </VBreadcrumbs>
         <div class="d-flex gap-1 align-center">
-
-
           <div class="d-flex align-center gap-2 filters-container">
-            <PriorityFilterDropdown
-              :model-value="priorityFilter"
-              @update:model-value="setPriority($event)"
+            <SearchFilterDropdown
+              :model-value="searchFilter"
+              @update:model-value="setSearchFilter($event)"
             />
 
             <UserFilterDropdown
@@ -675,9 +653,9 @@ watch(
               @update:model-value="setTagsFilter($event)"
             />
 
-            <SearchFilterDropdown
-              :model-value="searchFilter"
-              @update:model-value="setSearchFilter($event)"
+            <PriorityFilterDropdown
+              :model-value="priorityFilter"
+              @update:model-value="setPriority($event)"
             />
           </div>
 
@@ -849,21 +827,6 @@ watch(
           </button>
 
           <button
-            :disabled="!isAdmin && !isSuperAdmin && !isOwner"
-            variant="elevated"
-            class="cursor-pointer github-style-badge"
-            :class="{ 'cursor-not-allowed': !isAdmin && !isSuperAdmin && !isOwner }"
-            @click="isBoardSettingsVisible = true"
-          >
-            <VIcon
-              left
-              size="16"
-            >
-              tabler-settings
-            </VIcon>
-          </button>
-
-          <button
             variant="elevated"
             class="cursor-pointer github-style-badge"
             @click="isMessagesDialogVisible = true"
@@ -871,21 +834,9 @@ watch(
             <VIcon
               left
               size="16"
+              :color="hasActiveMessages ? 'warning' : ''"
             >
               tabler-message
-            </VIcon>
-          </button>
-
-          <button
-            variant="elevated"
-            class="cursor-pointer github-style-badge"
-            @click="isPaymentDetailsDialogVisible = true"
-          >
-            <VIcon
-              left
-              size="16"
-            >
-              tabler-credit-card
             </VIcon>
           </button>
 
@@ -912,6 +863,34 @@ watch(
               size="16"
             >
               tabler-file-text
+            </VIcon>
+          </button>
+
+          <button
+            variant="elevated"
+            class="cursor-pointer github-style-badge"
+            @click="isPaymentDetailsDialogVisible = true"
+          >
+            <VIcon
+              left
+              size="16"
+            >
+              tabler-credit-card
+            </VIcon>
+          </button>
+
+          <button
+            :disabled="!isAdmin && !isSuperAdmin && !isOwner"
+            variant="elevated"
+            class="cursor-pointer github-style-badge"
+            :class="{ 'cursor-not-allowed': !isAdmin && !isSuperAdmin && !isOwner }"
+            @click="isBoardSettingsVisible = true"
+          >
+            <VIcon
+              left
+              size="16"
+            >
+              tabler-settings
             </VIcon>
           </button>
         </div>

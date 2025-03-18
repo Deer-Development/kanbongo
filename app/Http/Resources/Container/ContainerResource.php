@@ -21,7 +21,7 @@ class ContainerResource extends JsonResource
         $taskTimeData = $this->timeEntries
             ->whereNotNull('end')
             ->groupBy('task_id')
-            ->map(function ($entries) {
+            ->map(function ($entries): array {
                 $trackedTime = $entries->sum(fn($entry) => $entry->end
                     ? Carbon::parse($entry->start)->diffInSeconds(Carbon::parse($entry->end))
                     : 0);
@@ -186,6 +186,11 @@ class ContainerResource extends JsonResource
                 'has_weekly_limit' => $this->members->where('user_id', $authUser->id)->first()?->weekly_limit_enabled,
                 'weekly_limit_hours' => $this->members->where('user_id', $authUser->id)->first()?->weekly_limit_hours,
                 'weekly_limit_seconds' => $this->members->where('user_id', $authUser->id)->first()?->weekly_limit_hours * 3600,
+                'unread_comments_count' => $this->boards->sum(function($board) {
+                    return $board->tasks->sum(function($task) {
+                        return $task->comments->count();
+                    });
+                }),
             ],
             'active_users' => $activeUsers->toArray(),
             'inactive_users' => $inactiveUsers->toArray(),

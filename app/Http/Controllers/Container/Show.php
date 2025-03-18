@@ -62,7 +62,13 @@ class Show extends BaseController
                     ->with([
                         'tasks' => function ($q) use ($filters) {
                             $q->orderBy('order')
-                                ->with(['members.user:id,first_name,last_name,email', 'tags']);
+                                ->with(['members.user:id,first_name,last_name,email', 'tags', 'comments' => function ($q) {
+                                    $q->where(function($query) {
+                                        $query->whereDoesntHave('readByUsers', function ($q) {
+                                            $q->where('user_id', Auth::user()->id);
+                                        });
+                                    });
+                                }]);
 
                             if (!empty($filters['priority'])) {
                                 $hasUnflagged = in_array("unflagged", $filters['priority']);
