@@ -29,7 +29,7 @@ const fetchMemberPaymentDetails = async () => {
       method: "GET",
       params: { 
         date_range: props.dateRange,
-        payment_status: props.paymentStatus
+        payment_status: props.paymentStatus,
       },
     })
 
@@ -63,14 +63,15 @@ const totalSelectedPayment = computed(() => {
   }, 0)
 })
 
-const isAllSelected = (entries) => {
+const isAllSelected = entries => {
   if (!entries || entries.length === 0) return false
+  
   return entries
     .filter(entry => !entry.deleted_at && !entry.is_paid)
     .every(entry => selectedTimeEntries.value.includes(entry.id))
 }
 
-const toggleTaskEntries = (taskDetail) => {
+const toggleTaskEntries = taskDetail => {
   const entryIds = taskDetail.timeEntries
     .filter(entry => !entry.deleted_at && !entry.is_paid)
     .map(entry => entry.id)
@@ -79,16 +80,16 @@ const toggleTaskEntries = (taskDetail) => {
 
   if (allSelected) {
     selectedTimeEntries.value = selectedTimeEntries.value.filter(id => 
-      !entryIds.includes(id)
+      !entryIds.includes(id),
     )
   } else {
     selectedTimeEntries.value = [
-      ...new Set([...selectedTimeEntries.value, ...entryIds])
+      ...new Set([...selectedTimeEntries.value, ...entryIds]),
     ]
   }
 }
 
-const toggleTaskExpansion = (taskId) => {
+const toggleTaskExpansion = taskId => {
   const index = expandedTasks.value.indexOf(taskId)
   if (index === -1) {
     expandedTasks.value.push(taskId)
@@ -97,7 +98,7 @@ const toggleTaskExpansion = (taskId) => {
   }
 }
 
-const toggleLogsExpansion = (taskId) => {
+const toggleLogsExpansion = taskId => {
   const index = expandedLogs.value.indexOf(taskId)
   if (index === -1) {
     expandedLogs.value.push(taskId)
@@ -106,14 +107,14 @@ const toggleLogsExpansion = (taskId) => {
   }
 }
 
-const getLogColor = (action) => {
+const getLogColor = action => {
   switch (action) {
-    case 'update':
-      return 'primary'
-    case 'delete':
-      return 'error'
-    default:
-      return 'grey'
+  case 'update':
+    return 'primary'
+  case 'delete':
+    return 'error'
+  default:
+    return 'grey'
   }
 }
 
@@ -122,8 +123,9 @@ const selectionState = computed(() => {
   
   return Object.values(paymentDetails.value).reduce((acc, taskDetail) => {
     acc[taskDetail.task.id] = taskDetail.timeEntries.every(entry => 
-      selectedTimeEntries.value.includes(entry.id)
+      selectedTimeEntries.value.includes(entry.id),
     )
+    
     return acc
   }, {})
 })
@@ -193,32 +195,34 @@ const generateLogMessage = log => {
   return `<div class="log-message log-default"><strong>📝 Action:</strong> ${log.action}</div>`
 }
 
-const getLogIcon = (action) => {
+const getLogIcon = action => {
   switch (action) {
-    case 'update':
-      return 'tabler-edit'
-    case 'delete':
-      return 'tabler-trash'
-    default:
-      return 'tabler-info-circle'
+  case 'update':
+    return 'tabler-edit'
+  case 'delete':
+    return 'tabler-trash'
+  default:
+    return 'tabler-info-circle'
   }
 }
 
-const hasTimeChange = (log) => {
+const hasTimeChange = log => {
   return log.new_data?.end || log.new_data?.start
 }
 
-const hasPaymentChange = (log) => {
+const hasPaymentChange = log => {
   return log.new_data?.is_paid
 }
 
 const formatTimeRange = (start, end) => {
   if (!start || !end) return '—'
+  
   return `${format(new Date(start), 'MMM d, yyyy h:mm:ss a')} - ${format(new Date(end), 'h:mm:ss a')}`
 }
 
-const isAllEntriesPaid = (entries) => {
+const isAllEntriesPaid = entries => {
   if (!entries || entries.length === 0) return false
+  
   return entries.every(entry => entry.is_paid)
 }
 
@@ -234,247 +238,340 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
 
 <template>
   <div class="member-payment-details">
-    <div v-if="paymentDetails" class="tasks-container">
+    <div
+      v-if="paymentDetails"
+      class="tasks-container"
+    >
       <div
         v-for="(taskDetail, key) in paymentDetails"
         :key="key"
-        class="github-card"
-        :class="{ 'is-deleted': taskDetail.task?.deleted_at }"
+        :class="{'disabled': false}"
       >
-        <div class="card-header">
-          <div class="header-left">
-            <div v-if="props.isOwner || props.isSuperAdmin" class="select-all">
-              <VCheckbox
-                :model-value="isAllSelected(taskDetail.timeEntries)"
-                :indeterminate="
-                  taskDetail.timeEntries.some(entry => selectedTimeEntries.includes(entry.id)) &&
-                  !isAllSelected(taskDetail.timeEntries)
-                "
-                :disabled="!!taskDetail.task?.deleted_at || isAllEntriesPaid(taskDetail.timeEntries)"
-                :color="isAllEntriesPaid(taskDetail.timeEntries) ? 'success' : undefined"
-                @change="toggleTaskEntries(taskDetail)"
-              />
-            </div>
-            
-            <div class="header-content">
-              <div class="task-title-container">
-                <h4 class="task-title">
-                  <span class="task-id">{{ taskDetail.task?.sequence_id }})</span>
-                  {{ taskDetail.task?.name }}
-                  <span v-if="taskDetail.task?.deleted_at" class="deleted-badge">
-                    Deleted
-                  </span>
-                </h4>
-                <div class="task-metrics">
-                  <div class="time-badge">
-                    <VIcon size="16" color="success">tabler-clock-play</VIcon>
-                    <span>{{ taskDetail.trackedTimeDisplay }}</span>
-                  </div>
-                  
-                  <div class="payment-badges">
-                    <div v-if="taskDetail.paidAmount > 0" class="payment-badge paid">
-                      <VIcon size="16">tabler-cash</VIcon>
-                      <span>${{ taskDetail.paidAmount }}</span>
+        <div
+          class="github-card"
+          :class="{ 'is-deleted': taskDetail.task?.deleted_at }"
+        >
+          <div class="card-header">
+            <div class="header-left">
+              <div
+                v-if="(props.isOwner || props.isSuperAdmin) && props.member.payment_type === 1"
+                class="select-all"
+              >
+                <VCheckbox
+                  :model-value="isAllSelected(taskDetail.timeEntries)"
+                  :indeterminate="
+                    taskDetail.timeEntries.some(entry => selectedTimeEntries.includes(entry.id)) &&
+                      !isAllSelected(taskDetail.timeEntries)
+                  "
+                  :disabled="!!taskDetail.task?.deleted_at || isAllEntriesPaid(taskDetail.timeEntries)"
+                  :color="isAllEntriesPaid(taskDetail.timeEntries) ? 'success' : undefined"
+                  @change="toggleTaskEntries(taskDetail)"
+                />
+              </div>
+              
+              <div class="header-content">
+                <div class="task-title-container">
+                  <h4 class="task-title">
+                    <span class="task-id">{{ taskDetail.task?.sequence_id }})</span>
+                    {{ taskDetail.task?.name }}
+                    <span
+                      v-if="taskDetail.task?.deleted_at"
+                      class="deleted-badge"
+                    >
+                      Deleted
+                    </span>
+                  </h4>
+                  <div class="task-metrics">
+                    <div class="time-badge">
+                      <VIcon
+                        size="16"
+                        color="success"
+                      >
+                        tabler-clock-play
+                      </VIcon>
+                      <span>{{ taskDetail.trackedTimeDisplay }}</span>
                     </div>
-                    <div v-if="taskDetail.pendingAmount > 0" class="payment-badge pending">
-                      <VIcon size="16">tabler-clock-dollar</VIcon>
-                      <span>${{ taskDetail.pendingAmount }}</span>
+                    
+                    <div class="payment-badges">
+                      <div
+                        v-if="taskDetail.paidAmount > 0"
+                        class="payment-badge paid"
+                      >
+                        <VIcon size="16">
+                          tabler-cash
+                        </VIcon>
+                        <span>${{ taskDetail.paidAmount }}</span>
+                      </div>
+                      <div
+                        v-if="taskDetail.pendingAmount > 0"
+                        class="payment-badge pending"
+                      >
+                        <VIcon size="16">
+                          tabler-clock-dollar
+                        </VIcon>
+                        <span>${{ taskDetail.pendingAmount }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="header-actions">
-            <VBtn
-              variant="text"
-              size="small"
-              class="action-btn"
-              :class="{ active: expandedTasks.includes(taskDetail.task?.id) }"
-              prepend-icon="tabler-clock-hour-4"
-              @click="toggleTaskExpansion(taskDetail.task?.id)"
-            >
-              Time Entries
-            </VBtn>
-            
-            <VBtn
-              v-if="taskDetail.task && taskDetail.entries_logs.length"
-              variant="text"
-              size="small"
-              class="action-btn"
-              :class="{ active: expandedLogs.includes(taskDetail.task?.id) }"
-              prepend-icon="tabler-history"
-              @click="toggleLogsExpansion(taskDetail.task?.id)"
-            >
-              Task Logs
-            </VBtn>
-          </div>
-        </div>
-
-        <!-- Time Entries Section -->
-        <VExpandTransition>
-          <div v-if="expandedTasks.includes(taskDetail.task?.id)" class="entries-section">
-            <div class="table-container">
-              <table class="github-table">
-                <thead>
-                  <tr>
-                    <th v-if="props.isOwner || props.isSuperAdmin" class="checkbox-column">Select</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Duration</th>
-                    <th>Status</th>
-                    <th>Amount</th>
-                    <th>Rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="entry in taskDetail.timeEntries"
-                    :key="entry.id"
-                    :class="{
-                      'is-paid': entry.is_paid,
-                      'is-deleted': entry.deleted_at
-                    }"
-                  >
-                    <td v-if="props.isOwner || props.isSuperAdmin" class="checkbox-column">
-                      <VCheckbox
-                        v-model="selectedTimeEntries"
-                        :value="entry.id"
-                        :disabled="entry.is_paid || !!entry.deleted_at"
-                      />
-                    </td>
-                    <td>
-                      {{ formatDate(entry.start) }}
-                      <span v-if="entry.deleted_at" class="deleted-badge small">Deleted</span>
-                    </td>
-                    <td>{{ formatDate(entry.end) }}</td>
-                    <td>{{ entry.duration }}</td>
-                    <td>
-                      <span class="status-badge" :class="entry.is_paid ? 'paid' : 'unpaid'">
-                        {{ entry.is_paid ? 'Paid' : 'Unpaid' }}
-                      </span>
-                    </td>
-                    <td>{{ entry.amount_paid ? `$${entry.amount_paid}` : '--' }}</td>
-                    <td>{{ entry.paid_rate ? `$${entry.paid_rate}` : '--' }}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="header-actions">
+              <VBtn
+                variant="text"
+                size="small"
+                class="action-btn"
+                :class="{ active: expandedTasks.includes(taskDetail.task?.id) }"
+                prepend-icon="tabler-clock-hour-4"
+                @click="toggleTaskExpansion(taskDetail.task?.id)"
+              >
+                Time Entries
+              </VBtn>
+              
+              <VBtn
+                v-if="taskDetail.task && taskDetail.entries_logs.length"
+                variant="text"
+                size="small"
+                class="action-btn"
+                :class="{ active: expandedLogs.includes(taskDetail.task?.id) }"
+                prepend-icon="tabler-history"
+                @click="toggleLogsExpansion(taskDetail.task?.id)"
+              >
+                Task Logs
+              </VBtn>
             </div>
           </div>
-        </VExpandTransition>
 
-        <!-- Task Logs Section -->
-        <VExpandTransition>
-          <div v-if="expandedLogs.includes(taskDetail.task?.id)" class="logs-section">
-            <VTimeline
-              density="comfortable"
-              line-thickness="2"
-              class="github-timeline"
+          <!-- Time Entries Section -->
+          <VExpandTransition>
+            <div
+              v-if="expandedTasks.includes(taskDetail.task?.id)"
+              class="entries-section"
             >
-              <VTimelineItem
-                v-for="log in taskDetail.entries_logs"
-                :key="log.id"
-                :dot-color="getLogColor(log.action)"
-                size="small"
-              >
-                <template #icon>
-                  <VIcon :color="getLogColor(log.action)" size="16">
-                    {{ getLogIcon(log.action) }}
-                  </VIcon>
-                </template>
+              <div class="table-container">
+                <table class="github-table">
+                  <thead>
+                    <tr>
+                      <th
+                        v-if="props.isOwner || props.isSuperAdmin && props.member.payment_type === 1"
+                        class="checkbox-column"
+                      >
+                        Select
+                      </th>
+                      <th>Start</th>
+                      <th>End</th>
+                      <th>Duration</th>
+                      <th>Status</th>
+                      <th>Amount</th>
+                      <th>Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="entry in taskDetail.timeEntries"
+                      :key="entry.id"
+                      :class="{
+                        'is-paid': entry.is_paid,
+                        'is-deleted': entry.deleted_at
+                      }"
+                    >
+                      <td
+                        v-if="props.isOwner || props.isSuperAdmin && props.member.payment_type === 1"
+                        class="checkbox-column"
+                      >
+                        <VCheckbox
+                          v-model="selectedTimeEntries"
+                          :value="entry.id"
+                          :disabled="entry.is_paid || !!entry.deleted_at"
+                        />
+                      </td>
+                      <td>
+                        {{ formatDate(entry.start) }}
+                        <span
+                          v-if="entry.deleted_at"
+                          class="deleted-badge small"
+                        >Deleted</span>
+                      </td>
+                      <td>{{ formatDate(entry.end) }}</td>
+                      <td>{{ entry.duration }}</td>
+                      <td>
+                        <span
+                          class="status-badge"
+                          :class="entry.is_paid ? 'paid' : 'unpaid'"
+                        >
+                          {{ entry.is_paid ? 'Paid' : 'Unpaid' }}
+                        </span>
+                      </td>
+                      <td>{{ entry.amount_paid ? `$${entry.amount_paid}` : '--' }}</td>
+                      <td>{{ entry.paid_rate ? `$${entry.paid_rate}` : '--' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </VExpandTransition>
 
-                <div class="log-entry">
-                  <div class="log-header">
-                    <div class="log-meta">
-                      <span class="action-badge" :class="log.action">
-                        {{ log.action.toUpperCase() }}
-                      </span>
-                      <span class="user-info">
-                        <VAvatar size="20" class="user-avatar">
-                          <span v-if="!log.user.avatar" class="text-caption">
-                            {{ log.user.avatar_or_initials }}
-                          </span>
-                          <VImg
-                            v-else
-                            :src="log.user.avatar"
-                            :alt="log.user.full_name"
-                          />
-                        </VAvatar>
-                        {{ log.user.full_name }}
+          <!-- Task Logs Section -->
+          <VExpandTransition>
+            <div
+              v-if="expandedLogs.includes(taskDetail.task?.id)"
+              class="logs-section"
+            >
+              <VTimeline
+                density="comfortable"
+                line-thickness="2"
+                class="github-timeline"
+              >
+                <VTimelineItem
+                  v-for="log in taskDetail.entries_logs"
+                  :key="log.id"
+                  :dot-color="getLogColor(log.action)"
+                  size="small"
+                >
+                  <template #icon>
+                    <VIcon
+                      :color="getLogColor(log.action)"
+                      size="16"
+                    >
+                      {{ getLogIcon(log.action) }}
+                    </VIcon>
+                  </template>
+
+                  <div class="log-entry">
+                    <div class="log-header">
+                      <div class="log-meta">
+                        <span
+                          class="action-badge"
+                          :class="log.action"
+                        >
+                          {{ log.action.toUpperCase() }}
+                        </span>
+                        <span class="user-info">
+                          <VAvatar
+                            size="20"
+                            class="user-avatar"
+                          >
+                            <span
+                              v-if="!log.user.avatar"
+                              class="text-caption"
+                            >
+                              {{ log.user.avatar_or_initials }}
+                            </span>
+                            <VImg
+                              v-else
+                              :src="log.user.avatar"
+                              :alt="log.user.full_name"
+                            />
+                          </VAvatar>
+                          {{ log.user.full_name }}
+                        </span>
+                      </div>
+                      <span class="log-date">
+                        <VIcon
+                          size="14"
+                          color="grey"
+                        >tabler-clock</VIcon>
+                        {{ formatDate(log.created_at) }}
                       </span>
                     </div>
-                    <span class="log-date">
-                      <VIcon size="14" color="grey">tabler-clock</VIcon>
-                      {{ formatDate(log.created_at) }}
-                    </span>
-                  </div>
 
-                  <div class="log-content">
-                    <template v-if="log.action === 'update'">
-                      <div class="changes-container">
-                        <div v-if="hasTimeChange(log)" class="change-item time-change">
-                          <VIcon size="16" color="primary">tabler-clock-edit</VIcon>
-                          <div class="change-details">
-                            <span class="change-label">Time Adjustment</span>
-                            <div class="time-comparison">
-                              <div class="old-value">
-                                <small>From</small>
-                                <span>{{ formatTimeRange(log.old_data.start, log.old_data.end) }}</span>
+                    <div class="log-content">
+                      <template v-if="log.action === 'update'">
+                        <div class="changes-container">
+                          <div
+                            v-if="hasTimeChange(log)"
+                            class="change-item time-change"
+                          >
+                            <VIcon
+                              size="16"
+                              color="primary"
+                            >
+                              tabler-clock-edit
+                            </VIcon>
+                            <div class="change-details">
+                              <span class="change-label">Time Adjustment</span>
+                              <div class="time-comparison">
+                                <div class="old-value">
+                                  <small>From</small>
+                                  <span>{{ formatTimeRange(log.old_data.start, log.old_data.end) }}</span>
+                                </div>
+                                <VIcon
+                                  size="16"
+                                  color="grey"
+                                >
+                                  tabler-arrow-right
+                                </VIcon>
+                                <div class="new-value">
+                                  <small>To</small>
+                                  <span>{{ formatTimeRange(log.old_data.start, log.new_data.end) }}</span>
+                                </div>
                               </div>
-                              <VIcon size="16" color="grey">tabler-arrow-right</VIcon>
-                              <div class="new-value">
-                                <small>To</small>
-                                <span>{{ formatTimeRange(log.old_data.start, log.new_data.end) }}</span>
+                            </div>
+                          </div>
+
+                          <div
+                            v-if="hasPaymentChange(log)"
+                            class="change-item payment-change"
+                          >
+                            <VIcon
+                              size="16"
+                              color="success"
+                            >
+                              tabler-currency-dollar
+                            </VIcon>
+                            <div class="change-details">
+                              <span class="change-label">Payment Update</span>
+                              <div class="payment-info">
+                                <template v-if="log.new_data.is_paid">
+                                  <div class="payment-status success">
+                                    <VIcon size="14">
+                                      tabler-check
+                                    </VIcon>
+                                    Marked as Paid
+                                  </div>
+                                  <div class="payment-details">
+                                    <span>Amount: ${{ log.new_data.amount_paid.toFixed(2) }}</span>
+                                    <span>Rate: ${{ log.new_data.paid_rate }}/hr</span>
+                                  </div>
+                                </template>
+                                <template v-else>
+                                  <div class="payment-status pending">
+                                    <VIcon size="14">
+                                      tabler-clock
+                                    </VIcon>
+                                    Pending Payment
+                                  </div>
+                                </template>
                               </div>
                             </div>
                           </div>
                         </div>
+                      </template>
 
-                        <div v-if="hasPaymentChange(log)" class="change-item payment-change">
-                          <VIcon size="16" color="success">tabler-currency-dollar</VIcon>
-                          <div class="change-details">
-                            <span class="change-label">Payment Update</span>
-                            <div class="payment-info">
-                              <template v-if="log.new_data.is_paid">
-                                <div class="payment-status success">
-                                  <VIcon size="14">tabler-check</VIcon>
-                                  Marked as Paid
-                                </div>
-                                <div class="payment-details">
-                                  <span>Amount: ${{ log.new_data.amount_paid.toFixed(2) }}</span>
-                                  <span>Rate: ${{ log.new_data.paid_rate }}/hr</span>
-                                </div>
-                              </template>
-                              <template v-else>
-                                <div class="payment-status pending">
-                                  <VIcon size="14">tabler-clock</VIcon>
-                                  Pending Payment
-                                </div>
-                              </template>
+                      <template v-else-if="log.action === 'delete'">
+                        <div class="delete-info">
+                          <VIcon
+                            size="16"
+                            color="error"
+                          >
+                            tabler-trash
+                          </VIcon>
+                          <div class="delete-details">
+                            <span class="delete-message">Time entry was removed</span>
+                            <div class="deleted-time">
+                              {{ formatTimeRange(log.old_data.start, log.old_data.end) }}
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </template>
-
-                    <template v-else-if="log.action === 'delete'">
-                      <div class="delete-info">
-                        <VIcon size="16" color="error">tabler-trash</VIcon>
-                        <div class="delete-details">
-                          <span class="delete-message">Time entry was removed</span>
-                          <div class="deleted-time">
-                            {{ formatTimeRange(log.old_data.start, log.old_data.end) }}
-                          </div>
-                        </div>
-                      </div>
-                    </template>
+                      </template>
+                    </div>
                   </div>
-                </div>
-              </VTimelineItem>
-            </VTimeline>
-          </div>
-        </VExpandTransition>
+                </VTimelineItem>
+              </VTimeline>
+            </div>
+          </VExpandTransition>
+        </div>
       </div>
     </div>
   </div>
@@ -1132,5 +1229,18 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
     opacity: 0;
     transform: translateY(-10px);
   }
+}
+
+.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.explanation-message {
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  color: #6c757d;
 }
 </style>

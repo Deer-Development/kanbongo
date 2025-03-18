@@ -2,6 +2,7 @@
 import { defineProps, ref, watch, computed, onMounted } from "vue"
 import MemberPaymentDetails from "@/views/projects/components/MemberPaymentDetails.vue"
 import PaycheckDetails from "@/views/projects/components/PaycheckDetails.vue"
+import { format } from 'date-fns'
 
 const props = defineProps({
   boardId: { type: Number, required: true, default: 0 },
@@ -36,27 +37,27 @@ const periodOptions = [
         label: 'Current Week',
         value: 'current_week',
         icon: 'tabler-calendar-week',
-        description: 'This week\'s data'
+        description: 'This week\'s data',
       },
       { 
         label: 'Current Month',
         value: 'current_month',
         icon: 'tabler-calendar-month',
-        description: 'Current month\'s data'
+        description: 'Current month\'s data',
       },
       {
         label: 'Current Quarter',
         value: 'current_quarter',
         icon: 'tabler-calendar-stats',
-        description: 'This quarter\'s data'
+        description: 'This quarter\'s data',
       },
       {
         label: 'Current Year',
         value: 'current_year',
         icon: 'tabler-calendar',
-        description: 'This year\'s data'
-      }
-    ]
+        description: 'This year\'s data',
+      },
+    ],
   },
   {
     label: 'Previous Period',
@@ -65,27 +66,27 @@ const periodOptions = [
         label: 'Last Week',
         value: 'last_week',
         icon: 'tabler-calendar-week',
-        description: 'Previous week\'s data'
+        description: 'Previous week\'s data',
       },
       {
         label: 'Last Month',
         value: 'last_month',
         icon: 'tabler-calendar-month',
-        description: 'Previous month\'s data'
+        description: 'Previous month\'s data',
       },
       {
         label: 'Last Quarter',
         value: 'last_quarter',
         icon: 'tabler-calendar-stats',
-        description: 'Previous quarter\'s data'
+        description: 'Previous quarter\'s data',
       },
       {
         label: 'Last Year',
         value: 'last_year',
         icon: 'tabler-calendar',
-        description: 'Previous year\'s data'
-      }
-    ]
+        description: 'Previous year\'s data',
+      },
+    ],
   },
   {
     label: 'Custom',
@@ -94,16 +95,16 @@ const periodOptions = [
         label: 'Custom Range',
         value: 'custom',
         icon: 'tabler-calendar-due',
-        description: 'Select a custom date range'
+        description: 'Select a custom date range',
       },
       {
         label: 'All Time',
         value: 'all_time',
         icon: 'tabler-calendar-time',
-        description: 'All time data'
-      }
-    ]
-  }
+        description: 'All time data',
+      },
+    ],
+  },
 ]
 
 const selectedPeriodLabel = computed(() => {
@@ -117,15 +118,49 @@ const selectedPeriodLabel = computed(() => {
 const filteredMembers = computed(() => {
   return members.value.filter(member => {
     switch (paymentStatusFilter.value) {
-      case 'paid':
-        return member.total_paid_hours > 0;
-      case 'pending':
-        return member.pending_payment > 0;
-      default:
-        return true;
+    case 'paid':
+      return member.total_paid_hours > 0
+    case 'pending':
+      return member.pending_payment > 0
+    default:
+      return true
     }
-  });
-});
+  })
+})
+
+const salaryMembers = computed(() => {
+  return filteredMembers.value.filter(member => member.payment_type === 2)
+})
+
+const totalSalaryPaid = computed(() => {
+  return filteredMembers.value.reduce((sum, member) => {
+    if (member.payment_type === 2 && member.total_salary_paid) {
+      return sum + (parseFloat(member.total_salary_paid) || 0)
+    }
+    return sum
+  }, 0)
+})
+
+const totalSalaries = computed(() => {
+  return filteredMembers.value.reduce((sum, member) => {
+    if (member.payment_type === 2) {
+      // Convert salary to number and handle null/undefined
+      const salary = parseFloat(member.salary) || 0
+
+      return sum + salary
+    }
+
+    return sum
+  }, 0)
+})
+
+const hasSalaryMembers = computed(() => filteredMembers.value.some(member => member.payment_type === 2))
+
+const paymentProgress = computed(() => {
+  const total = totalPaid.value + totalPending.value
+  
+  return total > 0 ? (totalPaid.value / total) * 100 : 0
+})
 
 const fetchMemberDetails = async () => {
   const res = await $api(`/board/payment-details/${boardIdLocal.value}`, {
@@ -135,7 +170,7 @@ const fetchMemberDetails = async () => {
       payment_status: paymentStatusFilter.value,
       is_super_admin: props.isSuperAdmin, 
       is_owner: props.isOwner, 
-      is_admin: props.isAdmin 
+      is_admin: props.isAdmin, 
     },
   })
 
@@ -179,25 +214,29 @@ const onReset = () => {
   selectedEntries.value = []
 }
 
-const totalPaid = computed(() => filteredMembers.value.reduce((sum, member) => sum + member.total_amount_paid, 0))
-const totalPaidHours = computed(() => filteredMembers.value.reduce((sum, member) => sum + member.total_paid_hours, 0))
-const totalPending = computed(() => filteredMembers.value.reduce((sum, member) => sum + member.pending_payment, 0))
-const totalUnpaidHours = computed(() => filteredMembers.value.reduce((sum, member) => sum + member.total_unpaid_hours, 0))
+const totalPaid = computed(() => filteredMembers.value.reduce((sum, member) => 
+  sum + (member.payment_type === 1 ? (member.total_amount_paid || 0) : 0), 0))
 
-const paymentProgress = computed(() => {
-  const total = totalPaid.value + totalPending.value
-  return total > 0 ? (totalPaid.value / total) * 100 : 0
-})
+const totalPaidHours = computed(() => filteredMembers.value.reduce((sum, member) => 
+  sum + (member.payment_type === 1 ? (member.total_paid_hours || 0) : 0), 0))
 
-const getStatusClass = (member) => {
+const totalPending = computed(() => filteredMembers.value.reduce((sum, member) => 
+  sum + (member.payment_type === 1 ? (member.pending_payment || 0) : 0), 0))
+
+const totalUnpaidHours = computed(() => filteredMembers.value.reduce((sum, member) => 
+  sum + (member.payment_type === 1 ? (member.total_unpaid_hours || 0) : 0), 0))
+
+const getStatusClass = member => {
   if (member.total_unpaid_hours === 0 && member.total_paid_hours > 0) return 'paid'
   if (member.pending_payment > 0) return 'pending'
+  
   return 'not-worked'
 }
 
-const getStatusText = (member) => {
+const getStatusText = member => {
   if (member.total_unpaid_hours === 0 && member.total_paid_hours > 0) return 'Paid'
   if (member.pending_payment > 0) return 'Pending'
+  
   return 'No Payment'
 }
 
@@ -244,108 +283,97 @@ const goBack = () => {
   fetchMemberDetails()
 }
 
-const setDatePreset = (preset) => {
+const setDatePreset = preset => {
   datePreset.value = preset
   showMenu.value = false
   
   if (preset === 'custom') {
     selectedDateRange.value = ''
+    
     return
   }
   
   const now = new Date()
   
   switch (preset) {
-    case 'current_week': {
-      const start = new Date(now)
-      start.setDate(start.getDate() - start.getDay() + 1)
-      const end = new Date(start)
-      end.setDate(end.getDate() + 6)
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'current_month': {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1)
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'current_quarter': {
-      const quarter = Math.floor(now.getMonth() / 3)
-      const start = new Date(now.getFullYear(), quarter * 3, 1)
-      const end = new Date(now.getFullYear(), (quarter + 1) * 3, 0)
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'current_year': {
-      const start = new Date(now.getFullYear(), 0, 1)
-      const end = new Date(now.getFullYear(), 11, 31)
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'last_week': {
-      const start = new Date(now)
-      start.setDate(start.getDate() - start.getDay() - 6)
-      const end = new Date(start)
-      end.setDate(end.getDate() + 6)
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'last_month': {
-      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const end = new Date(now.getFullYear(), now.getMonth(), 0)
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'last_quarter': {
-      const quarter = Math.floor(now.getMonth() / 3)
-      const start = new Date(now.getFullYear(), (quarter - 1) * 3, 1)
-      const end = new Date(now.getFullYear(), quarter * 3, 0)
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'last_year': {
-      const start = new Date(now.getFullYear() - 1, 0, 1)
-      const end = new Date(now.getFullYear() - 1, 11, 31)
-      selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
-      break
-    }
-    case 'all_time': {
-      selectedDateRange.value = ''
-      break
-    }
+  case 'current_week': {
+    const start = new Date(now)
+
+    start.setDate(start.getDate() - start.getDay() + 1)
+
+    const end = new Date(start)
+
+    end.setDate(end.getDate() + 6)
+    selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    break
+  }
+  case 'current_month': {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+    selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    break
+  }
+  case 'current_quarter': {
+    const quarter = Math.floor(now.getMonth() / 3)
+    const start = new Date(now.getFullYear(), quarter * 3, 1)
+    const end = new Date(now.getFullYear(), (quarter + 1) * 3, 0)
+
+    selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    break
+  }
+  case 'current_year': {
+    const start = new Date(now.getFullYear(), 0, 1)
+    const end = new Date(now.getFullYear(), 11, 31)
+
+    selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    break
+  }
+  case 'last_week': {
+    const start = new Date(now)
+
+    start.setDate(start.getDate() - start.getDay() - 6)
+
+    const end = new Date(start)
+
+    end.setDate(end.getDate() + 6)
+    selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    break
+  }
+  case 'last_month': {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const end = new Date(now.getFullYear(), now.getMonth(), 0)
+
+    selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    break
+  }
+  case 'last_quarter': {
+    const quarter = Math.floor(now.getMonth() / 3)
+    const start = new Date(now.getFullYear(), (quarter - 1) * 3, 1)
+    const end = new Date(now.getFullYear(), quarter * 3, 0)
+
+    selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    break
+  }
+  case 'last_year': {
+    const start = new Date(now.getFullYear() - 1, 0, 1)
+    const end = new Date(now.getFullYear() - 1, 11, 31)
+
+    selectedDateRange.value = `${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    break
+  }
+  case 'all_time': {
+    selectedDateRange.value = ''
+    break
+  }
   }
 }
 
-const showDateMenu = ref(false)
-
-const datePresets = [
-  { label: 'This Week', value: 'this-week', icon: 'tabler-calendar-event' },
-  { label: 'Last Week', value: 'last-week', icon: 'tabler-calendar-minus' },
-  { label: 'This Month', value: 'this-month', icon: 'tabler-calendar-month' },
-  { label: 'This Year', value: 'this-year', icon: 'tabler-calendar-stats' },
-]
-
-const getDateRangeLabel = computed(() => {
-  if (!selectedDateRange.value) return 'Select date range'
+const formatPaymentDate = date => {
+  if (!date) return 'N/A'
   
-  const preset = datePresets.find(p => p.value === datePreset.value)
-  if (preset) return preset.label
-  
-  const [start, end] = selectedDateRange.value.split(' to ')
-  if (!end) return 'Custom range'
-  
-  return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
-})
-
-const showCustomDateMenu = ref(false)
-
-const getCustomDateLabel = computed(() => {
-  if (!selectedDateRange.value) return 'Custom'
-  const [start, end] = selectedDateRange.value.split(' to ')
-  if (!end) return 'Custom'
-  return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
-})
+  return format(new Date(date), 'MMM d, yyyy')
+}
 
 onMounted(() => {
   setDatePreset('current_month')
@@ -390,8 +418,17 @@ onMounted(() => {
             <h2 class="header-title">
               {{ showPaychecks ? 'Paychecks Details' : 'Payment Details' }}
             </h2>
-            <div class="subtitle" v-if="selectedMember">
-              <VIcon size="16" color="primary" class="mr-1">tabler-user</VIcon>
+            <div
+              v-if="selectedMember"
+              class="subtitle"
+            >
+              <VIcon
+                size="16"
+                color="primary"
+                class="mr-1"
+              >
+                tabler-user
+              </VIcon>
               {{ selectedMember.user.full_name }}
             </div>
           </div>
@@ -407,7 +444,17 @@ onMounted(() => {
           </VBtn>
         </div>
 
-        <div class="filters-section" v-if="!showPaychecks">
+        <!-- Add explanation message here -->
+        <div v-if="selectedMember && (selectedMember.payment_type === 2 || selectedMember.payment_type === 3)" class="explanation-message">
+          <p>
+            Selection of tasks and time entries is disabled for members with {{ selectedMember.payment_type === 2 ? 'Salary' : 'No Payment' }} payment type.
+          </p>
+        </div>
+
+        <div
+          v-if="!showPaychecks"
+          class="filters-section"
+        >
           <div class="date-filters">
             <div class="filters-group">
               <div class="period-selector">
@@ -439,9 +486,19 @@ onMounted(() => {
                       </VBtn>
                     </template>
 
-                    <VCard class="period-menu" elevation="3" min-width="280">
-                      <VList lines="two" density="compact">
-                        <template v-for="(group, index) in periodOptions" :key="index">
+                    <VCard
+                      class="period-menu"
+                      elevation="3"
+                      min-width="280"
+                    >
+                      <VList
+                        lines="two"
+                        density="compact"
+                      >
+                        <template
+                          v-for="(group, index) in periodOptions"
+                          :key="index"
+                        >
                           <VListSubheader class="period-group-header">
                             {{ group.label }}
                           </VListSubheader>
@@ -455,7 +512,10 @@ onMounted(() => {
                             @click="setDatePreset(item.value)"
                           >
                             <template #prepend>
-                              <VIcon :icon="item.icon" size="20" />
+                              <VIcon
+                                :icon="item.icon"
+                                size="20"
+                              />
                             </template>
 
                             <VListItemTitle>{{ item.label }}</VListItemTitle>
@@ -483,7 +543,10 @@ onMounted(() => {
                 </div>
               </div>
 
-              <VDivider vertical class="mx-2" />
+              <VDivider
+                vertical
+                class="mx-2"
+              />
 
               <VBtnGroup 
                 class="btn-group-status-filter"
@@ -549,7 +612,12 @@ onMounted(() => {
           <div class="payment-stats">
             <div class="stat-item">
               <div class="stat-icon">
-                <VIcon size="20" color="primary">tabler-credit-card-pay</VIcon>
+                <VIcon
+                  size="20"
+                  color="primary"
+                >
+                  tabler-credit-card-pay
+                </VIcon>
               </div>
               <div class="stat-content">
                 <span class="stat-label">Selected Amount</span>
@@ -559,7 +627,12 @@ onMounted(() => {
 
             <div class="stat-item">
               <div class="stat-icon">
-                <VIcon size="20" color="primary">tabler-currency-dollar</VIcon>
+                <VIcon
+                  size="20"
+                  color="primary"
+                >
+                  tabler-currency-dollar
+                </VIcon>
               </div>
               <div class="stat-content">
                 <span class="stat-label">Hourly Rate</span>
@@ -584,8 +657,14 @@ onMounted(() => {
 
       <VCardText class="content-section">
         <!-- Members Grid -->
-        <div v-if="!selectedMember" class="members-grid">
-          <div v-if="filteredMembers.length === 0" class="no-results">
+        <div
+          v-if="!selectedMember"
+          class="members-grid"
+        >
+          <div
+            v-if="filteredMembers.length === 0"
+            class="no-results"
+          >
             <div class="empty-state">
               <VIcon
                 size="40"
@@ -613,54 +692,125 @@ onMounted(() => {
             class="member-card"
           >
             <!-- Status Badge -->
-            <div class="status-badge" :class="getStatusClass(member)">
-              {{ getStatusText(member) }}
+            <div
+              class="status-badge"
+              :class="[
+                member.payment_type === 3 ? 'not-payment' : 
+                member.payment_type === 2 ? 'salary' :
+                getStatusClass(member)
+              ]"
+            >
+              {{ 
+                member.payment_type === 3 ? 'No Payment' : 
+                member.payment_type === 2 ? 'Salary' :
+                getStatusText(member) 
+              }}
             </div>
 
-            <!-- Member Info -->
-            <div class="member-header">
-              <VAvatar
-                :size="48"
-                :color="member.user.avatar ? 'transparent' : '#f3f4f6'"
-              >
-                <VImg
-                  v-if="member.user.avatar"
-                  :src="member.user.avatar"
-                  alt="Avatar"
-                />
-                <span v-else class="text-subtitle-2">{{ member.user.avatar_or_initials }}</span>
-              </VAvatar>
-              <div class="member-details">
-                <h3>{{ member.member_name }}</h3>
-                <span>{{ member.user.email }}</span>
+            <!-- Member Card Content Wrapper -->
+            <div class="member-card-content">
+              <!-- Member Info -->
+              <div class="member-header">
+                <VAvatar
+                  :size="48"
+                  :color="member.user.avatar ? 'transparent' : '#f3f4f6'"
+                >
+                  <VImg
+                    v-if="member.user.avatar"
+                    :src="member.user.avatar"
+                    alt="Avatar"
+                  />
+                  <span
+                    v-else
+                    class="text-subtitle-2"
+                  >{{ member.user.avatar_or_initials }}</span>
+                </VAvatar>
+                <div class="member-details">
+                  <h3>{{ member.member_name }}</h3>
+                  <span>{{ member.user.email }}</span>
+                </div>
+              </div>
+
+              <!-- Payment Stats -->
+              <div class="payment-stats">
+                <div class="stat-row">
+                  <span>Payment Type</span>
+                  <span class="text-primary">{{ member.payment_type_name }}</span>
+                </div>
+                
+                <template v-if="member.payment_type === 1">
+                  <div class="stat-row">
+                    <span>Pay Schedule</span>
+                    <span class="text-info">{{ member.salary_payment_type_name }}</span>
+                  </div>
+                  <!-- HOURLY type stats -->
+                  <div class="stat-row">
+                    <span>Paid Hours</span>
+                    <span class="text-success">{{ member.total_paid_hours.toFixed(2) }} hrs</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Unpaid Hours</span>
+                    <span class="text-danger">{{ member.total_unpaid_hours.toFixed(2) }} hrs</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Paid Amount</span>
+                    <span class="text-success">${{ member.total_amount_paid.toFixed(2) }}</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Pending</span>
+                    <span class="text-danger">${{ member.pending_payment.toFixed(2) }}</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Rate</span>
+                    <span class="text-primary">${{ member.billable_rate || 0 }}/hr</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Last Payment Date</span>
+                    <span class="text-success">{{ formatPaymentDate(member.last_payment_date) }}</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Next Payment Date</span>
+                    <span class="text-warning">{{ formatPaymentDate(member.next_payment_date) }}</span>
+                  </div>
+                </template>
+                
+                <template v-else-if="member.payment_type === 2">
+                  <div class="stat-row">
+                    <span>Pay Schedule</span>
+                    <span class="text-info">{{ member.salary_payment_type_name }}</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Salary</span>
+                    <span class="text-primary">${{ member.salary }}</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Last Payment Date</span>
+                    <span class="text-success">{{ formatPaymentDate(member.last_payment_date) }}</span>
+                  </div>
+                  <div class="stat-row">
+                    <span>Next Payment Date</span>
+                    <span class="text-warning">{{ formatPaymentDate(member.next_payment_date) }}</span>
+                  </div>
+                  <div class="stat-row" v-if="member.current_period_paid">
+                    <span>Current Period Paid</span>
+                    <span class="text-success">${{ member.current_period_amount }}</span>
+                  </div>
+                  <div class="stat-row" v-if="member.total_salary_paid">
+                    <span>Total Paid</span>
+                    <span class="text-success">${{ member.total_salary_paid.toFixed(2) }}</span>
+                  </div>
+                </template>
+                
+                <template v-else-if="member.payment_type === 3">
+                  <div class="stat-row">
+                    <span>Payment Status</span>
+                    <span class="text-medium-emphasis">{{ member.payment_status }}</span>
+                  </div>
+                </template>
               </div>
             </div>
 
-            <!-- Payment Stats -->
-            <div class="payment-stats">
-              <div class="stat-row">
-                <span>Paid Hours</span>
-                <span class="text-success">{{ member.total_paid_hours.toFixed(2) }} hrs</span>
-              </div>
-              <div class="stat-row">
-                <span>Unpaid Hours</span>
-                <span class="text-danger">{{ member.total_unpaid_hours.toFixed(2) }} hrs</span>
-              </div>
-              <div class="stat-row">
-                <span>Paid Amount</span>
-                <span class="text-success">${{ member.total_amount_paid.toFixed(2) }}</span>
-              </div>
-              <div class="stat-row">
-                <span>Pending</span>
-                <span class="text-danger">${{ member.pending_payment.toFixed(2) }}</span>
-              </div>
-              <div class="stat-row">
-                <span>Rate</span>
-                <span class="text-primary">${{ member.billable_rate || 0 }}/hr</span>
-              </div>
-            </div>
-
-            <!-- Member Actions -->
+            <!-- Member Actions - now outside the content wrapper -->
             <div class="member-actions">
               <div class="actions-wrapper">
                 <VBtn
@@ -672,6 +822,16 @@ onMounted(() => {
                   @click="confirmPayment(member.user.id)"
                 >
                   Pay Now
+                </VBtn>
+                <VBtn
+                  v-if="member.payment_type === 2 && (isSuperAdmin || isOwner || isAdmin) && !member.current_period_paid"
+                  color="success"
+                  variant="tonal"
+                  size="small"
+                  prepend-icon="tabler-cash-register"
+                  @click="confirmPayment(member.user.id)"
+                >
+                  Pay Salary
                 </VBtn>
                 <VBtn
                   variant="outlined"
@@ -724,35 +884,156 @@ onMounted(() => {
         </div>
 
         <!-- Payment Summary -->
-        <div v-if="!selectedMember" class="payment-summary">
+        <div
+          v-if="!selectedMember"
+          class="payment-summary"
+        >
           <h3>Payment Summary</h3>
-          <div class="summary-stats">
-            <div class="summary-stat">
-              <span>Total Paid</span>
-              <span class="text-success">${{ totalPaid.toFixed(2) }}</span>
+          <div class="summary-content">
+            <div class="summary-stats">
+              <div
+                v-if="filteredMembers.some(m => m.payment_type === 1)"
+                class="summary-category"
+              >
+                <div class="category-header">
+                  <h4>
+                    <VIcon size="18" color="primary" class="me-2">tabler-clock-dollar</VIcon>
+                    Hourly Payments
+                  </h4>
+                </div>
+                <div class="stat-grid">
+                  <div class="summary-stat-card">
+                    <div class="stat-icon paid">
+                      <VIcon size="20">tabler-cash</VIcon>
+                    </div>
+                    <div class="stat-content">
+                      <span class="stat-value">${{ totalPaid.toFixed(2) }}</span>
+                      <span class="stat-label">Total Paid</span>
+                    </div>
+                  </div>
+                  
+                  <div class="summary-stat-card">
+                    <div class="stat-icon pending">
+                      <VIcon size="20">tabler-hourglass</VIcon>
+                    </div>
+                    <div class="stat-content">
+                      <span class="stat-value">${{ totalPending.toFixed(2) }}</span>
+                      <span class="stat-label">Total Pending</span>
+                    </div>
+                  </div>
+                  
+                  <div class="summary-stat-card">
+                    <div class="stat-icon paid">
+                      <VIcon size="20">tabler-clock-check</VIcon>
+                    </div>
+                    <div class="stat-content">
+                      <span class="stat-value">{{ totalPaidHours.toFixed(2) }} hrs</span>
+                      <span class="stat-label">Paid Hours</span>
+                    </div>
+                  </div>
+                  
+                  <div class="summary-stat-card">
+                    <div class="stat-icon pending">
+                      <VIcon size="20">tabler-clock-pause</VIcon>
+                    </div>
+                    <div class="stat-content">
+                      <span class="stat-value">{{ totalUnpaidHours.toFixed(2) }} hrs</span>
+                      <span class="stat-label">Unpaid Hours</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="progress-section">
+                  <div class="progress-header">
+                    <span class="progress-label">Payment Progress</span>
+                    <span class="progress-percentage">{{ paymentProgress.toFixed(1) }}%</span>
+                  </div>
+                  <VProgressLinear
+                    :model-value="paymentProgress"
+                    color="success"
+                    height="8"
+                    rounded
+                  />
+                </div>
+              </div>
+              
+              <div
+                v-if="hasSalaryMembers"
+                class="summary-category"
+              >
+                <div class="category-header">
+                  <h4>
+                    <VIcon size="18" color="primary" class="me-2">tabler-wallet</VIcon>
+                    Salary Payments
+                  </h4>
+                </div>
+                <div class="stat-grid">
+                  <div class="summary-stat-card">
+                    <div class="stat-icon salary">
+                      <VIcon size="20">tabler-cash-banknote</VIcon>
+                    </div>
+                    <div class="stat-content">
+                      <span class="stat-value">${{ totalSalaries.toFixed(2) }}</span>
+                      <span class="stat-label">Total Salaries</span>
+                    </div>
+                  </div>
+                  
+                  <div class="summary-stat-card">
+                    <div class="stat-icon paid">
+                      <VIcon size="20">tabler-receipt</VIcon>
+                    </div>
+                    <div class="stat-content">
+                      <span class="stat-value">${{ totalSalaryPaid.toFixed(2) }}</span>
+                      <span class="stat-label">Total Paid (Period)</span>
+                    </div>
+                  </div>
+                  
+                  <div class="summary-stat-card">
+                    <div class="stat-icon info">
+                      <VIcon size="20">tabler-calendar-stats</VIcon>
+                    </div>
+                    <div class="stat-content">
+                      <span class="stat-value">{{ salaryMembers.length }}</span>
+                      <span class="stat-label">Salaried Members</span>
+                    </div>
+                  </div>
+                  
+                  <div class="summary-stat-card">
+                    <div class="stat-icon upcoming">
+                      <VIcon size="20">tabler-calendar-due</VIcon>
+                    </div>
+                    <div class="stat-content">
+                      <span class="stat-value">{{ salaryMembers.filter(m => !m.current_period_paid).length }}</span>
+                      <span class="stat-label">Pending Payments</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div
+                v-if="(filteredMembers.some(m => m.payment_type === 1) && hasSalaryMembers) || 
+                     (totalPaid + totalSalaryPaid > 0)"
+                class="summary-category total-summary"
+              >
+                <div class="category-header">
+                  <h4>
+                    <VIcon size="18" color="primary" class="me-2">tabler-report-money</VIcon>
+                    Total Payments
+                  </h4>
+                </div>
+                <div class="total-stats">
+                  <div class="total-stat-card">
+                    <div class="total-icon">
+                      <VIcon size="24" color="primary">tabler-calculator</VIcon>
+                    </div>
+                    <div class="total-content">
+                      <span class="total-value">${{ (totalPaid + totalSalaryPaid).toFixed(2) }}</span>
+                      <span class="total-label">Total Payments</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="summary-stat">
-              <span>Total Pending</span>
-              <span class="text-danger">${{ totalPending.toFixed(2) }}</span>
-            </div>
-            <div class="summary-stat">
-              <span>Paid Hours</span>
-              <span class="text-success">{{ totalPaidHours.toFixed(2) }} hrs</span>
-            </div>
-            <div class="summary-stat">
-              <span>Unpaid Hours</span>
-              <span class="text-danger">{{ totalUnpaidHours.toFixed(2) }} hrs</span>
-            </div>
-          </div>
-
-          <div class="progress-section mt-4">
-            <VProgressLinear
-              :model-value="paymentProgress"
-              color="success"
-              height="8"
-              rounded
-            />
-            <span class="progress-label">{{ paymentProgress.toFixed(1) }}% Paid</span>
           </div>
         </div>
       </VCardText>
@@ -893,6 +1174,9 @@ onMounted(() => {
     padding: 1.25rem;
     position: relative;
     transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 
     &:hover {
       border-color: #0969da;
@@ -907,6 +1191,7 @@ onMounted(() => {
       border-radius: 2rem;
       font-size: 0.75rem;
       font-weight: 600;
+      z-index: 1;
 
       &.paid {
         background: #dafbe1;
@@ -922,18 +1207,34 @@ onMounted(() => {
         background: #f6f8fa;
         color: #57606a;
       }
+
+      &.salary {
+        background: #ddf4ff;
+        color: #0969da;
+      }
+      
+      &.not-payment {
+        background: #f6f8fa;
+        color: #57606a;
+      }
+    }
+
+    .member-card-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     .member-actions {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: flex-end;
-      flex-wrap: wrap;
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid #d8dee4;
 
       .actions-wrapper {
         display: flex;
         gap: 0.5rem;
         flex-wrap: wrap;
+        justify-content: flex-end;
         
         .v-btn {
           flex: 0 1 auto;
@@ -1000,14 +1301,60 @@ onMounted(() => {
       font-size: 1.125rem;
       font-weight: 600;
       color: #24292f;
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      
+      &::before {
+        content: '';
+        display: block;
+        width: 4px;
+        height: 1.125rem;
+        background: #0969da;
+        margin-right: 0.5rem;
+        border-radius: 2px;
+      }
     }
 
-    .summary-stats {
+    .summary-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .summary-category {
+      padding: 1.25rem;
+      background: #f6f8fa;
+      border-radius: 6px;
+      margin-bottom: 1.25rem;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      &.total-summary {
+        background: #f0f5ff;
+        border: 1px solid #d1e0ff;
+      }
+      
+      .category-header {
+        margin-bottom: 1rem;
+        
+        h4 {
+          font-size: 0.9375rem;
+          font-weight: 600;
+          color: #24292f;
+          display: flex;
+          align-items: center;
+          margin: 0;
+        }
+      }
+    }
+    
+    .stat-grid {
       display: grid;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
       
       @media (max-width: 768px) {
         grid-template-columns: repeat(2, 1fr);
@@ -1017,29 +1364,129 @@ onMounted(() => {
         grid-template-columns: 1fr;
       }
     }
-
-    .summary-stat {
-      background: #f6f8fa;
-      padding: 1rem;
-      border-radius: 6px;
-      border: 1px solid #d0d7de;
-      width: 100%;
+    
+    .summary-stat-card {
       display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-
-      span:first-child {
-        font-size: 0.875rem;
-        color: #57606a;
-        display: block;
-        margin-bottom: 0.25rem;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 1rem;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        border-color: #0969da;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
       }
-
-      span:last-child {
-        font-size: 1.125rem;
-        font-weight: 600;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      
+      .stat-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        
+        &.paid {
+          background: #dafbe1;
+          color: #1a7f37;
+        }
+        
+        &.pending {
+          background: #fff8c5;
+          color: #9a6700;
+        }
+        
+        &.salary {
+          background: #ddf4ff;
+          color: #0969da;
+        }
+        
+        &.info {
+          background: #eef4fc;
+          color: #0969da;
+        }
+        
+        &.upcoming {
+          background: #ffeff0;
+          color: #cf222e;
+        }
+      }
+      
+      .stat-content {
+        display: flex;
+        flex-direction: column;
+        
+        .stat-value {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #24292f;
+          line-height: 1.2;
+        }
+        
+        .stat-label {
+          font-size: 0.75rem;
+          color: #57606a;
+          margin-top: 0.25rem;
+        }
+      }
+    }
+    
+    .total-stats {
+      display: flex;
+      justify-content: center;
+      
+      .total-stat-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        background: #ffffff;
+        border: 1px solid #d1e0ff;
+        border-radius: 6px;
+        min-width: 200px;
+        max-width: 400px;
+        width: 100%;
+        
+        .total-content {
+          display: flex;
+          flex-direction: column;
+          
+          .total-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0969da;
+          }
+          
+          .total-label {
+            font-size: 0.875rem;
+            color: #57606a;
+            margin-top: 0.25rem;
+          }
+        }
+      }
+    }
+    
+    .progress-section {
+      margin-top: 1.25rem;
+      
+      .progress-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        
+        .progress-label {
+          font-size: 0.75rem;
+          color: #57606a;
+        }
+        
+        .progress-percentage {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #1a7f37;
+        }
       }
     }
   }
@@ -1510,4 +1957,6 @@ onMounted(() => {
   }
 }
 </style>
+
+
 

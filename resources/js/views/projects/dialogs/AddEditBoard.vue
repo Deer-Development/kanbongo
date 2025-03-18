@@ -599,7 +599,7 @@ const onReset = () => {
                                 { title: SalaryPaymentType.getName(SalaryPaymentType.WEEKLY), value: SalaryPaymentType.WEEKLY },
                                 { title: SalaryPaymentType.getName(SalaryPaymentType.BI_WEEKLY), value: SalaryPaymentType.BI_WEEKLY }
                               ]"
-                              label="Salary Payment Type"
+                              label="Pay Schedule"
                               density="compact"
                               hide-details
                               class="mb-3"

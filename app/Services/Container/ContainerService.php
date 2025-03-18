@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Notifications\BoardOwnershipTransferred;
+use App\Enums\PaymentType;
+use App\Enums\SalaryPaymentTypes;
+use App\Services\Payment\PaymentDateCalculator;
 
 class ContainerService extends BaseService
 {
@@ -148,47 +151,83 @@ class ContainerService extends BaseService
 
         DB::transaction(function () use ($model, $userId) {
             foreach ($model->members as $member) {
-                $totalHours = 0;
-                $totalAmount = 0;
-                $timeEntryIds = [];
+                // Handle HOURLY payment type
+                if ($member->payment_type === PaymentType::HOURLY) {
+                    $totalHours = 0;
+                    $totalAmount = 0;
+                    $timeEntryIds = [];
 
-                foreach ($model->boards as $board) {
-                    foreach ($board->tasks as $task) {
-                        foreach ($task->timeEntries as $timeEntry) {
-                            if ($timeEntry->user_id === $member->user_id && !$timeEntry->is_paid) {
-                                $durationInHours = Carbon::parse($timeEntry->start)
-                                        ->diffInMinutes(Carbon::parse($timeEntry->end)) / 60;
+                    foreach ($model->boards as $board) {
+                        foreach ($board->tasks as $task) {
+                            foreach ($task->timeEntries as $timeEntry) {
+                                if ($timeEntry->user_id === $member->user_id && !$timeEntry->is_paid) {
+                                    $durationInHours = Carbon::parse($timeEntry->start)
+                                            ->diffInMinutes(Carbon::parse($timeEntry->end)) / 60;
 
-                                $amountPaid = $durationInHours * $member->billable_rate;
+                                    $amountPaid = $durationInHours * $member->billable_rate;
 
-                                $timeEntry->update([
-                                    'is_paid' => true,
-                                    'paid_rate' => $member->billable_rate,
-                                    'amount_paid' => $amountPaid
-                                ]);
+                                    $timeEntry->update([
+                                        'is_paid' => true,
+                                        'paid_rate' => $member->billable_rate,
+                                        'amount_paid' => $amountPaid
+                                    ]);
 
-                                $totalHours += $durationInHours;
-                                $totalAmount += $amountPaid;
-                                $timeEntryIds[] = $timeEntry->id;
+                                    $totalHours += $durationInHours;
+                                    $totalAmount += $amountPaid;
+                                    $timeEntryIds[] = $timeEntry->id;
+                                }
                             }
                         }
                     }
-                }
 
-                if ($totalHours > 0 && $totalAmount > 0) {
+                    if ($totalHours > 0 && $totalAmount > 0) {
+                        $actualPaymentDate = now();
+                        $nextPaymentDate = PaymentDateCalculator::getNextPaymentDate($member->salary_payment_type);
+
+                        $paycheck = Paycheck::create([
+                            'user_id' => $member->user_id,
+                            'container_id' => $model->id,
+                            'project_id' => $model->project_id,
+                            'created_by' => Auth::user()->id,
+                            'total_hours' => $totalHours,
+                            'total_amount' => $totalAmount,
+                            'status' => 'paid',
+                            'payment_type' => PaymentType::HOURLY,
+                            'target_payment_date' => $nextPaymentDate,
+                            'salary_payment_type' => $member->salary_payment_type,
+                        ]);
+
+                        DB::table('time_entries')
+                            ->whereIn('id', $timeEntryIds)
+                            ->update(['paycheck_id' => $paycheck->id]);
+
+                        $member->update([
+                            'last_payment_date' => Carbon::now()->format('Y-m-d'),
+                            'last_target_payment_date' => $nextPaymentDate,
+                        ]);
+                    }
+                }
+                elseif ($member->payment_type === PaymentType::SALARY) {
+                    $actualPaymentDate = now();
+                    $nextPaymentDate = PaymentDateCalculator::getNextPaymentDate($member->salary_payment_type);
+
                     $paycheck = Paycheck::create([
                         'user_id' => $member->user_id,
                         'container_id' => $model->id,
                         'project_id' => $model->project_id,
                         'created_by' => Auth::user()->id,
-                        'total_hours' => $totalHours,
-                        'total_amount' => $totalAmount,
+                        'total_hours' => 0,
+                        'total_amount' => $member->salary,
                         'status' => 'paid',
+                        'payment_type' => PaymentType::SALARY,
+                        'target_payment_date' => $nextPaymentDate,
+                        'salary_payment_type' => $member->salary_payment_type,
                     ]);
 
-                    DB::table('time_entries')
-                        ->whereIn('id', $timeEntryIds)
-                        ->update(['paycheck_id' => $paycheck->id]);
+                    $member->update([
+                        'last_target_payment_date' => $nextPaymentDate,
+                        'last_payment_date' => Carbon::now()->format('Y-m-d'),
+                    ]);
                 }
             }
         });
