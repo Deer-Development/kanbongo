@@ -2,6 +2,8 @@
 import { VForm } from 'vuetify/components/VForm'
 import { defineProps, nextTick, ref, watch, onMounted, computed } from 'vue'
 import { useToast } from "vue-toastification"
+import { PaymentType } from '../../../enums/PaymentType'
+import { SalaryPaymentType } from '../../../enums/SalaryPaymentType'
 
 const props = defineProps({
   boardDetails: {
@@ -51,10 +53,6 @@ const temporaryUsersAdded = ref([])
 const userData = computed(() => useCookie('userData', { default: null }).value)
 const isHeaderHovered = ref(false)
 const isSubmitting = ref(false)
-const isTransferOwnershipDialogVisible = ref(false)
-const selectedNewOwner = ref(null)
-const isTransferringOwnership = ref(false)
-const confirmationEmail = ref('')
 const showBasicInfo = computed(() => !boardDataLocal.value?.id)
 
 const isValidEmail = email => {
@@ -117,6 +115,9 @@ const addTemporaryUser = async () => {
         weekly_limit_enabled: false,
         weekly_limit_hours: null,
         is_admin: false,
+        payment_type: PaymentType.HOURLY,
+        salary: null,
+        salary_payment_type: SalaryPaymentType.MONTHLY,
       })
 
       toast.success(`User ${response.data.email} invited successfully!`)
@@ -156,6 +157,9 @@ watch(() => props.isDialogVisible, async value => {
     is_temporary: member.user.is_temporary,
     weekly_limit_enabled: member.weekly_limit_enabled,
     weekly_limit_hours: member.weekly_limit_hours,
+    payment_type: member.payment_type,
+    salary: member.salary,
+    salary_payment_type: member.salary_payment_type,
   }))
 })
 
@@ -186,6 +190,9 @@ const addUser = (userId, isOwner = false) => {
     weekly_limit_hours: null,
     is_owner: isOwner,
     is_admin: false,
+    payment_type: PaymentType.NO_PAYMENT,
+    salary: null,
+    salary_payment_type: SalaryPaymentType.MONTHLY,
   })
 
   excludedUsers.value.push({
@@ -223,7 +230,7 @@ const onSubmit = async () => {
       name: name.value,
       is_active: isActive.value,
       project_id: props.projectId,
-      members: boardDataLocal.value?.id ? members.value : [], // Trimitem members doar pentru edit
+      members: boardDataLocal.value?.id ? members.value : [],
       owner_id: boardDataLocal.value?.id ? boardDataLocal.value.owner_id : userData.value.id,
     }
 
@@ -275,57 +282,6 @@ const onReset = () => {
   }
 
   temporaryUsersAdded.value = []
-  selectedNewOwner.value = null
-  confirmationEmail.value = ''
-  isTransferOwnershipDialogVisible.value = false
-}
-
-const confirmationError = computed(() => {
-  if (!confirmationEmail.value) return ''
-  if (confirmationEmail.value !== members.value.find(m => m.user_id === selectedNewOwner.value)?.email) {
-    return 'Email does not match'
-  }
-  return ''
-})
-
-const canTransfer = computed(() => {
-  return selectedNewOwner.value && 
-         confirmationEmail.value === members.value.find(m => m.user_id === selectedNewOwner.value)?.email
-})
-
-const openTransferOwnershipDialog = () => {
-  selectedNewOwner.value = null
-  confirmationEmail.value = ''
-  isTransferOwnershipDialogVisible.value = true
-}
-
-const transferOwnership = async () => {
-  if (!canTransfer.value) return
-  
-  isTransferringOwnership.value = true
-  
-  try {
-    await $api(`/container/${boardDataLocal.value.id}/transfer-ownership`, {
-      method: 'POST',
-      body: {
-        new_owner_id: selectedNewOwner.value
-      }
-    })
-    
-    toast.success('Board ownership transferred successfully!')
-    boardDataLocal.value.owner_id = selectedNewOwner.value
-    isTransferOwnershipDialogVisible.value = false
-    
-    await nextTick(() => {
-      emit('formSubmitted')
-    })
-  } catch (error) {
-    toast.error('Failed to transfer ownership. Please try again.')
-  } finally {
-    isTransferringOwnership.value = false
-    selectedNewOwner.value = null
-    confirmationEmail.value = ''
-  }
 }
 </script>
 
@@ -333,17 +289,22 @@ const transferOwnership = async () => {
   <div>
     <VDialog
       :model-value="isDialogVisible"
-      @update:model-value="emit('update:isDialogVisible', $event)"
-      :max-width="$vuetify.display.smAndDown ? '100%' : '950'"
+      :max-width="$vuetify.display.smAndDown ? '100%' : '1300'"
       :fullscreen="$vuetify.display.smAndDown"
       persistent
       class="board-dialog"
+      @update:model-value="emit('update:isDialogVisible', $event)"
     >
       <VCard class="board-dialog-card">
         <VCardTitle class="dialog-header">
           <div class="d-flex align-center">
             <div class="icon-container">
-              <span class="emoji" :class="{ 'is-hovered': isHeaderHovered }" @mouseenter="isHeaderHovered = true" @mouseleave="isHeaderHovered = false">
+              <span
+                class="emoji"
+                :class="{ 'is-hovered': isHeaderHovered }"
+                @mouseenter="isHeaderHovered = true"
+                @mouseleave="isHeaderHovered = false"
+              >
                 {{ isHeaderHovered ? '🎯' : '📋' }}
               </span>
             </div>
@@ -367,10 +328,16 @@ const transferOwnership = async () => {
             validate-on="submit"
             @submit.prevent="onSubmit"
           >
-            <!-- Basic Information - Only show when creating new board -->
-            <div v-if="showBasicInfo" class="form-section">
+            <div
+              v-if="showBasicInfo"
+              class="form-section"
+            >
               <div class="section-header">
-                <VIcon icon="tabler-info-circle" size="18" class="me-2" />
+                <VIcon
+                  icon="tabler-info-circle"
+                  size="18"
+                  class="me-2"
+                />
                 <span class="text-h6">Basic Information</span>
               </div>
 
@@ -387,7 +354,10 @@ const transferOwnership = async () => {
                 class="mb-4"
               >
                 <template #prepend-inner>
-                  <VIcon icon="tabler-layout-board" size="18" />
+                  <VIcon
+                    icon="tabler-layout-board"
+                    size="18"
+                  />
                 </template>
               </VTextField>
 
@@ -395,7 +365,7 @@ const transferOwnership = async () => {
                 v-model="isActive"
                 label="Board Status"
                 color="success"
-                :true-value="true"
+                :true-value="true"  
                 :false-value="false"
                 hide-details
               >
@@ -415,10 +385,17 @@ const transferOwnership = async () => {
             </div>
 
             <!-- Team Members Section -->
-            <div class="form-section" :class="{ 'mt-6': showBasicInfo }">
+            <div
+              class="form-section"
+              :class="{ 'mt-6': showBasicInfo }"
+            >
               <div class="section-header d-flex justify-space-between align-center">
                 <div class="d-flex align-center">
-                  <VIcon icon="tabler-users" size="18" class="me-2" />
+                  <VIcon
+                    icon="tabler-users"
+                    size="18"
+                    class="me-2"
+                  />
                   <span class="text-h6">Team Members</span>
                 </div>
                 
@@ -511,7 +488,10 @@ const transferOwnership = async () => {
                   </template>
                 </AppCombobox>
 
-                <div v-if="members.length" class="members-list mt-6">
+                <div
+                  v-if="members.length"
+                  class="members-list mt-6"
+                >
                   <TransitionGroup name="member-list">
                     <div
                       v-for="member in members"
@@ -524,7 +504,10 @@ const transferOwnership = async () => {
                             v-if="member.avatar"
                             :src="member.avatar"
                           />
-                          <span v-else class="text-h6">{{ member.avatarOrInitials }}</span>
+                          <span
+                            v-else
+                            class="text-h6"
+                          >{{ member.avatarOrInitials }}</span>
                         </VAvatar>
                         
                         <div class="member-details">
@@ -539,7 +522,9 @@ const transferOwnership = async () => {
                               SA
                             </VChip>
                           </div>
-                          <div class="member-email">{{ member.email }}</div>
+                          <div class="member-email">
+                            {{ member.email }}
+                          </div>
                           <VChip
                             v-if="member.is_temporary"
                             size="x-small"
@@ -555,8 +540,8 @@ const transferOwnership = async () => {
                         <div class="controls-grid">
                           <div class="control-column switches">
                             <VSwitch
+                              v-if="member.role !== 'Super-Admin' && !member.is_owner && (boardDataLocal && boardDataLocal.owner_id !== member.user_id)"
                               v-model="member.is_admin"
-                              :disabled="member.is_owner || member.role === 'Super-Admin' || (boardDataLocal && boardDataLocal.owner_id === member.user_id)"
                               label="Admin"
                               density="compact"
                               hide-details
@@ -565,25 +550,22 @@ const transferOwnership = async () => {
                               <template #label>
                                 <span class="d-flex align-center">
                                   Admin
-                                  <VChip
-                                    v-if="member.is_owner || boardDataLocal?.owner_id === member.user_id"
-                                    size="x-small"
-                                    color="warning"
-                                    class="ms-2"
-                                  >
-                                    Owner
-                                  </VChip>
-                                  <VChip
-                                    v-else-if="member.role === 'Super-Admin'"
-                                    size="x-small"
-                                    color="info"
-                                    class="ms-2"
-                                  >
-                                    SA
-                                  </VChip>
+                                  
                                 </span>
                               </template>
                             </VSwitch>
+                            <div 
+                              v-if="member.is_owner || boardDataLocal?.owner_id === member.user_id"
+                              class="d-flex align-center"
+                            >
+                              <VChip
+                                
+                                size="x-small"
+                                color="warning"
+                              >
+                                Owner
+                              </VChip>
+                            </div>
 
                             <VSwitch
                               v-model="member.can_timing"
@@ -595,48 +577,98 @@ const transferOwnership = async () => {
                           </div>
 
                           <div class="control-column inputs">
-                            <VTextField
-                              v-model="member.billable_rate"
-                              label="Rate"
-                              type="number"
-                              min="0"
+                            <VSelect
+                              v-model="member.payment_type"
+                              :items="[
+                                { title: PaymentType.getName(PaymentType.HOURLY), value: PaymentType.HOURLY },
+                                { title: PaymentType.getName(PaymentType.SALARY), value: PaymentType.SALARY },
+                                { title: PaymentType.getName(PaymentType.NO_PAYMENT), value: PaymentType.NO_PAYMENT }
+                              ]"
+                              label="Payment Type"
                               density="compact"
                               hide-details
+                              class="mb-3"
                               @change="isFormDirty = true"
-                            >
-                              <template #append>
-                                <span class="text-caption text-medium-emphasis">$/h</span>
-                              </template>
-                            </VTextField>
+                            />
 
-                            <div class="weekly-limit-group">
-                              <VSwitch
-                                v-model="member.weekly_limit_enabled"
-                                label="Weekly Limit"
+                            <VSelect
+                              v-if="member.payment_type !== PaymentType.NO_PAYMENT"
+                              v-model="member.salary_payment_type"
+                              :items="[
+                                { title: SalaryPaymentType.getName(SalaryPaymentType.MONTHLY), value: SalaryPaymentType.MONTHLY },
+                                { title: SalaryPaymentType.getName(SalaryPaymentType.WEEKLY), value: SalaryPaymentType.WEEKLY },
+                                { title: SalaryPaymentType.getName(SalaryPaymentType.BI_WEEKLY), value: SalaryPaymentType.BI_WEEKLY }
+                              ]"
+                              label="Salary Payment Type"
+                              density="compact"
+                              hide-details
+                              class="mb-3"
+                              @change="isFormDirty = true"
+                            />
+
+                            <template v-if="member.payment_type === PaymentType.SALARY">
+                              <VTextField
+                                v-model="member.salary"
+                                label="Salary Amount"
+                                type="number"
+                                min="0"
+                                step="0.01"
                                 density="compact"
                                 hide-details
+                                class="mb-3"
                                 @change="isFormDirty = true"
-                              />
-                              
-                              <VSlideYTransition>
-                                <VTextField
-                                  v-if="member.weekly_limit_enabled"
-                                  v-model="member.weekly_limit_hours"
-                                  label="Hours per week"
-                                  type="number"
-                                  :rules="[v => !member.weekly_limit_enabled || !!v || 'Required']"
-                                  min="0"
-                                  step="0.5"
+                              >
+                                <template #append>
+                                  <span class="text-caption text-medium-emphasis">$</span>
+                                </template>
+                              </VTextField>
+                            </template>
+
+                            <template v-if="member.payment_type === PaymentType.HOURLY">
+                              <VTextField
+                                v-model="member.billable_rate"
+                                label="Rate"
+                                type="number"
+                                min="0"
+                                density="compact"
+                                hide-details
+                                class="mb-3"
+                                @change="isFormDirty = true"
+                              >
+                                <template #append>
+                                  <span class="text-caption text-medium-emphasis">$/h</span>
+                                </template>
+                              </VTextField>
+
+                              <div class="weekly-limit-group">
+                                <VSwitch
+                                  v-model="member.weekly_limit_enabled"
+                                  label="Weekly Limit"
                                   density="compact"
                                   hide-details
                                   @change="isFormDirty = true"
-                                >
-                                  <template #append>
-                                    <span class="text-caption text-medium-emphasis">h/w</span>
-                                  </template>
-                                </VTextField>
-                              </VSlideYTransition>
-                            </div>
+                                />
+                                
+                                <VSlideYTransition>
+                                  <VTextField
+                                    v-if="member.weekly_limit_enabled"
+                                    v-model="member.weekly_limit_hours"
+                                    label="Hours per week"
+                                    type="number"
+                                    :rules="[v => !member.weekly_limit_enabled || !!v || 'Required']"
+                                    min="0"
+                                    step="0.5"
+                                    density="compact"
+                                    hide-details
+                                    @change="isFormDirty = true"
+                                  >
+                                    <template #append>
+                                      <span class="text-caption text-medium-emphasis">h/w</span>
+                                    </template>
+                                  </VTextField>
+                                </VSlideYTransition>
+                              </div>
+                            </template>
                           </div>
                         </div>
 
@@ -649,7 +681,10 @@ const transferOwnership = async () => {
                           class="delete-btn"
                           @click="openRemoveDialog(member)"
                         >
-                          <VIcon size="18" icon="tabler-trash" />
+                          <VIcon
+                            size="18"
+                            icon="tabler-trash"
+                          />
                         </VBtn>
                       </div>
                     </div>
@@ -664,8 +699,12 @@ const transferOwnership = async () => {
                     <span class="plus-emoji">✨</span>
                   </div>
                   <div class="message-content">
-                    <p class="message-title">Team collaboration comes next!</p>
-                    <p class="message-text">After creating the board, you'll be able to invite team members and set their permissions.</p>
+                    <p class="message-title">
+                      Team collaboration comes next!
+                    </p>
+                    <p class="message-text">
+                      After creating the board, you'll be able to invite team members and set their permissions.
+                    </p>
                   </div>
                 </div>
               </template>
@@ -709,28 +748,30 @@ const transferOwnership = async () => {
 <style lang="scss">
 .board-dialog {
   .board-dialog-card {
-    border-radius: 12px;
+    border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 8px 24px rgba(var(--v-theme-on-surface), 0.12);
 
     .dialog-header {
-      padding: 16px 20px;
+      padding: 16px 24px;
       background: rgb(var(--v-theme-background));
+      border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
       display: flex;
       justify-content: space-between;
       align-items: center;
 
       .icon-container {
-        width: 40px;
-        height: 40px;
-        background: rgba(var(--v-theme-primary), 0.1);
-        border-radius: 10px;
+        width: 36px;
+        height: 36px;
+        background: rgba(var(--v-theme-primary), 0.08);
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-right: 12px;
 
         .emoji {
-          font-size: 20px;
+          font-size: 18px;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           
           &.is-hovered {
@@ -740,7 +781,7 @@ const transferOwnership = async () => {
       }
 
       .title-text {
-        font-size: 1.25rem;
+        font-size: 1.125rem;
         font-weight: 600;
         color: rgb(var(--v-theme-on-surface));
       }
@@ -748,8 +789,8 @@ const transferOwnership = async () => {
 
     .form-section {
       background: rgb(var(--v-theme-surface));
-      border-radius: 8px;
-      padding: 20px;
+      border-radius: 6px;
+      padding: 24px;
       margin-bottom: 24px;
       border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 
@@ -760,16 +801,18 @@ const transferOwnership = async () => {
       .section-header {
         display: flex;
         align-items: center;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
         color: rgb(var(--v-theme-on-surface));
 
         .v-icon {
           color: rgba(var(--v-theme-primary), 0.9);
+          margin-right: 8px;
         }
 
         .text-h6 {
-          font-size: 1rem;
+          font-size: 0.9375rem;
           font-weight: 600;
+          letter-spacing: -0.01em;
         }
       }
     }
@@ -778,12 +821,22 @@ const transferOwnership = async () => {
       .member-card {
         display: flex;
         flex-direction: column;
-        padding: 16px;
-        gap: 16px;
+        padding: 20px;
+        gap: 20px;
+        background: rgb(var(--v-theme-surface));
+        border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+        border-radius: 6px;
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          border-color: rgba(var(--v-theme-primary), 0.3);
+          background: rgba(var(--v-theme-primary), 0.02);
+        }
 
         @media (min-width: 768px) {
           flex-direction: row;
-          align-items: center;
+          align-items: flex-start;
         }
 
         .member-info {
@@ -792,53 +845,27 @@ const transferOwnership = async () => {
           gap: 12px;
           width: 100%;
 
-          @media (max-width: 767px) {
-            flex: 0 0 auto;
-            width: auto;
-            min-width: 0;
-            max-width: 100%;
-          }
-
           @media (min-width: 768px) {
             width: auto;
             flex: 0 0 250px;
           }
 
-          .v-avatar {
-            flex-shrink: 0;
-            
-            @media (max-width: 767px) {
-              width: 32px;
-              height: 32px;
-            }
-          }
-
           .member-details {
             flex: 1;
             min-width: 0;
-            max-width: calc(100% - 44px);
 
-            @media (max-width: 767px) {
-              .member-name {
-                font-size: 0.875rem;
-                
-                .v-chip {
-                  font-size: 0.75rem;
-                  height: 16px;
-                  padding: 0 4px;
-                }
-              }
+            .member-name {
+              font-size: 0.9375rem;
+              font-weight: 500;
+              color: rgb(var(--v-theme-on-surface));
+              display: flex;
+              align-items: center;
+              margin-bottom: 2px;
+            }
 
-              .member-email {
-                font-size: 0.75rem;
-              }
-
-              .v-chip.mt-1 {
-                margin-top: 2px;
-                font-size: 0.75rem;
-                height: 16px;
-                padding: 0 4px;
-              }
+            .member-email {
+              font-size: 0.8125rem;
+              color: rgba(var(--v-theme-on-surface), 0.7);
             }
           }
         }
@@ -847,7 +874,7 @@ const transferOwnership = async () => {
           width: 100%;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 20px;
 
           @media (min-width: 768px) {
             flex-direction: row;
@@ -858,14 +885,10 @@ const transferOwnership = async () => {
             flex: 1;
             display: grid;
             grid-template-columns: 1fr;
-            gap: 16px;
-
-            @media (min-width: 480px) {
-              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            }
+            gap: 20px;
 
             @media (min-width: 768px) {
-              grid-template-columns: minmax(200px, auto) minmax(200px, 1fr);
+              grid-template-columns: 220px 1fr;
             }
 
             .control-column {
@@ -876,49 +899,40 @@ const transferOwnership = async () => {
 
                 .v-switch {
                   margin: 0;
-                  min-height: 32px;
+                  height: 32px;
                 }
               }
 
               &.inputs {
-                display: flex;
-                flex-direction: column;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
                 gap: 12px;
+                align-items: start;
 
-                .v-text-field {
+                @media (min-width: 1024px) {
+                  grid-template-columns: repeat(3, minmax(180px, 1fr));
+                }
+
+                .v-text-field,
+                .v-select {
                   width: 100%;
-                  max-width: 150px;
                 }
 
                 .weekly-limit-group {
                   display: flex;
                   flex-direction: column;
                   gap: 8px;
-
-                  @media (max-width: 479px) {
-                    flex-direction: row;
-                    align-items: center;
-                    gap: 12px;
-                  }
-
-                  .v-text-field {
-                    width: 100%;
-                    max-width: 150px;
-
-                    @media (max-width: 479px) {
-                      max-width: 120px;
-                    }
-                  }
                 }
               }
             }
           }
 
           .delete-btn {
-            align-self: flex-end;
+            align-self: flex-start;
+            margin-left: auto;
 
             @media (min-width: 768px) {
-              align-self: center;
+              margin-top: 4px;
             }
           }
         }
@@ -930,196 +944,8 @@ const transferOwnership = async () => {
       gap: 8px;
       justify-content: flex-end;
       margin-top: 24px;
-    }
-
-    @media (max-width: 767px) {
-      .dialog-header {
-        padding: 12px 16px;
-
-        .title-text {
-          font-size: 1.1rem;
-        }
-      }
-
-      .form-section {
-        padding: 16px;
-        margin-bottom: 16px;
-
-        .section-header {
-          margin-bottom: 12px;
-
-          .text-h6 {
-            font-size: 0.9rem;
-          }
-        }
-      }
-
-      .dialog-actions {
-        flex-direction: column-reverse;
-        gap: 8px;
-        
-        .v-btn {
-          width: 100%;
-        }
-      }
-    }
-
-    .create-board-message {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      padding: 24px;
-      background: rgba(var(--v-theme-primary), 0.04);
-      border-radius: 8px;
-      transition: all 0.2s ease;
-
-      .message-icon {
-        position: relative;
-        flex-shrink: 0;
-
-        .emoji {
-          font-size: 32px;
-          display: block;
-        }
-
-        .plus-emoji {
-          position: absolute;
-          bottom: -4px;
-          right: -8px;
-          font-size: 16px;
-          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
-          animation: sparkle 1.5s ease-in-out infinite;
-        }
-      }
-
-      .message-content {
-        flex: 1;
-
-        .message-title {
-          font-size: 1rem;
-          font-weight: 600;
-          color: rgb(var(--v-theme-on-surface));
-          margin-bottom: 4px;
-        }
-
-        .message-text {
-          font-size: 0.875rem;
-          color: rgba(var(--v-theme-on-surface), 0.7);
-          line-height: 1.4;
-        }
-      }
-
-      @media (max-width: 767px) {
-        padding: 16px;
-        gap: 16px;
-
-        .message-icon {
-          .emoji {
-            font-size: 28px;
-          }
-
-          .plus-emoji {
-            font-size: 14px;
-          }
-        }
-
-        .message-content {
-          .message-title {
-            font-size: 0.9rem;
-          }
-
-          .message-text {
-            font-size: 0.8rem;
-          }
-        }
-      }
-    }
-  }
-
-  .member-card {
-    display: flex;
-    padding: 16px;
-    background: rgba(var(--v-theme-surface), 0.5);
-    border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-    border-radius: 8px;
-    margin-bottom: 12px;
-    transition: all 0.2s ease;
-    gap: 24px;
-
-    .member-info {
-      flex: 0 0 250px;
-
-      .member-details {
-        .member-name {
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-        }
-
-        .member-email {
-          font-size: 0.875rem;
-          color: rgba(var(--v-theme-on-surface), 0.7);
-        }
-      }
-    }
-
-    .member-controls {
-      flex: 1;
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-
-      .controls-grid {
-        flex: 1;
-        display: grid;
-        grid-template-columns: minmax(200px, auto) minmax(300px, 1fr);
-        gap: 24px;
-        align-items: flex-start;
-
-        .control-column {
-          &.switches {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-
-            .v-switch {
-              margin-bottom: 4px;
-            }
-          }
-
-          &.inputs {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-
-            .weekly-limit-group {
-              display: flex;
-              flex-direction: column;
-              gap: 8px;
-
-              @media (max-width: 479px) {
-                flex-direction: row;
-                align-items: center;
-                gap: 12px;
-              }
-
-              .v-text-field {
-                width: 100%;
-                max-width: 150px;
-
-                @media (max-width: 479px) {
-                  max-width: 120px;
-                }
-              }
-            }
-          }
-        }
-      }
-
-      .delete-btn {
-        flex-shrink: 0;
-        align-self: center;
-      }
+      padding-top: 16px;
+      border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
     }
   }
 }

@@ -164,6 +164,9 @@ class ContainerResource extends JsonResource
                     'billable_rate' => $member->billable_rate,
                     'weekly_limit_enabled' => $member->weekly_limit_enabled,
                     'weekly_limit_hours' => $member->weekly_limit_hours,
+                    'payment_type' => $member->payment_type,
+                    'salary' => $member->salary,
+                    'salary_payment_type' => $member->salary_payment_type,
                     'user' => array_merge(
                         $member->user->toArray(),
                         [
