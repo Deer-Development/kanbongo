@@ -137,6 +137,7 @@ const totalSalaryPaid = computed(() => {
     if (member.payment_type === 2 && member.total_salary_paid) {
       return sum + (parseFloat(member.total_salary_paid) || 0)
     }
+    
     return sum
   }, 0)
 })
@@ -445,16 +446,16 @@ onMounted(() => {
         </div>
 
         <!-- Add explanation message here -->
-        <div v-if="selectedMember && (selectedMember.payment_type === 2 || selectedMember.payment_type === 3)" class="explanation-message">
+        <div
+          v-if="selectedMember && (selectedMember.payment_type === 2 || selectedMember.payment_type === 3)"
+          class="explanation-message"
+        >
           <p>
             Selection of tasks and time entries is disabled for members with {{ selectedMember.payment_type === 2 ? 'Salary' : 'No Payment' }} payment type.
           </p>
         </div>
 
-        <div
-          v-if="!showPaychecks"
-          class="filters-section"
-        >
+        <div class="filters-section">
           <div class="date-filters">
             <div class="filters-group">
               <div class="period-selector">
@@ -791,11 +792,17 @@ onMounted(() => {
                     <span>Next Payment Date</span>
                     <span class="text-warning">{{ formatPaymentDate(member.next_payment_date) }}</span>
                   </div>
-                  <div class="stat-row" v-if="member.current_period_paid">
+                  <div
+                    v-if="member.current_period_paid"
+                    class="stat-row"
+                  >
                     <span>Current Period Paid</span>
                     <span class="text-success">${{ member.current_period_amount }}</span>
                   </div>
-                  <div class="stat-row" v-if="member.total_salary_paid">
+                  <div
+                    v-if="member.total_salary_paid"
+                    class="stat-row"
+                  >
                     <span>Total Paid</span>
                     <span class="text-success">${{ member.total_salary_paid.toFixed(2) }}</span>
                   </div>
@@ -897,14 +904,22 @@ onMounted(() => {
               >
                 <div class="category-header">
                   <h4>
-                    <VIcon size="18" color="primary" class="me-2">tabler-clock-dollar</VIcon>
+                    <VIcon
+                      size="18"
+                      color="primary"
+                      class="me-2"
+                    >
+                      tabler-clock-dollar
+                    </VIcon>
                     Hourly Payments
                   </h4>
                 </div>
                 <div class="stat-grid">
                   <div class="summary-stat-card">
                     <div class="stat-icon paid">
-                      <VIcon size="20">tabler-cash</VIcon>
+                      <VIcon size="20">
+                        tabler-cash
+                      </VIcon>
                     </div>
                     <div class="stat-content">
                       <span class="stat-value">${{ totalPaid.toFixed(2) }}</span>
@@ -914,7 +929,9 @@ onMounted(() => {
                   
                   <div class="summary-stat-card">
                     <div class="stat-icon pending">
-                      <VIcon size="20">tabler-hourglass</VIcon>
+                      <VIcon size="20">
+                        tabler-hourglass
+                      </VIcon>
                     </div>
                     <div class="stat-content">
                       <span class="stat-value">${{ totalPending.toFixed(2) }}</span>
@@ -924,7 +941,9 @@ onMounted(() => {
                   
                   <div class="summary-stat-card">
                     <div class="stat-icon paid">
-                      <VIcon size="20">tabler-clock-check</VIcon>
+                      <VIcon size="20">
+                        tabler-clock-check
+                      </VIcon>
                     </div>
                     <div class="stat-content">
                       <span class="stat-value">{{ totalPaidHours.toFixed(2) }} hrs</span>
@@ -934,7 +953,9 @@ onMounted(() => {
                   
                   <div class="summary-stat-card">
                     <div class="stat-icon pending">
-                      <VIcon size="20">tabler-clock-pause</VIcon>
+                      <VIcon size="20">
+                        tabler-clock-pause
+                      </VIcon>
                     </div>
                     <div class="stat-content">
                       <span class="stat-value">{{ totalUnpaidHours.toFixed(2) }} hrs</span>
@@ -963,14 +984,22 @@ onMounted(() => {
               >
                 <div class="category-header">
                   <h4>
-                    <VIcon size="18" color="primary" class="me-2">tabler-wallet</VIcon>
+                    <VIcon
+                      size="18"
+                      color="primary"
+                      class="me-2"
+                    >
+                      tabler-wallet
+                    </VIcon>
                     Salary Payments
                   </h4>
                 </div>
                 <div class="stat-grid">
                   <div class="summary-stat-card">
                     <div class="stat-icon salary">
-                      <VIcon size="20">tabler-cash-banknote</VIcon>
+                      <VIcon size="20">
+                        tabler-cash-banknote
+                      </VIcon>
                     </div>
                     <div class="stat-content">
                       <span class="stat-value">${{ totalSalaries.toFixed(2) }}</span>
@@ -980,7 +1009,9 @@ onMounted(() => {
                   
                   <div class="summary-stat-card">
                     <div class="stat-icon paid">
-                      <VIcon size="20">tabler-receipt</VIcon>
+                      <VIcon size="20">
+                        tabler-receipt
+                      </VIcon>
                     </div>
                     <div class="stat-content">
                       <span class="stat-value">${{ totalSalaryPaid.toFixed(2) }}</span>
@@ -990,7 +1021,9 @@ onMounted(() => {
                   
                   <div class="summary-stat-card">
                     <div class="stat-icon info">
-                      <VIcon size="20">tabler-calendar-stats</VIcon>
+                      <VIcon size="20">
+                        tabler-calendar-stats
+                      </VIcon>
                     </div>
                     <div class="stat-content">
                       <span class="stat-value">{{ salaryMembers.length }}</span>
@@ -1000,7 +1033,9 @@ onMounted(() => {
                   
                   <div class="summary-stat-card">
                     <div class="stat-icon upcoming">
-                      <VIcon size="20">tabler-calendar-due</VIcon>
+                      <VIcon size="20">
+                        tabler-calendar-due
+                      </VIcon>
                     </div>
                     <div class="stat-content">
                       <span class="stat-value">{{ salaryMembers.filter(m => !m.current_period_paid).length }}</span>
@@ -1012,19 +1047,30 @@ onMounted(() => {
               
               <div
                 v-if="(filteredMembers.some(m => m.payment_type === 1) && hasSalaryMembers) || 
-                     (totalPaid + totalSalaryPaid > 0)"
+                  (totalPaid + totalSalaryPaid > 0)"
                 class="summary-category total-summary"
               >
                 <div class="category-header">
                   <h4>
-                    <VIcon size="18" color="primary" class="me-2">tabler-report-money</VIcon>
+                    <VIcon
+                      size="18"
+                      color="primary"
+                      class="me-2"
+                    >
+                      tabler-report-money
+                    </VIcon>
                     Total Payments
                   </h4>
                 </div>
                 <div class="total-stats">
                   <div class="total-stat-card">
                     <div class="total-icon">
-                      <VIcon size="24" color="primary">tabler-calculator</VIcon>
+                      <VIcon
+                        size="24"
+                        color="primary"
+                      >
+                        tabler-calculator
+                      </VIcon>
                     </div>
                     <div class="total-content">
                       <span class="total-value">${{ (totalPaid + totalSalaryPaid).toFixed(2) }}</span>

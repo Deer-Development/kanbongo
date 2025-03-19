@@ -165,8 +165,10 @@ watchDebounced(
           <VTextarea
             v-if="isEditingName"
             v-model="item.name"
-            :rules="[requiredValidator, maxLengthValidator(item.name, 255)]"
-            rows="3"
+            :rules="[requiredValidator]"
+            maxlength="350"
+            counter
+            rows="5"
             dense
             variant="underlined"
             class="test-design-textarea"

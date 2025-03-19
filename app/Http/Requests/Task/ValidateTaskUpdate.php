@@ -24,7 +24,7 @@ class ValidateTaskUpdate extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'sometimes|required|string|max:255',
+            'name' => 'sometimes|required|string',
             'priority' => 'nullable',
             'due_date' => 'nullable',
             'members' => 'array',
