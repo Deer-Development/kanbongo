@@ -25,7 +25,7 @@ class ValidateTaskStore extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:350',
             'boardId' => 'required|integer|exists:boards,id',
         ];
     }
@@ -40,7 +40,7 @@ class ValidateTaskStore extends FormRequest
         return [
             'name.required' => 'The name field is required.',
             'name.string' => 'The name field must be a string.',
-            'name.max' => 'The name field must not exceed 255 characters.',
+            'name.max' => 'The name field must not exceed 350 characters.',
         ];
     }
 }

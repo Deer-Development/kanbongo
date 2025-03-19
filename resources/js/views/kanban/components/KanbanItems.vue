@@ -7,7 +7,7 @@ import {
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { VForm } from 'vuetify/components/VForm'
 import KanbanCard from './KanbanCard.vue'
-import { ref, watch } from "vue"
+import { ref, watch, nextTick } from "vue"
 
 const props = defineProps({
   kanbanIds: {
@@ -115,6 +115,45 @@ const renameBoard = () => {
 }
 
 const isSubmitting = ref(false)
+
+const truncateText = text => {
+  if (text && text.length > 350) {
+    return text.substring(0, 350)
+  }
+  
+  return text
+}
+
+watch(newTaskTitle, newValue => {
+  if (newValue && newValue.length > 350) {
+    newTaskTitle.value = truncateText(newValue)
+  }
+})
+
+const handlePaste = event => {
+  event.preventDefault()
+
+  const pastedText = event.clipboardData.getData('text/plain')
+  
+  const truncatedText = truncateText(pastedText)
+  
+  const currentText = newTaskTitle.value || ''
+  const selectionStart = event.target.selectionStart
+  const selectionEnd = event.target.selectionEnd
+  
+  const beforeSelection = currentText.substring(0, selectionStart)
+  const afterSelection = currentText.substring(selectionEnd)
+  
+  const remainingChars = 350 - (beforeSelection.length + afterSelection.length)
+  const truncatedPaste = pastedText.substring(0, remainingChars)
+  
+  newTaskTitle.value = beforeSelection + truncatedPaste + afterSelection
+  
+  nextTick(() => {
+    event.target.selectionStart = 
+    event.target.selectionEnd = selectionStart + truncatedPaste.length
+  })
+}
 
 const addNewItem = async () => {
   try {
@@ -376,8 +415,8 @@ const refreshData = () => {
           <VMenu>
             <template #activator="{ props }">
               <VIcon
-                v-bind="props"
                 v-tooltip="'Actions'"
+                v-bind="props"
                 class="text-high-emphasis cursor-pointer"
                 size="16"
                 icon="tabler-dots-vertical"
@@ -385,9 +424,7 @@ const refreshData = () => {
             </template>
 
             <VList density="compact">
-              <VListItem
-                @click="isBoardNameEditing = true"
-              >
+              <VListItem @click="isBoardNameEditing = true">
                 <template #prepend>
                   <VIcon
                     size="20"
@@ -441,16 +478,18 @@ const refreshData = () => {
 
           <VTextarea
             v-model="newTaskTitle"
-            :rules="[requiredValidator]"
+            :rules="[requiredValidator, maxLengthValidator(newTaskTitle, 350)]"
             placeholder="Enter task description..."
             variant="outlined"
             density="comfortable"
             rows="3"
-            hide-details
             class="task-textarea"
+            maxlength="350"
+            counter
             autofocus
             @keydown.enter="handleEnterKeydown"
             @keydown.esc="hideAddNewForm"
+            @paste="handlePaste"
           >
             <template #prepend-inner>
               <VIcon

@@ -22,7 +22,6 @@ class Store extends BaseController
     {
         $task = $this->service->create($request->validated());
 
-        // Înregistrăm activitatea cu toate detaliile necesare
         $task->recordActivity('created', [
             'attributes' => [
                 'id' => $task->id,
