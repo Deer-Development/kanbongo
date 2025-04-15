@@ -785,6 +785,8 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
         border-radius: 5px;
         background-color: #ffffff;
         overflow: hidden;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
         
         .y-axis {
           position: relative;

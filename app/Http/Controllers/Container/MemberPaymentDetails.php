@@ -186,7 +186,7 @@ class MemberPaymentDetails extends BaseController
                     $dailyReport[$dayKey]['totalSeconds'] += $secondsWorked;
                     
                     // Track task-specific hours
-                    $taskId = $entry->task_id;
+                    $taskId = $entry->task->sequence_id;
                     $taskName = $entry->task->name ?? "Task #$taskId";
                     
                     if (!isset($dailyReport[$dayKey]['hoursByTask'][$taskId])) {
