@@ -1,6 +1,6 @@
 <script setup>
 import { defineProps, ref, watch, computed } from "vue"
-import { format } from "date-fns"
+import { format, parseISO } from "date-fns"
 
 const props = defineProps({
   member: { type: Object, required: true },
@@ -15,10 +15,12 @@ const props = defineProps({
 const emit = defineEmits(["update:selectedPayment", "update:selectedEntries"])
 
 const paymentDetails = ref(null)
+const dailyTimeData = ref([])
 const loading = ref(false)
 const selectedTimeEntries = ref([])
 const expandedTasks = ref([]) // Track expanded tasks for time entries
 const expandedLogs = ref([]) // Track expanded tasks for logs
+const showTimeChart = ref(false) // Control visibility of time chart
 
 const fetchMemberPaymentDetails = async () => {
   if (!props.member) return
@@ -34,13 +36,31 @@ const fetchMemberPaymentDetails = async () => {
     })
 
     selectedTimeEntries.value = []
-    paymentDetails.value = res.data
+    paymentDetails.value = res.data.paymentDetails
+    dailyTimeData.value = res.data.dailyTimeReport || []
   } catch (error) {
     console.error("Error fetching member payment details:", error)
   } finally {
     loading.value = false
   }
 }
+
+const maxHoursInDay = computed(() => {
+  if (!dailyTimeData.value.length) return 10 // Default value for empty data
+  
+  const maxHours = Math.max(...dailyTimeData.value.map(day => day.hoursDecimal))
+
+  // Round up to nearest hour for nice y-axis
+  return Math.ceil(maxHours > 0 ? maxHours : 10)
+})
+
+const chartHeight = computed(() => {
+  // Dynamic height based on number of days
+  const baseHeight = 180 // Minimum height
+  const heightPerDay = 35 // Additional height per day
+  
+  return Math.max(baseHeight, Math.min(600, baseHeight + (dailyTimeData.value.length * heightPerDay)))
+})
 
 const formatDate = dateString => format(new Date(dateString), "MMM d, yyyy h:mm:ss a")
 
@@ -118,83 +138,6 @@ const getLogColor = action => {
   }
 }
 
-const selectionState = computed(() => {
-  if (!paymentDetails.value) return {}
-  
-  return Object.values(paymentDetails.value).reduce((acc, taskDetail) => {
-    acc[taskDetail.task.id] = taskDetail.timeEntries.every(entry => 
-      selectedTimeEntries.value.includes(entry.id),
-    )
-    
-    return acc
-  }, {})
-})
-
-const generateLogMessage = log => {
-  const formatIfNeeded = date => {
-    // Check if it's an ISO string (if it contains 'T' and 'Z', it's likely raw)
-    return typeof date === "string" && date.includes("T") ? formatDate(date) : date
-  }
-
-  if (log.action === "update") {
-    if (log.old_data?.is_paid === false && log.new_data?.is_paid === true) {
-      return `
-        <div class="log-message log-paid">
-          <strong>💰 Payment Recorded!</strong><br>
-          ${log.user.full_name} just marked this time entry as paid.<br>
-          <strong>Paid Rate:</strong> ${log.new_data.paid_rate ? `$${log.new_data.paid_rate}` : "N/A"}<br>
-          <strong>Amount Paid:</strong> ${log.new_data.amount_paid ? `$${log.new_data.amount_paid.toFixed(2)}` : "N/A"}<br>
-          A job well done! 🎉
-        </div>
-      `
-    }
-
-    // Time Tracker Stopped
-    if (log.old_data?.end === null && log.new_data?.end) {
-      return `
-        <div class="log-message log-stopped">
-          <strong>⏱️ Time Tracker Stopped!</strong><br>
-          ${log.user.full_name} stopped the time tracker at <strong>${formatDate(log.new_data.end)}</strong>.<br>
-          <strong>Session Duration:</strong> From <strong>${formatIfNeeded(log.old_data.start)}</strong> to <strong>${formatDate(log.new_data.end)}</strong>.
-        </div>
-      `
-    }
-
-    // General update (excluding 'end' updates from stopped tracking)
-    let changes = Object.entries(log.new_data)
-      .filter(([key]) => key !== "updated_at" && key !== "end") // Ignore 'end' because we already handled it above
-      .map(([key, value]) => {
-        let oldValue = formatIfNeeded(log.old_data[key]) || "N/A"
-        let newValue = formatIfNeeded(value)
-
-        return `<strong>${key}</strong>: <span class="old-value">${oldValue}</span> → <span class="new-value">${newValue}</span>`
-      })
-      .join("<br>")
-
-    return `
-      <div class="log-message log-manual">
-        <strong>🔄 Time Entries Modified Manually</strong><br>
-        ${log.user.full_name} updated this time entry.<br>
-        ${changes ? changes : "Some details have been updated."}
-      </div>
-    `
-  }
-
-  if (log.action === "delete") {
-    return `
-      <div class="log-message log-deleted">
-        <strong>❌ Entry Deleted!</strong><br>
-        ${log.user.full_name} decided to remove this time entry.<br>
-        <strong>Start:</strong> ${formatIfNeeded(log.old_data.start)}<br>
-        <strong>End:</strong> ${log.old_data.end ? formatDate(log.old_data.end) : "N/A"}<br>
-        It's gone forever! 🚀
-      </div>
-    `
-  }
-
-  return `<div class="log-message log-default"><strong>📝 Action:</strong> ${log.action}</div>`
-}
-
 const getLogIcon = action => {
   switch (action) {
   case 'update':
@@ -220,6 +163,14 @@ const formatTimeRange = (start, end) => {
   return `${format(new Date(start), 'MMM d, yyyy h:mm:ss a')} - ${format(new Date(end), 'h:mm:ss a')}`
 }
 
+const formatTime = seconds => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainingSeconds = Math.floor(seconds % 60)
+  
+  return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
 const isAllEntriesPaid = entries => {
   if (!entries || entries.length === 0) return false
   
@@ -238,6 +189,191 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
 
 <template>
   <div class="member-payment-details">
+    <!-- Time Chart Section -->
+    <div
+      v-if="dailyTimeData.length > 0"
+      class="time-chart-container github-card"
+    >
+      <div class="card-header time-chart-header">
+        <div class="header-left">
+          <h4 class="chart-title">
+            <VIcon size="16">tabler-chart-bar</VIcon>
+            Daily Time Report
+            <span class="total-hours">
+              {{ formatTime(dailyTimeData.reduce((sum, day) => sum + day.totalSeconds, 0)) }}
+            </span>
+          </h4>
+        </div>
+        <div class="header-actions">
+          <span class="avg-hours">
+            Avg: {{ dailyTimeData.length > 0 
+              ? (dailyTimeData.reduce((sum, day) => sum + day.hoursDecimal, 0) / dailyTimeData.length).toFixed(2)
+              : '0.00' }}h
+          </span>
+          <VBtn
+            variant="text"
+            size="small"
+            class="action-btn"
+            :class="{ active: showTimeChart }"
+            @click="showTimeChart = !showTimeChart"
+          >
+            <VIcon size="16">
+              {{ showTimeChart ? 'tabler-chevron-up' : 'tabler-chevron-down' }}
+            </VIcon>
+          </VBtn>
+        </div>
+      </div>
+
+      <VExpandTransition>
+        <div
+          v-if="showTimeChart"
+          class="time-chart-body"
+        >
+          <div 
+            class="chart-container"
+            :style="{ height: `${chartHeight}px` }"
+          >
+            <!-- Y-axis labels -->
+            <div class="y-axis">
+              <div
+                v-for="h in maxHoursInDay + 1"
+                :key="h"
+                class="hour-label"
+                :style="{ bottom: `${(h - 1) * (100 / maxHoursInDay)}%` }"
+              >
+                {{ h - 1 }}h
+              </div>
+            </div>
+            
+            <!-- Chart bars -->
+            <div class="chart-bars">
+              <div
+                v-for="day in dailyTimeData"
+                :key="day.date"
+                class="day-column"
+              >
+                <div class="date-label">
+                  {{ format(new Date(day.date), 'd MMM') }}
+                </div>
+                
+                <div class="bar-container">
+                  <div class="hour-grid-lines">
+                    <div
+                      v-for="h in maxHoursInDay"
+                      :key="h"
+                      class="grid-line"
+                      :style="{
+                        bottom: `${h * (100 / maxHoursInDay)}%`
+                      }"
+                    />
+                  </div>
+                  
+                  <div
+                    class="stacked-bar"
+                    :style="{ height: `${(day.hoursDecimal / maxHoursInDay) * 100}%` }"
+                  >
+                    <div
+                      v-for="task in day.tasks"
+                      :key="task.id"
+                      class="task-segment"
+                      :style="{
+                        height: `${task.percentage}%`,
+                        backgroundColor: task.color
+                      }"
+                    >
+                      <VTooltip activator="parent" location="top" content-class="task-tooltip-container" :max-width="300">
+                        <div class="task-tooltip">
+                          <div class="tooltip-header">
+                            <span class="tooltip-title">{{ task.name }}</span>
+                            <div class="tooltip-badge" :style="{ backgroundColor: task.color }">
+                              {{ task.percentage }}%
+                            </div>
+                          </div>
+                          <div class="tooltip-details">
+                            <div class="tooltip-item">
+                              <span class="label">Time:</span>
+                              <span class="value">{{ task.displayTime }}</span>
+                            </div>
+                            <div class="tooltip-item">
+                              <span class="label">Task ID:</span>
+                              <span class="value">#{{ task.id }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </VTooltip>
+                    </div>
+                  </div>
+                  
+                  <!-- Task indicators -->
+                  <div class="task-indicators">
+                    <div
+                      v-for="(task, index) in day.tasks.slice(0, 3)"
+                      :key="task.id"
+                      class="task-indicator"
+                      :style="{
+                        backgroundColor: task.color,
+                        top: `${index * 18}px`
+                      }"
+                    >
+                      <VTooltip activator="parent" location="right" content-class="task-tooltip-container" :max-width="300">
+                        <div class="task-tooltip">
+                          <div class="tooltip-header">
+                            <span class="tooltip-title">{{ task.name }}</span>
+                            <div class="tooltip-badge" :style="{ backgroundColor: task.color }">
+                              {{ task.percentage }}%
+                            </div>
+                          </div>
+                          <div class="tooltip-details">
+                            <div class="tooltip-item">
+                              <span class="label">Time:</span>
+                              <span class="value">{{ task.displayTime }}</span>
+                            </div>
+                            <div class="tooltip-item">
+                              <span class="label">Task ID:</span>
+                              <span class="value">#{{ task.id }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </VTooltip>
+                    </div>
+                    
+                    <div
+                      v-if="day.tasks.length > 3"
+                      class="more-indicator"
+                    >
+                      <VTooltip activator="parent" location="right" content-class="task-tooltip-container" :max-width="300">
+                        <div class="task-tooltip tasks-list">
+                          <div class="tooltip-header">
+                            <span class="tooltip-title">Other tasks</span>
+                          </div>
+                          <div class="tooltip-tasks-list">
+                            <div 
+                              v-for="task in day.tasks.slice(3)" 
+                              :key="task.id"
+                              class="task-list-item"
+                            >
+                              <div class="color-dot" :style="{ backgroundColor: task.color }"></div>
+                              <span class="task-name">{{ task.name }}</span>
+                              <span class="task-time">{{ task.displayTime }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </VTooltip>
+                      +{{ day.tasks.length - 3 }}
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="hours-label">
+                  {{ day.hoursDecimal.toFixed(1) }}h
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </VExpandTransition>
+    </div>
+
     <div
       v-if="paymentDetails"
       class="tasks-container"
@@ -583,6 +719,219 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .time-chart-container {
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+    .time-chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 1rem;
+      background-color: #ffffff;
+      border-bottom: 1px solid #eaecef;
+
+      .chart-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #24292f;
+        
+        .total-hours {
+          font-family: monospace;
+          font-size: 0.8rem;
+          color: #0969da;
+          background: rgba(9, 105, 218, 0.05);
+          padding: 0.1rem 0.4rem;
+          border-radius: 0.25rem;
+          margin-left: 0.5rem;
+          font-weight: 600;
+        }
+      }
+      
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        
+        .avg-hours {
+          font-size: 0.75rem;
+          color: #57606a;
+        }
+        
+        .action-btn {
+          min-width: 28px;
+          height: 28px;
+          padding: 0;
+        }
+      }
+    }
+
+    .time-chart-body {
+      padding: 1rem;
+      
+      .chart-container {
+        display: flex;
+        position: relative;
+        width: 100%;
+        border: 1px solid #eaecef;
+        border-radius: 5px;
+        background-color: #ffffff;
+        overflow: hidden;
+        
+        .y-axis {
+          position: relative;
+          width: 36px;
+          background-color: #f8f9fa;
+          border-right: 1px solid #eaecef;
+          
+          .hour-label {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            padding: 0 0.4rem;
+            text-align: right;
+            font-size: 0.7rem;
+            color: #656d76;
+            transform: translateY(50%);
+            white-space: nowrap;
+          }
+        }
+        
+        .chart-bars {
+          flex: 1;
+          display: flex;
+          padding: 1.75rem 0.5rem 0.75rem;
+          overflow-x: auto;
+          
+          .day-column {
+            display: flex;
+            flex-direction: column;
+            min-width: 60px;
+            flex: 1;
+            max-width: 90px;
+            padding: 0 0.3rem;
+            
+            &:not(:last-child) {
+              border-right: 1px dashed #eaecef;
+            }
+            
+            .date-label {
+              font-size: 0.7rem;
+              text-align: center;
+              color: #656d76;
+              margin-bottom: 0.4rem;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            
+            .bar-container {
+              position: relative;
+              height: calc(100% - 3rem);
+              min-height: 100px;
+              
+              .hour-grid-lines {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                
+                .grid-line {
+                  position: absolute;
+                  left: 0;
+                  width: 100%;
+                  height: 1px;
+                  background-color: #eaecef;
+                }
+              }
+              
+              .stacked-bar {
+                position: absolute;
+                bottom: 0;
+                width: 60%;
+                max-width: 40px;
+                margin: 0 auto;
+                left: 0;
+                right: 0;
+                border-radius: 3px 3px 0 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column-reverse;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+                z-index: 1;
+                
+                .task-segment {
+                  transition: all 0.2s ease;
+                  min-height: 4px;
+                  
+                  &:hover {
+                    filter: brightness(1.1);
+                    transform: scaleX(1.05);
+                  }
+                }
+              }
+              
+              .task-indicators {
+                position: absolute;
+                right: 0;
+                top: 4px;
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                z-index: 2;
+                
+                .task-indicator {
+                  width: 7px;
+                  height: 7px;
+                  border-radius: 50%;
+                  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                  cursor: pointer;
+                  transition: transform 0.2s ease;
+                  
+                  &:hover {
+                    transform: scale(1.3);
+                  }
+                }
+                
+                .more-indicator {
+                  font-size: 0.6rem;
+                  color: #57606a;
+                  background-color: #f6f8fa;
+                  border: 1px solid #d0d7de;
+                  border-radius: 8px;
+                  padding: 0 3px;
+                  margin-top: 2px;
+                  line-height: 1;
+                  cursor: pointer;
+                  text-align: center;
+                  
+                  &:hover {
+                    background-color: #0969da;
+                    color: white;
+                    border-color: #0969da;
+                  }
+                }
+              }
+            }
+            
+            .hours-label {
+              font-size: 0.75rem;
+              text-align: center;
+              margin: 0.3rem 0 0;
+              color: #24292f;
+              font-family: monospace;
+            }
+          }
+        }
+      }
+    }
   }
 
   .github-card {
@@ -1036,6 +1385,58 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
       }
     }
 
+    // Responsive adjustments for time chart
+    .time-chart-container {
+      @media (max-width: 768px) {
+        margin: 0 -1rem 1.5rem;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+      
+      .chart-container {
+        @media (max-width: 768px) {
+          .chart-bars {
+            padding: 1rem 0.25rem 0.5rem;
+            
+            .day-column {
+              min-width: 80px;
+              padding: 0 0.25rem;
+              
+              .task-breakdown {
+                display: none; // Hide task breakdown on mobile to save space
+              }
+              
+              .date-label {
+                font-size: 0.7rem;
+              }
+              
+              .hours-label {
+                font-size: 0.7rem;
+              }
+            }
+          }
+        }
+      }
+      
+      .chart-summary {
+        @media (max-width: 768px) {
+          flex-direction: column;
+          gap: 1rem;
+          align-items: center;
+          
+          .summary-item {
+            flex-direction: row;
+            gap: 0.5rem;
+            
+            .summary-label {
+              margin-bottom: 0;
+            }
+          }
+        }
+      }
+    }
+
     // Improve table responsiveness on mobile
     .table-container {
       @media (max-width: 768px) {
@@ -1242,5 +1643,141 @@ watch(() => props.paymentStatus, fetchMemberPaymentDetails, { deep: true })
   border-radius: 5px;
   margin-bottom: 10px;
   color: #6c757d;
+}
+
+// Stiluri globale pentru tooltip
+:deep(.task-tooltip-container) {
+  background-color: white !important;
+  color: #24292f !important;
+  border: 1px solid #d0d7de !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.task-tooltip {
+  padding: 0.5rem;
+  
+  .tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    
+    .tooltip-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: #24292f;
+      word-break: break-word;
+      max-width: 200px;
+    }
+    
+    .tooltip-badge {
+      font-size: 0.7rem;
+      color: white !important; // Forțăm culoarea textului să fie albă
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      min-width: 2rem;
+      text-align: center;
+      white-space: nowrap; // Previne împărțirea textului pe mai multe linii
+    }
+  }
+  
+  .tooltip-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    
+    .tooltip-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      gap: 0.75rem; // Adăugăm un spațiu între etichetă și valoare
+      
+      .label {
+        color: #656d76;
+        flex-shrink: 0; // Previne micșorarea etichetei
+      }
+      
+      .value {
+        font-weight: 500;
+        color: #24292f;
+        font-family: monospace;
+        text-align: right;
+      }
+    }
+  }
+  
+  &.tasks-list {
+    .tooltip-tasks-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+      max-height: 200px;
+      overflow-y: auto;
+      
+      .task-list-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        
+        .color-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        
+        .task-name {
+          flex: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          color: #24292f;
+        }
+        
+        .task-time {
+          color: #656d76;
+          font-family: monospace;
+          flex-shrink: 0;
+        }
+      }
+    }
+  }
+}
+
+// Îmbunătățește stilurile segmentelor pentru o experiență mai bună cu tooltip
+.stacked-bar {
+  .task-segment {
+    min-height: 4px;
+    position: relative;
+    cursor: pointer;
+    
+    &:hover {
+      filter: brightness(1.1);
+      transform: scaleX(1.05);
+    }
+  }
+}
+
+// Îmbunătățește stilurile pentru indicatorii de task
+.task-indicators {
+  .task-indicator {
+    cursor: pointer;
+    
+    &:hover {
+      transform: scale(1.3);
+    }
+  }
+  
+  .more-indicator {
+    cursor: pointer;
+    
+    &:hover {
+      background-color: #0969da;
+      color: white;
+      border-color: #0969da;
+    }
+  }
 }
 </style>

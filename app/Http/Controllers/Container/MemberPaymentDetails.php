@@ -49,6 +49,9 @@ class MemberPaymentDetails extends BaseController
 
         $billableRate = $model->members->first()->billable_rate;
 
+        // Generate daily time report
+        $dailyTimeReport = $this->generateDailyTimeReport($model->timeEntries, $startDate, $endDate);
+
         $paymentDetails = $model->timeEntries
             ->whereNotNull('end')
             ->groupBy('task_id')
@@ -110,7 +113,144 @@ class MemberPaymentDetails extends BaseController
                 ];
             });
 
-        return $this->successResponse($paymentDetails, 'Payment details fetched successfully.');
+        $response = [
+            'paymentDetails' => $paymentDetails,
+            'dailyTimeReport' => $dailyTimeReport
+        ];
+
+        return $this->successResponse($response, 'Payment details fetched successfully.');
+    }
+
+    private function generateDailyTimeReport($timeEntries, $startDate, $endDate)
+    {
+        // If no date range provided, use the first and last time entry dates
+        if (!$startDate || !$endDate) {
+            if ($timeEntries->isEmpty()) {
+                return [];
+            }
+            
+            $allDates = $timeEntries->map(fn($entry) => Carbon::parse($entry->start)->startOfDay());
+            $startDate = $allDates->min();
+            $endDate = $allDates->max();
+        }
+
+        // Create a date range
+        $period = new \DatePeriod(
+            Carbon::parse($startDate),
+            new \DateInterval('P1D'),
+            Carbon::parse($endDate)->addDay() // Add one day to include the end date
+        );
+
+        // Initialize daily report with zeros
+        $dailyReport = [];
+        foreach ($period as $date) {
+            $dailyReport[$date->format('Y-m-d')] = [
+                'date' => $date->format('Y-m-d'),
+                'displayDate' => $date->format('M d, Y'),
+                'totalSeconds' => 0,
+                'hoursByTask' => [],
+                'tasks' => []
+            ];
+        }
+
+        // Process time entries
+        foreach ($timeEntries as $entry) {
+            if (!$entry->end || $entry->deleted_at) {
+                continue;
+            }
+
+            $startTime = Carbon::parse($entry->start);
+            $endTime = Carbon::parse($entry->end);
+            
+            // Handle entries that span multiple days
+            $currentDay = $startTime->copy()->startOfDay();
+            $lastDay = $endTime->copy()->startOfDay();
+            
+            while ($currentDay->lte($lastDay)) {
+                $dayKey = $currentDay->format('Y-m-d');
+                
+                // Skip if the day is outside our report range
+                if (!isset($dailyReport[$dayKey])) {
+                    $currentDay->addDay();
+                    continue;
+                }
+                
+                // Calculate start and end times for this day
+                $dayStart = max($startTime, $currentDay);
+                $dayEnd = min($endTime, $currentDay->copy()->endOfDay());
+                
+                // Calculate seconds worked on this day
+                $secondsWorked = $dayStart->diffInSeconds($dayEnd);
+                
+                if ($secondsWorked > 0) {
+                    $dailyReport[$dayKey]['totalSeconds'] += $secondsWorked;
+                    
+                    // Track task-specific hours
+                    $taskId = $entry->task_id;
+                    $taskName = $entry->task->name ?? "Task #$taskId";
+                    
+                    if (!isset($dailyReport[$dayKey]['hoursByTask'][$taskId])) {
+                        $dailyReport[$dayKey]['hoursByTask'][$taskId] = 0;
+                        $dailyReport[$dayKey]['tasks'][$taskId] = [
+                            'id' => $taskId,
+                            'name' => $taskName,
+                            'seconds' => 0,
+                            'color' => $this->generateTaskColor($taskId)
+                        ];
+                    }
+                    
+                    $dailyReport[$dayKey]['hoursByTask'][$taskId] += $secondsWorked;
+                    $dailyReport[$dayKey]['tasks'][$taskId]['seconds'] += $secondsWorked;
+                }
+                
+                $currentDay->addDay();
+            }
+        }
+        
+        // Post-process to add display values and sort tasks
+        foreach ($dailyReport as &$day) {
+            $day['displayHours'] = $this->formatTime($day['totalSeconds']);
+            $day['hoursDecimal'] = round($day['totalSeconds'] / 3600, 2);
+            
+            // Convert tasks to array and sort by time
+            $day['tasks'] = array_values($day['tasks']);
+            usort($day['tasks'], function($a, $b) {
+                return $b['seconds'] - $a['seconds'];
+            });
+            
+            // Add display times to tasks
+            foreach ($day['tasks'] as &$task) {
+                $task['displayTime'] = $this->formatTime($task['seconds']);
+                $task['percentage'] = $day['totalSeconds'] > 0 
+                    ? round(($task['seconds'] / $day['totalSeconds']) * 100) 
+                    : 0;
+            }
+            
+            // Remove hoursByTask as it's no longer needed
+            unset($day['hoursByTask']);
+        }
+        
+        // Return as array values
+        return array_values($dailyReport);
+    }
+
+    private function generateTaskColor($taskId)
+    {
+        // Generate consistent colors based on task ID
+        $colors = [
+            '#4f46e5', // Indigo
+            '#0ea5e9', // Sky
+            '#10b981', // Emerald
+            '#f59e0b', // Amber
+            '#ef4444', // Red
+            '#8b5cf6', // Violet
+            '#ec4899', // Pink
+            '#f97316', // Orange
+            '#14b8a6', // Teal
+            '#6366f1', // Blue
+        ];
+        
+        return $colors[$taskId % count($colors)];
     }
 
     private function formatTime($seconds = 0)

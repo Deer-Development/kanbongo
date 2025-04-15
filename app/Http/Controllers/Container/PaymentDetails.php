@@ -106,7 +106,7 @@ class PaymentDetails extends BaseController
                     break;
 
                 case PaymentType::SALARY:
-                    $memberDetails = $this->calculateSalaryPayment($memberDetails, $member, $id);
+                    $memberDetails = $this->calculateSalaryPayment($memberDetails, $member, $id, $model);
                     break;
 
                 case PaymentType::NO_PAYMENT:
@@ -167,12 +167,29 @@ class PaymentDetails extends BaseController
         ]);
     }
 
-    private function calculateSalaryPayment(array $memberDetails, $member, $id): array
+    private function calculateSalaryPayment(array $memberDetails, $member, $id, $model): array
     {
+        $totalHoursWorked = 0;
+        $dailyHoursWorked = [];
+
         $totalSalaryPaid = $member->user->paychecks
             ->where('container_id', $id)
             ->where('payment_type', PaymentType::SALARY)
             ->sum('total_amount');
+
+        foreach ($model->boards as $board) {
+            foreach ($board->tasks as $task) {
+                foreach ($task->timeEntries as $timeEntry) {
+                    if ($timeEntry->user_id === $member->user_id) {
+                        $trackedTime = $this->calculateTrackedTime($timeEntry);
+
+                        $totalHoursWorked += $trackedTime;
+                    }
+                }
+            }
+        }
+
+        $totalHoursWorked = $totalHoursWorked / 3600;
         
         return array_merge($memberDetails, [
             'salary' => $member->salary,
@@ -180,6 +197,7 @@ class PaymentDetails extends BaseController
             'salary_payment_type_name' => SalaryPaymentTypes::getName($member->salary_payment_type),
             'payment_status' => 'Salary: $' . number_format($member->salary, 2) . ' ' . strtolower(SalaryPaymentTypes::getName($member->salary_payment_type)),
             'total_salary_paid' => round($totalSalaryPaid, 2),
+            'total_hours_worked' => round($totalHoursWorked, 2),
         ]);
     }
 

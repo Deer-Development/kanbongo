@@ -806,6 +806,13 @@ onMounted(() => {
                     <span>Total Paid</span>
                     <span class="text-success">${{ member.total_salary_paid.toFixed(2) }}</span>
                   </div>
+                  <div
+                    v-if="member.total_hours_worked"
+                    class="stat-row"
+                  >
+                    <span>Worked Hours</span>
+                    <span class="text-success">{{ member.total_hours_worked.toFixed(2) }} hrs</span>
+                  </div>
                 </template>
                 
                 <template v-else-if="member.payment_type === 3">
